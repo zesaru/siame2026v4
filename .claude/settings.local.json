@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:\\Program Files\\PostgreSQL\\18\\bin\\psql.exe\":*)",
+      "Bash(dir:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm run dev:*)",
+      "Bash(pnpm run build)",
+      "Bash(npm run build)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(pnpm run dev)",
+      "Bash(node:*)",
+      "Bash(del:*)",
+      "Bash(npx prisma db push:*)",
+      "Bash(npx prisma migrate:*)",
+      "Bash(npx prisma generate:*)",
+      "Bash(npx tsc:*)",
+      "WebSearch",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=si npx prisma migrate:*)",
+      "Bash(mkdir:*)",
+      "Bash(exit:*)",
+      "Bash(ping:*)",
+      "Bash(npx shadcn@latest mcp init:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(if not exist .claude mkdir .claude)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(npx shadcn-ui@latest add:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

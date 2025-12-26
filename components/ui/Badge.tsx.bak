@@ -1,0 +1,96 @@
+import React from "react"
+
+interface BadgeProps {
+  children: React.ReactNode
+  variant?: "primary" | "success" | "warning" | "danger" | "info" | "light" | "dark"
+  size?: "sm" | "md" | "lg"
+  pill?: boolean
+  dot?: boolean
+}
+
+const variantClasses = {
+  primary: "bg-[var(--kt-primary-light)] text-[var(--kt-primary-dark)]",
+  success: "bg-[var(--kt-success-light)] text-[var(--kt-success)]",
+  warning: "bg-[var(--kt-warning-light)] text-yellow-700",
+  danger: "bg-[var(--kt-danger-light)] text-[var(--kt-danger)]",
+  info: "bg-[var(--kt-info-light)] text-[var(--kt-info)]",
+  light: "bg-[var(--kt-gray-100)] text-[var(--kt-gray-700)]",
+  dark: "bg-[var(--kt-gray-800)] text-white",
+}
+
+const sizeClasses = {
+  sm: "px-2 py-0.5 text-xs",
+  md: "px-2.5 py-1 text-sm",
+  lg: "px-3 py-1.5 text-base",
+}
+
+export default function Badge({
+  children,
+  variant = "primary",
+  size = "md",
+  pill = false,
+  dot = false,
+}: BadgeProps) {
+  return (
+    <span
+      className={`
+        inline-flex items-center gap-1.5
+        font-medium
+        ${variantClasses[variant]}
+        ${sizeClasses[size]}
+        ${pill ? "rounded-full" : "rounded"}
+      `}
+    >
+      {dot && (
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            variant === "primary"
+              ? "bg-[var(--kt-primary)]"
+              : variant === "success"
+              ? "bg-[var(--kt-success)]"
+              : variant === "warning"
+              ? "bg-[var(--kt-warning)]"
+              : variant === "danger"
+              ? "bg-[var(--kt-danger)]"
+              : variant === "info"
+              ? "bg-[var(--kt-info)]"
+              : "bg-current"
+          }`}
+        />
+      )}
+      {children}
+    </span>
+  )
+}
+
+// Predefined badge configurations for common statuses
+export const StatusBadges: Record<string, { variant: "primary" | "success" | "warning" | "danger" | "info"; label: string }> = {
+  pendiente: { variant: "warning", label: "Pendiente" },
+  en_transito: { variant: "info", label: "En Tránsito" },
+  entregado: { variant: "success", label: "Entregado" },
+  cancelado: { variant: "danger", label: "Cancelado" },
+  completed: { variant: "success", label: "Completado" },
+  failed: { variant: "danger", label: "Fallido" },
+  processing: { variant: "info", label: "Procesando" },
+  pending: { variant: "warning", label: "Pendiente" },
+  borrador: { variant: "light", label: "Borrador" },
+  enviada: { variant: "primary", label: "Enviada" },
+  recibida: { variant: "success", label: "Recibida" },
+  anulada: { variant: "danger", label: "Anulada" },
+}
+
+interface StatusBadgeProps {
+  status: string
+  size?: "sm" | "md" | "lg"
+  pill?: boolean
+}
+
+export function StatusBadge({ status, size = "md", pill = true }: StatusBadgeProps) {
+  const config = StatusBadges[status] || { variant: "light" as const, label: status }
+
+  return (
+    <Badge variant={config.variant} size={size} pill={pill}>
+      {config.label}
+    </Badge>
+  )
+}

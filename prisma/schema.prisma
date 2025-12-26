@@ -1,0 +1,334 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// NextAuth Models
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  documents     Document[]
+  guiasValija   GuiaValija[]
+  hojasRemision HojaRemision[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// Document Analysis Models
+// ============================================
+
+model Document {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // File information
+  fileName      String
+  fileSize      Int      // Store in bytes
+  fileType      String   // MIME type
+  fileExtension String
+
+  // Analysis summary fields (for quick filtering/searching)
+  contentText       String?   @db.Text  // Full extracted text
+  pageCount         Int?
+  language          String?   // Primary language detected
+  tableCount        Int       @default(0)
+  keyValueCount     Int       @default(0)
+  entityCount       Int       @default(0)
+
+  // JSON fields for complete data preservation
+  tables          Json?   // Full table data with structure
+  keyValuePairs   Json?   // All key-value pairs
+  entities        Json?   // All extracted entities
+  metadata        Json?   // Additional metadata (languages, styles, etc.)
+
+  // Processing status
+  processingStatus String   @default("completed") // completed, failed, pending
+  errorMessage     String?  @db.Text
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  analyzedAt DateTime @default(now())
+
+  // Indexes for common queries
+  @@index([userId])
+  @@index([createdAt])
+  @@index([processingStatus])
+  @@index([fileType])
+}
+
+// ============================================
+// Diplomatic Document Models
+// ============================================
+
+model GuiaValija {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ===== Campos Identificativos =====
+  numeroGuia      String   @unique
+  fechaEmision    DateTime @default(now())
+
+  // ===== Tipo de Valija =====
+  tipoValija      String   // "ENTRADA" o "SALIDA"
+
+  // ===== Fechas específicas de Guía de Valija =====
+  fechaEnvio      DateTime?
+  fechaRecibo     DateTime?
+
+  // ===== Direcciones (JSON + campos para índices) =====
+  origenDireccion Json?    @db.JsonB
+  destinoDireccion Json?   @db.JsonB
+  origenCiudad     String?
+  destinoCiudad    String?
+  origenPais       String?
+  destinoPais      String?
+
+  // ===== Personas =====
+  remitenteNombre    String?
+  remitenteCargo     String?
+  remitenteEmail     String?
+  destinatarioNombre String?
+  destinatarioCargo  String?
+  destinatarioEmail  String?
+
+  // ===== Información de Valija =====
+  pesoValija         Float?          // Peso total de items (ej: 63.810)
+  pesoOficial        Float?          // Peso oficial (ej: 69.200)
+  numeroPaquetes     Int?
+  descripcionContenido String?      @db.Text
+  observaciones       String?        @db.Text
+
+  // ===== Personal de Control =====
+  preparadoPor        String?        // Preparado por (ej: "José Rios M.")
+  revisadoPor         String?        // Revisado por (ej: "Miguel Saavedra A.")
+  firmaReceptor       String?        // Firma del receptor (ej: "VARGAS ALVAREZ")
+
+  // ===== Estados =====
+  estado           String  @default("pendiente")  // pendiente, en_transito, entregado, cancelado
+  processingStatus String  @default("pending")   // pending, processing, completed, failed
+  errorMessage     String?  @db.Text
+
+  // ===== Relaciones =====
+  items            GuiaValijaItem[]
+  precintos        GuiaValijaPrecinto[]
+
+  // ===== Datos de Azure =====
+  azureRawData      Json?   @db.JsonB
+  contenidoTexto    String?  @db.Text
+  paresClaveValor   Json?   @db.JsonB
+  entidades         Json?   @db.JsonB
+  tablas            Json?   @db.JsonB
+  metadatos         Json?   @db.JsonB
+
+  // ===== Auditoría =====
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  processedAt     DateTime?
+
+  // ===== Índices =====
+  @@index([userId])
+  @@index([numeroGuia])
+  @@index([tipoValija])
+  @@index([fechaEmision])
+  @@index([fechaEnvio])
+  @@index([origenCiudad, destinoCiudad])
+  @@index([origenPais, destinoPais])
+  @@index([estado])
+  @@index([processingStatus])
+  @@index([createdAt])
+  @@index([remitenteNombre])
+  @@index([destinatarioNombre])
+}
+
+// Items de la Guía de Valija (tabla principal del documento)
+model GuiaValijaItem {
+  id            String      @id @default(cuid())
+  guiaValijaId  String
+  guiaValija    GuiaValija  @relation(fields: [guiaValijaId], references: [id], onDelete: Cascade)
+
+  // Campos de la tabla de items
+  numeroItem    Int         // Nº (1, 2, 3, 4...)
+  destinatario  String      // DESTINATARIO (ej: "LEPRU TOKIO", "CONPER NAGOYA")
+  contenido     String      // CONTENIDO (ej: "SOBRE", "HR Nº5-18-A/ 3 CAJA", "VALIJA Nº2")
+  remitente     String?     // REMITENTE (ej: "S.P.D.I.", "PCU", "DPE", "VALIJA DIPLOMATICA")
+  cantidad      Int?        // CAN T. (cantidad de items)
+  peso          Float?      // PESO P/ ITEM (ej: 0.410, 34.700, 7.700, 21.000)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([guiaValijaId])
+  @@index([guiaValijaId, numeroItem])
+  @@unique([guiaValijaId, numeroItem])
+}
+
+// Precintos de la Guía de Valija (tabla de precintos/guías aéreas)
+model GuiaValijaPrecinto {
+  id            String      @id @default(cuid())
+  guiaValijaId  String
+  guiaValija    GuiaValija  @relation(fields: [guiaValijaId], references: [id], onDelete: Cascade)
+
+  // Campos de la tabla de precintos
+  precinto             String?  // Precinto (ej: "S/P", "0002101")
+  precintoCable        String?  // Precinto/Cable (ej: "0002764-0002765-0002766-0002767", "S/PC")
+  numeroBolsaTamano    String?  // Nº de Bolsa y Tamaño (ej: "CAJA DE MADERA", "M-71")
+  guiaAereaNumero      String?  // Guía Aérea Nº (ej: "6630062471", "8364769070")
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([guiaValijaId])
+}
+
+model HojaRemision {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ===== Campos Identificativos =====
+  numeroRemision  String   @unique
+  tipoRemision    String   // "entrada", "salida", "traslado"
+  fechaRemision   DateTime @default(now())
+
+  // ===== Direcciones =====
+  origenDireccion Json     @db.JsonB
+  destinoDireccion Json    @db.JsonB
+  origenCiudad     String
+  destinoCiudad    String
+  origenPais       String
+  destinoPais      String
+
+  // ===== Personas =====
+  remitenteNombre     String
+  remitenteEmpresa    String?
+  remitenteRUC        String?
+  remitenteEmail      String?
+  remitenteTelefono   String?
+  destinatarioNombre  String
+  destinatarioEmpresa String?
+  destinatarioRUC     String?
+  destinatarioEmail   String?
+  destinatarioTelefono String?
+
+  // ===== Ítems =====
+  items         RemisionItem[]
+  totalCantidad Int       @default(0)
+  totalPeso     Float?
+
+  // ===== Campos Adicionales =====
+  observaciones   String?  @db.Text
+  ordenCompraRef  String?
+  facturaRef      String?
+
+  // ===== Estados =====
+  estado           String  @default("borrador")  // borrador, enviada, recibida, anulada
+  processingStatus String  @default("pending")   // pending, processing, completed, failed
+  errorMessage     String?  @db.Text
+
+  // ===== Datos de Azure =====
+  azureRawData      Json?   @db.JsonB
+  contenidoTexto    String?  @db.Text
+  paresClaveValor   Json?   @db.JsonB
+  entidades         Json?   @db.JsonB
+  tablas            Json?   @db.JsonB
+  metadatos         Json?   @db.JsonB
+
+  // ===== Auditoría =====
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  processedAt     DateTime?
+
+  // ===== Índices =====
+  @@index([userId])
+  @@index([numeroRemision])
+  @@index([tipoRemision])
+  @@index([fechaRemision])
+  @@index([origenCiudad, destinoCiudad])
+  @@index([origenPais, destinoPais])
+  @@index([estado])
+  @@index([processingStatus])
+  @@index([createdAt])
+  @@index([remitenteNombre])
+  @@index([destinatarioNombre])
+  @@index([remitenteRUC])
+  @@index([destinatarioRUC])
+}
+
+model RemisionItem {
+  id             String       @id @default(cuid())
+  hojaRemisionId String
+  hojaRemision   HojaRemision @relation(fields: [hojaRemisionId], references: [id], onDelete: Cascade)
+
+  numeroLinea    Int
+  codigo         String?
+  descripcion    String
+  cantidad       Int
+  unidadMedida   String?
+  precioUnitario Float?
+  total          Float?
+  peso           Float?
+  observaciones  String?      @db.Text
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([hojaRemisionId])
+  @@index([codigo])
+  @@index([hojaRemisionId, numeroLinea])
+  @@unique([hojaRemisionId, numeroLinea])
+}
