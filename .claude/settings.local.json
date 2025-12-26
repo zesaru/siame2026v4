@@ -29,7 +29,11 @@
       "Bash(npx shadcn@latest add:*)",
       "Bash(npx shadcn-ui@latest add:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git config:*)",
+      "Bash(git commit:*)",
+      "Bash(gh auth:*)",
+      "Bash(git push:*)"
     ]
   }
 }
