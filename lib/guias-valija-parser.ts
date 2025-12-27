@@ -1,18 +1,61 @@
 import { prisma } from "./db"
+import { logger } from "./logger"
+
+/**
+ * Extrae solo el número de guía del remitente cuando contiene el formato completo
+ * Ej: "UNIDAD DE VALIJA DIPLOMÁTICA GUÍA DE VALIJA DIPLOMÁTICA Nº02." -> "02"
+ * Si no tiene el formato, retorna el texto original
+ */
+export function extractNumeroFromRemitente(remitente: string): string {
+  if (!remitente) return remitente
+
+  // Buscar patrón: GUÍA DE VALIJA DIPLOMÁTICA NºXX
+  const match = remitente.match(/GU[ÍÍ]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d+)/i)
+  if (match && match[1]) {
+    return match[1].padStart(2, '0')
+  }
+
+  // Si no tiene el formato, retornar original
+  return remitente
+}
 
 /**
  * Extrae el número de guía de un texto
- * Ej: "GUÍA DE VALIJA DIPLOMÁTICA Nº02." -> "02"
+ * Ej: "GUÍA DE VALIJA DIPLOMÁTICA N°07." -> "07"
+ * También busca: "GUÍA AÉREA Nº 0003014"
  */
 export function extractNumeroGuia(text: string): string {
-  // Busca patrones como: Nº02, No 02, #02, etc.
-  const match = text.match(/N[º°]\s*(\d+)|NO\s*[:.]?\s*(\d+)|#\s*(\d+)/i)
-  if (match && match[1]) {
-    return match[1].padStart(4, '0') // Pad con ceros a la izquierda
+  if (!text) return "0001"
+
+  // Limpiar saltos de línea múltiples y espacios excesivos
+  const cleanText = text.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim()
+
+  // Buscar patrones como:
+  // - "GUÍA DE VALIJA DIPLOMÁTICA N°07."
+  // - "GUÍA AÉREA Nº 0003014"
+  // - "N°07" o "Nº 07"
+
+  // Primero buscar "GUÍA DE VALIJA DIPLOMÁTICA N°" o similar
+  const guiaDiplomaticaMatch = cleanText.match(/GU[ÍÍ]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d+)/i)
+  if (guiaDiplomaticaMatch && guiaDiplomaticaMatch[1]) {
+    return guiaDiplomaticaMatch[1].padStart(2, '0') // Mantener formato original (07)
   }
+
+  // Buscar "GUÍA AÉREA Nº"
+  const guiaAereaMatch = cleanText.match(/GU[ÍÍ]A\s+A[ÉE]REA\s+N[º°]\s*(\d+)/i)
+  if (guiaAereaMatch && guiaAereaMatch[1]) {
+    return guiaAereaMatch[1]
+  }
+
+  // Buscar patrones generales: Nº02, No 02, #02, etc.
+  const match = cleanText.match(/N[º°]\s*(\d+)|NO\s*[:.]?\s*(\d+)|#\s*(\d+)/i)
+  if (match && match[1]) {
+    return match[1].padStart(2, '0')
+  }
+
   // Si no encuentra, extrae cualquier número
-  const numberMatch = text.match(/(\d+)/)
-  return numberMatch ? numberMatch[1].padStart(4, '0') : "0001"
+  const numberMatch = cleanText.match(/(\d+)/)
+  return numberMatch ? numberMatch[1].padStart(2, '0') : "01"
 }
 
 /**
@@ -74,16 +117,62 @@ export function findKeyValue(keyValuePairs: any[], searchKey: string): string | 
   if (!keyValuePairs) return null
 
   // Normalizar clave para búsqueda
-  const normalizedSearch = searchKey.toLowerCase().trim().replace(/[:\s]/g, '')
+  const normalizedSearch = searchKey.toLowerCase().trim().replace(/[:\n\r\t\s]+/g, '')
 
-  const pair = keyValuePairs.find((p: any) => {
-    const normalizedKey = p.key?.toLowerCase().trim().replace(/[:\s]/g, '')
-    return normalizedKey === normalizedKey ||
-           normalizedKey.includes(normalizedSearch) ||
-           normalizedSearch.includes(normalizedKey)
+  // Buscar la mejor coincidencia usando un sistema de puntuación
+  let bestPair: any = null
+  let bestScore = -1
+
+  keyValuePairs.forEach((p: any) => {
+    const normalizedKey = p.key?.toLowerCase().trim().replace(/[:\n\r\t\s]+/g, '')
+    let score = 0
+
+    // Coincidencia exacta: puntuación más alta
+    if (normalizedKey === normalizedSearch) {
+      score = 100
+    }
+    // La clave empieza con la búsqueda: muy buena coincidencia
+    else if (normalizedKey.startsWith(normalizedSearch) && normalizedSearch.length > 2) {
+      score = 80
+    }
+    // La búsqueda empieza con la clave: buena coincidencia (ej: buscar "FECHA" encuentra "FECHA DE ENVIO")
+    else if (normalizedSearch.startsWith(normalizedKey) && normalizedKey.length > 2) {
+      score = 60
+    }
+    // La clave contiene la búsqueda: coincidencia débil (ej: buscar "DE" encuentra "FECHA DE ENVIO")
+    else if (normalizedKey.includes(normalizedSearch) && normalizedSearch.length > 2) {
+      score = 40
+    }
+    // La búsqueda contiene la clave: coincidencia muy débil (solo como último recurso)
+    else if (normalizedSearch.includes(normalizedKey) && normalizedKey.length > 2) {
+      score = 20
+    }
+
+    // Penalizar basado en la diferencia de longitud
+    if (score > 0 && score < 100) {
+      const lengthDiff = Math.abs(normalizedKey.length - normalizedSearch.length)
+      score -= lengthDiff * 2
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestPair = p
+    }
   })
 
-  return pair?.value || null
+  const pair = bestPair
+
+  // DEBUG: Log en desarrollo
+  if (process.env.NODE_ENV === 'development' && pair) {
+    console.log(`   🔍 [findKeyValue] Buscando: "${searchKey}" -> Encontrado: key="${pair.key}", value="${pair.value?.substring(0, 50)}${pair.value?.length > 50 ? '...' : ''}"`)
+  }
+
+  // Retornar el valor, también limpiando saltos de línea si existen
+  const value = pair?.value || null
+  if (value && typeof value === 'string') {
+    return value.replace(/[\n\r]+/g, ' ').trim()
+  }
+  return value
 }
 
 /**
@@ -146,6 +235,30 @@ export function extractCiudad(texto: string): string | null {
   }
 
   return null
+}
+
+/**
+ * Normaliza nombres de lugares conocidos que pueden tener espacios incorrectos
+ * Ej: "LEPRU TOKIO" -> "LEPRUTOKIO"
+ */
+export function normalizeLugarNombre(text: string, keys: string[]): string {
+  if (!text) return text
+
+  const upper = text.toUpperCase().trim()
+
+  // Lista de normalizaciones conocidas (90% de casos)
+  const normalizaciones: Record<string, string> = {
+    'LEPRU TOKIO': 'LEPRUTOKIO',
+  }
+
+  // Verificar si el texto coincide con alguna normalización
+  for (const [incorrecto, correcto] of Object.entries(normalizaciones)) {
+    if (upper === incorrecto) {
+      return correcto
+    }
+  }
+
+  return text
 }
 
 /**
@@ -226,6 +339,13 @@ export function parseItemsFromTables(tables: any[]): any[] {
     headers[c] = headerCell?.content || ''
   }
 
+  // Logging de cabeceras
+  if (process.env.NODE_ENV === 'development') {
+    console.log('\n📋 [PARSE ITEMS] Tabla de items detectada:')
+    console.log('   Filas:', rows, 'Columnas:', cols)
+    console.log('   Cabeceras:', headers)
+  }
+
   // Extraer filas de datos
   for (let r = 1; r < rows; r++) {
     const item: any = {}
@@ -258,7 +378,16 @@ export function parseItemsFromTables(tables: any[]): any[] {
 
     if (item.destinatario || item.contenido) {
       items.push(item)
+
+      // Logging de cada item
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`   Item ${r}:`, item)
+      }
     }
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`   ✅ Total items parseados: ${items.length}\n`)
   }
 
   return items
@@ -286,6 +415,13 @@ export function parsePrecintosFromTables(tables: any[]): any[] {
       cell.kind === 'columnHeader' && cell.columnIndex === c
     )
     headers[c] = headerCell?.content || ''
+  }
+
+  // Logging de cabeceras
+  if (process.env.NODE_ENV === 'development') {
+    console.log('\n🔒 [PARSE PRECINTOS] Tabla de precintos detectada:')
+    console.log('   Filas:', rows, 'Columnas:', cols)
+    console.log('   Cabeceras:', headers)
   }
 
   // Extraer filas de datos (saltar cabecera)
@@ -317,7 +453,16 @@ export function parsePrecintosFromTables(tables: any[]): any[] {
     // Agregar si tiene algún dato
     if (Object.values(precinto).some(v => v)) {
       precintos.push(precinto)
+
+      // Logging de cada precinto
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`   Precinto ${r}:`, precinto)
+      }
     }
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`   ✅ Total precintos parseados: ${precintos.length}\n`)
   }
 
   return precintos
@@ -334,13 +479,19 @@ export async function processGuiaValijaFromAzure(
   const { keyValuePairs, tables, content } = azureResult
 
   // Extraer campos principales de keyValuePairs
-  const destinatario = findKeyValue(keyValuePairs, 'PARA') ||
-                       findKeyValue(keyValuePairs, 'DESTINATARIO') ||
-                       'DESCONOCIDO'
+  let destinatario = findKeyValue(keyValuePairs, 'PARA') ||
+                     findKeyValue(keyValuePairs, 'DESTINATARIO') ||
+                     'DESCONOCIDO'
 
-  const remitente = findKeyValue(keyValuePairs, 'DE') ||
-                    findKeyValue(keyValuePairs, 'REMITENTE') ||
-                    'UNIDAD DE VALIJA DIPLOMÁTICA'
+  // Normalizar nombres de lugares conocidos (ej: LEPRU TOKIO -> LEPRUTOKIO)
+  destinatario = normalizeLugarNombre(destinatario, ['PARA', 'DESTINATARIO'])
+
+  const remitenteRaw = findKeyValue(keyValuePairs, 'DE') ||
+                       findKeyValue(keyValuePairs, 'REMITENTE') ||
+                       'UNIDAD DE VALIJA DIPLOMÁTICA'
+
+  // Si el remitente contiene "GUÍA DE VALIJA DIPLOMÁTICA NºXX", extraer solo el número
+  const remitente = extractNumeroFromRemitente(remitenteRaw)
 
   const fechaEnvioStr = findKeyValue(keyValuePairs, 'FECHA DE ENVIO')
   const fechaReciboStr = findKeyValue(keyValuePairs, 'FECHA DE RECIBO')
@@ -352,12 +503,22 @@ export async function processGuiaValijaFromAzure(
   const observaciones = findKeyValue(keyValuePairs, 'OBSERVACIONES')
   const firmaReceptor = findKeyValue(keyValuePairs, 'FIRMA DEL RECEPTOR')
 
-  // Extraer número de guía del contenido
-  let numeroGuia = extractNumeroGuia(content || remitente || destinatario)
+  // Extraer número de guía del contenido o del remitente raw
+  let numeroGuia = extractNumeroGuia(content || remitenteRaw || destinatario)
 
   // Parsear fechas
   const fechaEnvio = parseFecha(fechaEnvioStr || '')
   const fechaRecibo = parseFecha(fechaReciboStr || '')
+
+  // Agregar año al número de guía para hacerlo único (ej: "14" -> "14-2025")
+  if (numeroGuia && fechaEnvio) {
+    const año = fechaEnvio.getFullYear()
+    numeroGuia = `${numeroGuia}-${año}`
+  } else if (numeroGuia) {
+    // Si no hay fecha, usar el año actual
+    const año = new Date().getFullYear()
+    numeroGuia = `${numeroGuia}-${año}`
+  }
 
   // Parsear pesos
   const pesoValija = extractPeso(pesoTotalStr || '')
@@ -366,11 +527,11 @@ export async function processGuiaValijaFromAzure(
   // Parsear total de items
   const numeroPaquetes = totalItemsStr ? parseInt(totalItemsStr.replace(/\D/g, '')) : null
 
-  // Determinar tipo de valija (ENTRADA o SALIDA)
-  const tipoValija = determinarTipoValija(remitente, destinatario)
+  // Determinar tipo de valija (ENTRADA o SALIDA) usando el remitenteRaw
+  const tipoValija = determinarTipoValija(remitenteRaw, destinatario)
 
-  // Extraer ciudades de origen y destino
-  const origenCiudad = extractCiudad(remitente)
+  // Extraer ciudades de origen y destino (usar remitenteRaw para búsqueda)
+  const origenCiudad = extractCiudad(remitenteRaw)
   const destinoCiudad = extractCiudad(destinatario)
 
   // Determinar países
@@ -381,9 +542,42 @@ export async function processGuiaValijaFromAzure(
   const itemsData = parseItemsFromTables(tables || [])
   const precintosData = parsePrecintosFromTables(tables || [])
 
-  // Crear la guía de valija
-  const guia = await prisma.guiaValija.create({
-    data: {
+  // Logging: Mostrar todos los datos extraídos antes de guardar
+  logger.separator('─', 70)
+  logger.info('📋 DATOS EXTRAÍDOS PARA GUARDAR GUÍA DE VALIJA')
+  logger.separator('─', 70)
+  console.log(`   Nº Guía:        ${numeroGuia}`)
+  console.log(`   Tipo Valija:    ${tipoValija}`)
+  console.log(`   Destinatario:   ${destinatario}`)
+  console.log(`   Remitente:      ${remitente}`)
+  console.log(`   Fecha Envío:    ${fechaEnvio ? fechaEnvio.toISOString() : 'N/A'}`)
+  console.log(`   Fecha Recibo:   ${fechaRecibo ? fechaRecibo.toISOString() : 'N/A'}`)
+  console.log(`   Origen:         ${origenCiudad} (${origenPais})`)
+  console.log(`   Destino:        ${destinoCiudad} (${destinoPais})`)
+  console.log(`   Peso Valija:    ${pesoValija || 'N/A'} Kgrs.`)
+  console.log(`   Peso Oficial:   ${pesoOficial || 'N/A'} Kgrs.`)
+  console.log(`   Total Items:    ${numeroPaquetes || 'N/A'}`)
+  console.log(`   Observaciones:  ${observaciones || 'N/A'}`)
+  console.log(`   Preparado Por:  ${preparadoPor || 'N/A'}`)
+  console.log(`   Revisado Por:   ${revisadoPor || 'N/A'}`)
+  logger.separator('─', 70)
+  console.log(`   Items detectados: ${itemsData.length}`)
+  itemsData.forEach((item, idx) => {
+    console.log(`     ${idx + 1}. Nº: ${item.numeroItem}, Dest: ${item.destinatario}, Contenido: ${item.contenido}, CANT: ${item.cantidad}, Peso: ${item.peso}`)
+  })
+  logger.separator('─', 70)
+  console.log(`   Precintos detectados: ${precintosData.length}`)
+  precintosData.forEach((precinto, idx) => {
+    console.log(`     ${idx + 1}. Precinto: ${precinto.precinto || 'N/A'}, Cable: ${precinto.precintoCable || 'N/A'}, Bolsa: ${precinto.numeroBolsaTamano || 'N/A'}, Guía Aérea: ${precinto.guiaAereaNumero || 'N/A'}`)
+  })
+  logger.separator('─', 70)
+
+  // Usar upsert: crear si no existe, actualizar si ya existe
+  logger.info(`⏳ Guardando guía de valija: ${numeroGuia}`)
+
+  const guia = await prisma.guiaValija.upsert({
+    where: { numeroGuia },
+    create: {
       userId,
       numeroGuia,
       tipoValija,
@@ -410,10 +604,47 @@ export async function processGuiaValijaFromAzure(
       paresClaveValor: keyValuePairs,
       tablas: tables,
     },
+    update: {
+      tipoValija,
+      fechaEnvio,
+      fechaRecibo,
+      destinatarioNombre: destinatario,
+      remitenteNombre: remitente,
+      origenCiudad,
+      destinoCiudad,
+      origenPais,
+      destinoPais,
+      pesoValija,
+      pesoOficial,
+      numeroPaquetes,
+      observaciones,
+      preparadoPor,
+      revisadoPor,
+      firmaReceptor,
+      azureRawData: azureResult,
+      contenidoTexto: content,
+      paresClaveValor: keyValuePairs,
+      tablas: tables,
+    },
   })
+
+  logger.success(`✅ Guía de valija guardada: ID=${guia.id}, Nº=${numeroGuia}`)
+
+  // Eliminar items y precintos existentes si estamos actualizando
+  if (itemsData.length > 0 || precintosData.length > 0) {
+    logger.info(`🗑️  Eliminando items y precintos anteriores...`)
+    await prisma.guiaValijaItem.deleteMany({
+      where: { guiaValijaId: guia.id }
+    })
+
+    await prisma.guiaValijaPrecinto.deleteMany({
+      where: { guiaValijaId: guia.id }
+    })
+  }
 
   // Crear items
   if (itemsData.length > 0) {
+    logger.info(`📦 Creando ${itemsData.length} items...`)
     await prisma.guiaValijaItem.createMany({
       data: itemsData.map(item => ({
         guiaValijaId: guia.id,
@@ -425,10 +656,12 @@ export async function processGuiaValijaFromAzure(
         peso: item.peso || null,
       })),
     })
+    logger.success(`✅ Items creados exitosamente`)
   }
 
   // Crear precintos
   if (precintosData.length > 0) {
+    logger.info(`🔒 Creando ${precintosData.length} precintos...`)
     await prisma.guiaValijaPrecinto.createMany({
       data: precintosData.map(precinto => ({
         guiaValijaId: guia.id,
@@ -438,14 +671,54 @@ export async function processGuiaValijaFromAzure(
         guiaAereaNumero: precinto.guiaAereaNumero || null,
       })),
     })
+    logger.success(`✅ Precintos creados exitosamente`)
   }
 
   // Retornar la guía con sus relaciones
-  return await prisma.guiaValija.findUnique({
+  const guiaFinal = await prisma.guiaValija.findUnique({
     where: { id: guia.id },
     include: {
       items: true,
       precintos: true,
     },
   })
+
+  // Logging final
+  if (guiaFinal) {
+    logger.separator('═', 70)
+    logger.success('🎉 GUÍA DE VALIJA GUARDADA EXITOSAMENTE')
+    logger.separator('═', 70)
+    console.log(`   ID:             ${guiaFinal.id}`)
+    console.log(`   Nº Guía:        ${guiaFinal.numeroGuia}`)
+    console.log(`   Tipo:           ${guiaFinal.tipoValija}`)
+    console.log(`   Destinatario:   ${guiaFinal.destinatarioNombre}`)
+    console.log(`   Origen:         ${guiaFinal.origenCiudad || 'N/A'} (${guiaFinal.origenPais || 'N/A'})`)
+    console.log(`   Destino:        ${guiaFinal.destinoCiudad || 'N/A'} (${guiaFinal.destinoPais || 'N/A'})`)
+    console.log(`   Fecha Envío:    ${guiaFinal.fechaEnvio ? guiaFinal.fechaEnvio.toLocaleDateString() : 'N/A'}`)
+    console.log(`   Peso Valija:    ${guiaFinal.pesoValija || 'N/A'} Kgrs.`)
+    console.log(`   Peso Oficial:   ${guiaFinal.pesoOficial || 'N/A'} Kgrs.`)
+    console.log(`   Total Items:    ${guiaFinal.items?.length || 0}`)
+    console.log(`   Total Precintos: ${guiaFinal.precintos?.length || 0}`)
+    logger.separator('═', 70)
+
+    // Mostrar items guardados
+    if (guiaFinal.items && guiaFinal.items.length > 0) {
+      console.log(`\n📦 ITEMS GUARDADOS (${guiaFinal.items.length}):`)
+      guiaFinal.items.forEach((item, idx) => {
+        console.log(`   ${idx + 1}. Nº: ${item.numeroItem}, Dest: ${item.destinatario}, Cont: ${item.contenido}, CANT: ${item.cantidad}, Peso: ${item.peso}`)
+      })
+    }
+
+    // Mostrar precintos guardados
+    if (guiaFinal.precintos && guiaFinal.precintos.length > 0) {
+      console.log(`\n🔒 PRECINTOS GUARDADOS (${guiaFinal.precintos.length}):`)
+      guiaFinal.precintos.forEach((precinto, idx) => {
+        console.log(`   ${idx + 1}. Precinto: ${precinto.precinto || 'N/A'}, Cable: ${precinto.precintoCable || 'N/A'}, Bolsa: ${precinto.numeroBolsaTamano || 'N/A'}, Guía Aérea: ${precinto.guiaAereaNumero || 'N/A'}`)
+      })
+    }
+
+    logger.separator('═', 70)
+  }
+
+  return guiaFinal
 }
