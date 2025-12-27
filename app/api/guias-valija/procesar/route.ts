@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { processGuiaValijaFromAzure } from "@/lib/guias-valija-parser"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic'
 
@@ -25,11 +26,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    console.log("\n════════════════════════════════════════════════════════════════")
-    console.log("📋 PROCESANDO GUÍA DE VALIJA:")
-    console.log("════════════════════════════════════════════════════════════════")
-    console.log(`Usuario: ${session.user.email}`)
-    console.log(`Archivo: ${fileName}`)
+    logger.separator()
+    logger.document('GUÍA DE VALIJA - PROCESSING STARTED', fileName || 'documento.pdf')
+    logger.info(`Usuario: ${session.user.email}`)
+
+    // Log de los key-value pairs recibidos
+    logger.azureKeyValuePairs(azureResult.keyValuePairs)
 
     // Procesar y guardar la guía de valija
     const guia = await processGuiaValijaFromAzure(
@@ -38,12 +40,20 @@ export async function POST(req: NextRequest) {
       fileName || "documento.pdf"
     )
 
-    console.log(`✅ Guía de valija creada exitosamente`)
-    console.log(`   Número: ${guia.numeroGuia}`)
-    console.log(`   Destinatario: ${guia.destinatarioNombre}`)
-    console.log(`   Items: ${guia.items?.length || 0}`)
-    console.log(`   Precintos: ${guia.precintos?.length || 0}`)
-    console.log("════════════════════════════════════════════════════════════════\n")
+    logger.separator('═', 60)
+    logger.success('GUÍA DE VALIJA CREADA EXITOSAMENTE')
+    console.log(`   Nº Guía:        ${guia.numeroGuia}`)
+    console.log(`   Destinatario:   ${guia.destinatarioNombre}`)
+    console.log(`   Remitente:      ${guia.remitenteNombre}`)
+    console.log(`   Tipo:           ${guia.tipoValija}`)
+    console.log(`   Origen:         ${guia.origenCiudad} (${guia.origenPais})`)
+    console.log(`   Destino:        ${guia.destinoCiudad} (${guia.destinoPais})`)
+    console.log(`   Fecha Envío:    ${guia.fechaEnvio ? guia.fechaEnvio.toLocaleDateString() : 'N/A'}`)
+    console.log(`   Peso Valija:    ${guia.pesoValija || 'N/A'} Kgrs.`)
+    console.log(`   Peso Oficial:   ${guia.pesoOficial || 'N/A'} Kgrs.`)
+    console.log(`   Items:          ${guia.items?.length || 0}`)
+    console.log(`   Precintos:      ${guia.precintos?.length || 0}`)
+    logger.separator('═', 60)
 
     return NextResponse.json({
       success: true,
@@ -51,7 +61,8 @@ export async function POST(req: NextRequest) {
       message: "Guía de valija procesada exitosamente"
     })
   } catch (error) {
-    console.error("Error processing Guía de Valija:", error)
+    logger.error("Error processing Guía de Valija", error)
+    logger.separator()
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Failed to process Guía de Valija",
