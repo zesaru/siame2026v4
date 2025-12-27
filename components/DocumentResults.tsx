@@ -2,17 +2,58 @@
 
 import { useState } from "react"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
+import Icon from "@/components/ui/Icon"
+import GuiaValijaForm from "./GuiaValijaForm"
+
+interface KeyValuePair {
+  key: string
+  value: string
+  confidence?: number
+  boundingRegions?: any[]
+}
 
 interface DocumentResultsProps {
   result: DocumentAnalysisResult
   fileName: string
   fileUrl: string
+  documentId?: string
 }
 
 export default function DocumentResults(props: DocumentResultsProps) {
-  const { result, fileName, fileUrl } = props
+  const { result, fileName, fileUrl, documentId } = props
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [editedPairs, setEditedPairs] = useState<KeyValuePair[]>(result.keyValuePairs)
+  const [isExtractedTextExpanded, setIsExtractedTextExpanded] = useState(false)
+  const [editedTables, setEditedTables] = useState(result.tables || [])
+  const [isTablesExpanded, setIsTablesExpanded] = useState(true)
+  const [isKeyValuePairsExpanded, setIsKeyValuePairsExpanded] = useState(false)
+
+  const handleFieldChange = (index: number, field: 'key' | 'value', newValue: string) => {
+    const updated = [...editedPairs]
+    updated[index] = {
+      ...updated[index],
+      [field]: newValue
+    }
+    setEditedPairs(updated)
+  }
+
+  const handleTableCellChange = (tableIdx: number, cellIdentifier: string, newValue: string) => {
+    const updatedTables = [...editedTables]
+    const table = updatedTables[tableIdx]
+    const cellIndex = table.cells.findIndex((c: any) =>
+      c.rowIndex === parseInt(cellIdentifier.split('-')[0]) &&
+      c.columnIndex === parseInt(cellIdentifier.split('-')[1])
+    )
+    if (cellIndex !== -1) {
+      table.cells[cellIndex] = { ...table.cells[cellIndex], content: newValue }
+      setEditedTables(updatedTables)
+    }
+  }
 
   const handleSaveAsGuiaValija = async () => {
     setIsSaving(true)
@@ -25,7 +66,11 @@ export default function DocumentResults(props: DocumentResultsProps) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          azureResult: result,
+          azureResult: {
+            ...result,
+            keyValuePairs: editedPairs,
+            tables: editedTables
+          },
           fileName: fileName,
         }),
       })
@@ -52,6 +97,13 @@ export default function DocumentResults(props: DocumentResultsProps) {
     } finally {
       setIsSaving(false)
     }
+  }
+
+  const getConfidenceColor = (confidence?: number) => {
+    if (!confidence) return "secondary"
+    if (confidence >= 0.9) return "default"
+    if (confidence >= 0.7) return "outline"
+    return "destructive"
   }
 
   return (
@@ -120,32 +172,147 @@ export default function DocumentResults(props: DocumentResultsProps) {
                 Document analyzed successfully!
               </p>
               <p style={{ fontSize: "12px", color: "#1e3a8a", marginTop: "4px" }}>
-                Found: {result.tables?.length || 0} tables, {result.keyValuePairs?.length || 0} key-value pairs
+                Found: {result.tables?.length || 0} tables, {editedPairs.length || 0} key-value pairs
               </p>
             </div>
 
-            {/* Key-Value Pairs */}
-            {result.keyValuePairs && result.keyValuePairs.length > 0 && (
+            {/* Campos Principales de la Guía de Valija */}
+            <GuiaValijaForm
+              editedPairs={editedPairs}
+              onFieldChange={handleFieldChange}
+            />
+
+            {/* Key-Value Pairs Editables - OCULTO: Usar Tables en su lugar */}
+            {/* editedPairs.length > 0 && (
               <div style={{ marginBottom: "24px" }}>
-                <h4 style={{ fontSize: "18px", fontWeight: "500", color: "#111827", marginBottom: "12px" }}>Key-Value Pairs</h4>
-                <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "8px", maxHeight: "300px", overflow: "auto" }}>
-                  {result.keyValuePairs.map((pair, idx) => (
-                    <div key={idx} style={{ marginBottom: "8px", paddingBottom: "8px", borderBottom: "1px solid #e5e7eb" }}>
-                      <span style={{ fontSize: "13px", fontWeight: "600", color: "#1f2937" }}>{pair.key}:</span>
-                      <span style={{ fontSize: "13px", color: "#4b5563", marginLeft: "8px" }}>{pair.value || "(vacío)"}</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                  <h4 style={{ fontSize: "18px", fontWeight: "500", color: "#111827", margin: 0 }}>
+                    Key-Value Pairs
+                  </h4>
+                  {documentId && (
+                    <button
+                      onClick={handleSaveEdits}
+                      disabled={isSavingEdits}
+                      style={{
+                        padding: "6px 16px",
+                        backgroundColor: isSavingEdits ? "#9ca3af" : "#10b981",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        fontSize: "13px",
+                        fontWeight: "500",
+                        cursor: isSavingEdits ? "not-allowed" : "pointer",
+                        transition: "background-color 0.2s"
+                      }}
+                    >
+                      {isSavingEdits ? "Guardando..." : "💾 Guardar Cambios"}
+                    </button>
+                  )}
+                </div>
+                <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "8px", maxHeight: "400px", overflow: "auto" }}>
+                  {editedPairs.map((pair, idx) => (
+                    <div key={idx} style={{
+                      marginBottom: "12px",
+                      paddingBottom: "12px",
+                      borderBottom: "1px solid #e5e7eb",
+                      display: "grid",
+                      gridTemplateColumns: "2fr 3fr 80px",
+                      gap: "12px",
+                      alignItems: "center"
+                    }}>
+                      <div>
+                        <label style={{ fontSize: "11px", color: "#6b7280", fontWeight: "500", marginBottom: "4px", display: "block" }}>
+                          Key
+                        </label>
+                        <Input
+                          value={pair.key}
+                          onChange={(e) => handleFieldChange(idx, 'key', e.target.value)}
+                          placeholder="Key"
+                          className="text-sm"
+                          style={{ fontSize: "13px" }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: "11px", color: "#6b7280", fontWeight: "500", marginBottom: "4px", display: "block" }}>
+                          Value
+                        </label>
+                        <Input
+                          value={pair.value}
+                          onChange={(e) => handleFieldChange(idx, 'value', e.target.value)}
+                          placeholder="Value"
+                          className="text-sm"
+                          style={{ fontSize: "13px" }}
+                        />
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        {pair.confidence && (
+                          <Badge variant={getConfidenceColor(pair.confidence)}>
+                            {Math.round(pair.confidence * 100)}%
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
-            )}
+            ) */}
 
             {/* Tables */}
             {result.tables && result.tables.length > 0 && (
               <div style={{ marginBottom: "24px" }}>
-                <h4 style={{ fontSize: "18px", fontWeight: "500", color: "#111827", marginBottom: "12px" }}>
-                  Tables ({result.tables.length})
-                </h4>
-                {result.tables.map((table, tableIdx) => (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    marginBottom: isTablesExpanded ? "16px" : 0,
+                    padding: "12px 16px",
+                    backgroundColor: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    transition: "all 0.2s ease",
+                    boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                  }}
+                  onClick={() => setIsTablesExpanded(!isTablesExpanded)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f9fafb"
+                    e.currentTarget.style.borderColor = "#d1d5db"
+                    e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#fff"
+                    e.currentTarget.style.borderColor = "#e5e7eb"
+                    e.currentTarget.style.boxShadow = "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Icon
+                      name="chart"
+                      size="sm"
+                      style={{ color: "#3b82f6" }}
+                    />
+                    <h4 style={{ fontSize: "16px", fontWeight: "600", color: "#111827", margin: 0 }}>
+                      Tablas de Datos ({result.tables.length})
+                    </h4>
+                  </div>
+                  <div style={{
+                    padding: "4px",
+                    borderRadius: "6px",
+                    backgroundColor: isTablesExpanded ? "#eff6ff" : "transparent",
+                    transition: "all 0.2s ease"
+                  }}>
+                    <Icon
+                      name={isTablesExpanded ? "chevron-up" : "chevron-down"}
+                      size="sm"
+                      style={{
+                        color: isTablesExpanded ? "#3b82f6" : "#6b7280",
+                        transition: "transform 0.2s ease"
+                      }}
+                    />
+                  </div>
+                </div>
+                {isTablesExpanded && editedTables.map((table: any, tableIdx: number) => (
                   <div key={tableIdx} style={{ marginBottom: "16px" }}>
                     <p style={{ fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>
                       Tabla {tableIdx + 1}: {table.rowCount} filas × {table.columnCount} columnas
@@ -156,9 +323,29 @@ export default function DocumentResults(props: DocumentResultsProps) {
                           <tr>
                             {Array.from({ length: table.columnCount }).map((_, colIdx) => {
                               const headerCell = table.cells.find((c: any) => c.kind === "columnHeader" && c.columnIndex === colIdx)
+                              const cellId = `${0}-${colIdx}`
+                              const headerContent = headerCell?.content || `Col ${colIdx + 1}`
+                              const isNumeroColumn = headerContent.trim() === "Nº" || headerContent.includes("Nº")
+                              const isPesoItemColumn = headerContent.includes("PESO ITEM") || headerContent.includes("PESO P/ ITEM")
+                              const isCantidadColumn = headerContent.includes("CAN T.")
+
                               return (
-                                <th key={colIdx} style={{ border: "1px solid #d1d5db", padding: "8px", fontWeight: "600", textAlign: "left" }}>
-                                  {headerCell?.content || `Col ${colIdx + 1}`}
+                                <th
+                                  key={colIdx}
+                                  style={{
+                                    border: "1px solid #d1d5db",
+                                    padding: "4px",
+                                    fontWeight: "600",
+                                    textAlign: "left",
+                                    width: isNumeroColumn ? "60px" : isCantidadColumn ? "80px" : isPesoItemColumn ? "120px" : "auto"
+                                  }}
+                                >
+                                  <Input
+                                    value={headerContent}
+                                    onChange={(e) => handleTableCellChange(tableIdx, cellId, e.target.value)}
+                                    className="text-xs bg-white"
+                                    style={{ fontSize: "12px", fontWeight: 600, border: "none", background: "transparent" }}
+                                  />
                                 </th>
                               )
                             })}
@@ -169,14 +356,36 @@ export default function DocumentResults(props: DocumentResultsProps) {
                             <tr key={rowIdx}>
                               {Array.from({ length: table.columnCount }).map((_, colIdx) => {
                                 const cell = table.cells.find((c: any) => c.rowIndex === rowIdx + 1 && c.columnIndex === colIdx)
+                                const cellId = `${rowIdx + 1}-${colIdx}`
+                                // Obtener el header para verificar si es la columna Nº, CAN T. o PESO
+                                const headerCell = table.cells.find((c: any) => c.kind === "columnHeader" && c.columnIndex === colIdx)
+                                const headerContent = headerCell?.content || `Col ${colIdx + 1}`
+                                const isNumeroColumn = headerContent.trim() === "Nº" || headerContent.includes("Nº")
+                                const isPesoItemColumn = headerContent.includes("PESO ITEM") || headerContent.includes("PESO P/ ITEM")
+                                const isCantidadColumn = headerContent.includes("CAN T.")
                                 return (
-                                  <td key={colIdx} style={{ border: "1px solid #e5e7eb", padding: "6px", textAlign: "left" }}>
-                                    {cell?.content || ""}
-                                    {cell?.confidence && (
-                                      <span style={{ fontSize: "10px", color: "#9ca3af", marginLeft: "4px" }}>
-                                        ({(cell.confidence * 100).toFixed(0)}%)
-                                      </span>
-                                    )}
+                                  <td
+                                    key={colIdx}
+                                    style={{
+                                      border: "1px solid #e5e7eb",
+                                      padding: "4px",
+                                      textAlign: "left",
+                                      width: isNumeroColumn ? "60px" : isCantidadColumn ? "80px" : isPesoItemColumn ? "120px" : "auto"
+                                    }}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                      <Input
+                                        value={cell?.content || ""}
+                                        onChange={(e) => handleTableCellChange(tableIdx, cellId, e.target.value)}
+                                        className="text-xs"
+                                        style={{ fontSize: "12px", border: "none", padding: "4px" }}
+                                      />
+                                      {cell?.confidence && (
+                                        <span style={{ fontSize: "10px", color: "#9ca3af", whiteSpace: "nowrap" }}>
+                                          {(cell.confidence * 100).toFixed(0)}%
+                                        </span>
+                                      )}
+                                    </div>
                                   </td>
                                 )
                               })}
@@ -190,14 +399,203 @@ export default function DocumentResults(props: DocumentResultsProps) {
               </div>
             )}
 
+            {/* Key-Value Pairs Completos - Colapsable */}
+            {editedPairs.length > 0 && (
+              <div style={{ marginBottom: "24px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    marginBottom: isKeyValuePairsExpanded ? "16px" : 0,
+                    padding: "12px 16px",
+                    backgroundColor: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    transition: "all 0.2s ease",
+                    boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                  }}
+                  onClick={() => setIsKeyValuePairsExpanded(!isKeyValuePairsExpanded)}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#f9fafb"
+                    e.currentTarget.style.borderColor = "#d1d5db"
+                    e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#fff"
+                    e.currentTarget.style.borderColor = "#e5e7eb"
+                    e.currentTarget.style.boxShadow = "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <Icon
+                      name="check"
+                      size="sm"
+                      style={{ color: "#10b981" }}
+                    />
+                    <h4 style={{ fontSize: "16px", fontWeight: "600", color: "#111827", margin: 0 }}>
+                      Key-Value Pairs Completos ({editedPairs.length})
+                    </h4>
+                    <span style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      fontWeight: "400",
+                      backgroundColor: "#f3f4f6",
+                      padding: "2px 8px",
+                      borderRadius: "12px"
+                    }}>
+                      Todos los campos extraídos
+                    </span>
+                  </div>
+                  <div style={{
+                    padding: "4px",
+                    borderRadius: "6px",
+                    backgroundColor: isKeyValuePairsExpanded ? "#eff6ff" : "transparent",
+                    transition: "all 0.2s ease"
+                  }}>
+                    <Icon
+                      name={isKeyValuePairsExpanded ? "chevron-up" : "chevron-down"}
+                      size="sm"
+                      style={{
+                        color: isKeyValuePairsExpanded ? "#3b82f6" : "#6b7280",
+                        transition: "transform 0.2s ease"
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {isKeyValuePairsExpanded && (
+                  <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "8px", maxHeight: "500px", overflow: "auto" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "2fr 3fr 80px", gap: "12px", fontWeight: "600", fontSize: "13px", color: "#6b7280", paddingBottom: "8px", borderBottom: "1px solid #e5e7eb", marginBottom: "12px" }}>
+                      <div>Key</div>
+                      <div>Value</div>
+                      <div style={{ textAlign: "center" }}>Confianza</div>
+                    </div>
+                    {editedPairs.map((pair, idx) => (
+                      <div key={idx} style={{
+                        paddingBottom: "12px",
+                        marginBottom: "12px",
+                        borderBottom: "1px solid #e5e7eb",
+                        display: "grid",
+                        gridTemplateColumns: "2fr 3fr 80px",
+                        gap: "12px",
+                        alignItems: "center"
+                      }}>
+                        <div>
+                          <Input
+                            value={pair.key}
+                            onChange={(e) => handleFieldChange(idx, 'key', e.target.value)}
+                            placeholder="Key"
+                            className="text-xs"
+                            style={{ fontSize: "12px" }}
+                          />
+                        </div>
+                        <div>
+                          <Input
+                            value={pair.value}
+                            onChange={(e) => handleFieldChange(idx, 'value', e.target.value)}
+                            placeholder="Value"
+                            className="text-xs"
+                            style={{ fontSize: "12px" }}
+                          />
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          {pair.confidence && (
+                            <Badge variant={getConfidenceColor(pair.confidence)}>
+                              {Math.round(pair.confidence * 100)}%
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Extracted Text */}
             <div>
-              <h4 style={{ fontSize: "18px", fontWeight: "500", color: "#111827", marginBottom: "12px" }}>Extracted Text</h4>
-              <div style={{ backgroundColor: "#f9fafb", padding: "16px", borderRadius: "8px", maxHeight: "256px", overflow: "auto" }}>
-                <pre style={{ fontSize: "14px", color: "#374151", whiteSpace: "pre-wrap" }}>
-                  {result.content || 'No text content extracted'}
-                </pre>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  marginBottom: isExtractedTextExpanded ? "12px" : 0,
+                  padding: "12px 16px",
+                  backgroundColor: "#fff",
+                  border: "1px solid #e5e7eb",
+                  borderRadius: "8px",
+                  transition: "all 0.2s ease",
+                  boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                }}
+                onClick={() => setIsExtractedTextExpanded(!isExtractedTextExpanded)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f9fafb"
+                  e.currentTarget.style.borderColor = "#d1d5db"
+                  e.currentTarget.style.boxShadow = "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "#fff"
+                  e.currentTarget.style.borderColor = "#e5e7eb"
+                  e.currentTarget.style.boxShadow = "0 1px 2px 0 rgba(0, 0, 0, 0.05)"
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Icon
+                    name={isExtractedTextExpanded ? "file-text" : "file-text"}
+                    size="sm"
+                    style={{ color: "#3b82f6" }}
+                  />
+                  <h4 style={{ fontSize: "16px", fontWeight: "600", color: "#111827", margin: 0 }}>
+                    Extracted Text
+                  </h4>
+                  {result.content && (
+                    <span style={{
+                      fontSize: "12px",
+                      color: "#6b7280",
+                      fontWeight: "400",
+                      backgroundColor: "#f3f4f6",
+                      padding: "2px 8px",
+                      borderRadius: "12px"
+                    }}>
+                      {result.content.length} caracteres
+                    </span>
+                  )}
+                </div>
+                <div style={{
+                  padding: "4px",
+                  borderRadius: "6px",
+                  backgroundColor: isExtractedTextExpanded ? "#eff6ff" : "transparent",
+                  transition: "all 0.2s ease"
+                }}>
+                  <Icon
+                    name={isExtractedTextExpanded ? "chevron-up" : "chevron-down"}
+                    size="sm"
+                    style={{
+                      color: isExtractedTextExpanded ? "#3b82f6" : "#6b7280",
+                      transition: "transform 0.2s ease"
+                    }}
+                  />
+                </div>
               </div>
+              {isExtractedTextExpanded && (
+                <div style={{
+                  backgroundColor: "#f9fafb",
+                  padding: "16px",
+                  borderRadius: "8px",
+                  maxHeight: "256px",
+                  overflow: "auto",
+                  border: "1px solid #e5e7eb",
+                  borderTop: "none",
+                  marginTop: "-4px"
+                }}>
+                  <pre style={{ fontSize: "14px", color: "#374151", whiteSpace: "pre-wrap" }}>
+                    {result.content || 'No text content extracted'}
+                  </pre>
+                </div>
+              )}
             </div>
           </div>
         </div>
