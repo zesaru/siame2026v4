@@ -18,6 +18,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null)
   const [fileName, setFileName] = useState<string>("")
   const [fileUrl, setFileUrl] = useState<string>("")
+  const [documentId, setDocumentId] = useState<string>("")
   const [error, setError] = useState<string>("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
@@ -26,6 +27,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
     console.log("handleAnalysisComplete called with:", result)
     setAnalysisResult(result)
     setFileName(result.metadata.title || "Document")
+    setDocumentId((result as any).documentId || "")
 
     // Create object URL for the file to display it
     const url = URL.createObjectURL(file)
@@ -48,6 +50,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
   const resetAnalysis = () => {
     setAnalysisResult(null)
     setFileName("")
+    setDocumentId("")
     if (fileUrl) {
       URL.revokeObjectURL(fileUrl)
       setFileUrl("")
@@ -72,6 +75,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
 
       setAnalysisResult(result)
       setFileName(fullDocument.fileName)
+      setDocumentId(fullDocument.id)
       setShowHistory(false)
     } catch (error) {
       console.error("Error loading document:", error)
@@ -153,7 +157,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
             onError={handleError}
           />
         ) : (
-          <DocumentResults result={analysisResult} fileName={fileName} fileUrl={fileUrl} />
+          <DocumentResults result={analysisResult} fileName={fileName} fileUrl={fileUrl} documentId={documentId} />
         )}
       </div>
 

@@ -87,3 +87,65 @@ export async function DELETE(
     )
   }
 }
+
+// PUT /api/documents/[id] - Update document key-value pairs
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await auth()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const body = await req.json()
+    const { keyValuePairs } = body
+
+    // Validate input
+    if (!Array.isArray(keyValuePairs)) {
+      return NextResponse.json(
+        { error: "keyValuePairs must be an array" },
+        { status: 400 }
+      )
+    }
+
+    // Verify ownership
+    const document = await prisma.document.findFirst({
+      where: {
+        id: params.id,
+        userId: session.user.id,
+      },
+    })
+
+    if (!document) {
+      return NextResponse.json(
+        { error: "Document not found" },
+        { status: 404 }
+      )
+    }
+
+    // Update document
+    const updated = await prisma.document.update({
+      where: { id: params.id },
+      data: {
+        keyValuePairs,
+        keyValueCount: keyValuePairs.length,
+        updatedAt: new Date(),
+      },
+    })
+
+    console.log(`Document ${params.id} updated with ${keyValuePairs.length} key-value pairs`)
+
+    return NextResponse.json(updated)
+  } catch (error) {
+    console.error("Error updating document:", error)
+    return NextResponse.json(
+      { error: "Failed to update document" },
+      { status: 500 }
+    )
+  }
+}
