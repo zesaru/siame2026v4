@@ -1,0 +1,130 @@
+{
+  "mcpServers": {
+    "shadcn": {
+      "command": "npx",
+      "args": [
+        "shadcn@latest",
+        "mcp"
+      ]
+    },
+    "pdf": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-pdf",
+        "serve"
+      ]
+    },
+    "xlsx": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-xlsx",
+        "serve"
+      ]
+    },
+    "ms-office-suite": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-ms-office-suite",
+        "serve"
+      ]
+    },
+    "web-reader": {
+      "command": "npx",
+      "args": [
+        "@mcp/web-reader",
+        "serve"
+      ]
+    },
+    "ide": {
+      "command": "npx",
+      "args": [
+        "@mcp/ide",
+        "serve"
+      ]
+    },
+    "image-analyzer": {
+      "command": "npx",
+      "args": [
+        "@modelcontextprotocol/server-image-analyzer",
+        "serve"
+      ]
+    }
+  },
+  "context7": {
+    "description": "SIAME 2026 - Sistema Inteligente para Misiones diplomáticas",
+    "version": "1.0.0",
+    "context": {
+      "project": {
+        "name": "SIAME 2026",
+        "type": "diplomatic-document-management-system",
+        "stack": "Next.js 16, Prisma, PostgreSQL, Azure AI",
+        "features": [
+          "Document Intelligence with Azure AI",
+          "Diplomatic pouch guides management",
+          "Remission sheets processing",
+          "Authentication with NextAuth",
+          "Dashboard with statistics"
+        ]
+      },
+      "development": {
+        "commands": {
+          "dev": "npm run dev",
+          "build": "npm run build",
+          "start": "npm start",
+          "lint": "npm run lint",
+          "db:generate": "npx prisma generate",
+          "db:push": "npx prisma db push",
+          "db:migrate": "npx prisma migrate dev"
+        },
+        "database": {
+          "provider": "PostgreSQL",
+          "url": "localhost:5432/siame2026",
+          "orm": "Prisma 6.19.1"
+        }
+      },
+      "authentication": {
+        "provider": "NextAuth v4",
+        "strategy": "credentials",
+        "demo_user": "demo@example.com / temp123"
+      },
+      "ai_integration": {
+        "service": "Azure Document Intelligence",
+        "model": "prebuilt-document",
+        "formats": ["PDF", "DOCX", "XLSX", "PNG", "JPG", "JPEG"],
+        "features": ["Tables", "Key-value pairs", "Entities extraction"]
+      },
+      "ui_framework": {
+        "library": "shadcn/ui",
+        "styling": "Tailwind CSS v4",
+        "components": "19 UI components available"
+      }
+    },
+    "recent_changes": [
+      {
+        "date": "2025-01-28",
+        "changes": [
+          "Habilitar edición de items en vista de guía de valija",
+          "Corregir redirección de botón 'Editar Guía'",
+          "Implementar dashboard principal con estadísticas",
+          "Agregar sistema de seeding con usuario demo"
+        ]
+      }
+    ],
+    "architecture_notes": {
+      "recommended": "Monolito Modular con Capas Claramente Definidas",
+      "layers": [
+        "Presentación (Next.js App Router)",
+        "API (Serverless Routes)",
+        "Servicio (Business Logic)",
+        "Datos (Prisma + PostgreSQL)"
+      ]
+    },
+    "todo": [
+      "Implementar análisis de documentos: idioma, tipo, dirección",
+      "Crear formulario de verificación dinámico",
+      "Agregar sistema de notificaciones",
+      "Implementar RBAC",
+      "Mejorar cache con Redis"
+    ]
+  }
+}
