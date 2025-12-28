@@ -4,6 +4,7 @@ import { useState } from "react"
 import { usePathname } from "next/navigation"
 import Sidebar from "./Sidebar.tsx"
 import Header from "./Header.tsx"
+import { Providers } from "@/components/providers"
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -49,7 +50,11 @@ export default function DashboardLayout({ children, session }: DashboardLayoutPr
         />
 
         {/* Page Content */}
-        <main className="p-6">{children}</main>
+        <main className="p-6">
+          <Providers>
+            {children}
+          </Providers>
+        </main>
       </div>
     </div>
   )
