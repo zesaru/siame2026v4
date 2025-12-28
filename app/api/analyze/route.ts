@@ -75,6 +75,23 @@ export async function POST(req: NextRequest) {
     logger.success(`Document analysis completed: ${file.name}`)
     logger.separator()
 
+    // Check if the document analysis result contains document type detection
+    const hasDocumentTypeAnalysis = result.content && (
+      result.content.toLowerCase().includes('guía') ||
+      result.content.toLowerCase().includes('remisión') ||
+      result.content.toLowerCase().includes('nota')
+    )
+
+    if (hasDocumentTypeAnalysis) {
+      // Redirect to verification page for better UX
+      return NextResponse.json({
+        redirectTo: `/verify?documentId=${document.id}`,
+        message: "Documento analizado correctamente, redirigiendo a verificación",
+        documentId: document.id,
+        hasAdvancedAnalysis: true
+      })
+    }
+
     return NextResponse.json({
       ...result,
       documentId: document.id,
