@@ -37,6 +37,28 @@ npx prisma studio            # Open database browser
 
 ## Architecture
 
+## Development Rules & Patterns
+
+### 1. Data Access Layer (Prisma)
+- **Direct Queries Forbidden**: Components must never call `prisma` directly.
+- **Service Pattern**: All DB interactions must reside in `lib/services/`. Create one service file per domain (e.g., `lib/services/pouch-service.ts`).
+- **Generated Client**: Always import from `@/app/generated/prisma`. Use the singleton in `lib/db.ts`.
+
+### 2. Next.js 16 & Server Actions
+- **Actions over APIs**: Prefer Server Actions (`"use server"`) for mutations instead of Route Handlers (`app/api/`) when triggered by UI forms.
+- **Zod Validation**: Every Action and API must validate input using a Zod schema defined in `lib/schemas/`.
+- **Error Handling**: Use a consistent return pattern for Actions: `{ success: boolean, data?: T, error?: string }`.
+
+### 3. Tailwind CSS v4 Styles
+- **CSS-First**: Use the new Tailwind v4 pattern. Define custom theme variables in `app/globals.css`.
+- **Dynamic Classes**: Always use the `cn()` utility (combining `clsx` and `tailwind-merge`) for conditional classes.
+- **Layouts**: Follow the "Metronic" inspired design: heavy use of CSS variables for semantic colors (primary, surface, border).
+
+### 4. Diplomatic Logic Standards
+- **Document Integrity**: Guías de Valija items and seals (Precintos) must be handled as atomic transactions.
+- **Parsing**: All Azure AI extraction logic must be piped through `lib/guias-valija-parser.ts` to ensure consistency before saving to PostgreSQL.
+- **Naming Conventions**: Keep Spanish terms for diplomatic concepts (`GuiaValija`, `HojaRemision`) in models and code to maintain alignment with official documentation.
+
 ### Database Setup
 - **Database**: PostgreSQL (local instance `localhost:5432/siame2026`)
 - **ORM**: Prisma 6.19.1

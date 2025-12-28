@@ -36,7 +36,10 @@
       "Bash(git push:*)",
       "Bash(npx tsx:*)",
       "Bash(timeout:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(pnpm add:*)",
+      "Bash(curl:*)",
+      "Bash(pkill:*)"
     ]
   }
 }
