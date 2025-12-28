@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth-v4"
 import { redirect } from "next/navigation"
 import { prisma } from "@/lib/db"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { StatusBadge } from "@/components/ui/badge"
+import { Badge } from "@/components/ui/badge"
 
 async function getHojasRemision(userId: string) {
   return await prisma.hojaRemision.findMany({
@@ -12,6 +12,21 @@ async function getHojasRemision(userId: string) {
     },
     orderBy: { fechaRemision: "desc" },
   })
+}
+
+function getEstadoColor(estado: string) {
+  switch (estado.toLowerCase()) {
+    case "pendiente":
+      return "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]"
+    case "en_transito":
+      return "bg-blue-100 text-blue-700"
+    case "entregado":
+      return "bg-[var(--kt-success-light)] text-[var(--kt-success)]"
+    case "cancelado":
+      return "bg-[var(--kt-danger-light)] text-[var(--kt-danger)]"
+    default:
+      return "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]"
+  }
 }
 
 export default async function HojasRemisionPage() {
@@ -103,7 +118,9 @@ export default async function HojasRemisionPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={hoja.estado} />
+                        <Badge className={getEstadoColor(hoja.estado)}>
+                  {hoja.estado}
+                </Badge>
                       </td>
                     </tr>
                   ))}
