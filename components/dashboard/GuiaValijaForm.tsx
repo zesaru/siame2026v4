@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,12 +10,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Icon from "@/components/ui/Icon"
+import GuiaValijaItems from "./GuiaValijaItems"
 import { toast } from "sonner"
 
 interface GuiaValijaFormProps {
   guia?: any
   onSuccess?: () => void
   onCancel?: () => void
+}
+
+interface GuiaValijaItem {
+  numeroItem: number
+  destinatario: string
+  contenido: string
+  remitente?: string
+  cantidad?: number
+  peso?: number
 }
 
 const tipoValijaOptions = [
@@ -34,10 +44,19 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [items, setItems] = useState<GuiaValijaItem[]>([])
+  const validateRef = useRef<{ validate: () => boolean } | null>(null)
+
+  // Cargar items si se está editando una guía existente
+  React.useEffect(() => {
+    if (guia?.items) {
+      setItems(guia.items)
+    }
+  }, [guia])
 
   const [formData, setFormData] = useState({
     numeroGuia: guia?.numeroGuia || "",
-    tipoValija: guia?.tipoValija || "SALIDA",
+    tipoValija: guia?.tipoValija || "ENTRADA",
     fechaEmision: guia?.fechaEmision ? new Date(guia.fechaEmision).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     fechaEnvio: guia?.fechaEnvio ? new Date(guia.fechaEnvio).toISOString().split('T')[0] : "",
     fechaRecibo: guia?.fechaRecibo ? new Date(guia.fechaRecibo).toISOString().split('T')[0] : "",
@@ -46,15 +65,10 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
     origenPais: guia?.origenPais || "Perú",
     destinoPais: guia?.destinoPais || "",
     remitenteNombre: guia?.remitenteNombre || "",
-    remitenteCargo: guia?.remitenteCargo || "",
-    remitenteEmail: guia?.remitenteEmail || "",
     destinatarioNombre: guia?.destinatarioNombre || "",
-    destinatarioCargo: guia?.destinatarioCargo || "",
-    destinatarioEmail: guia?.destinatarioEmail || "",
     pesoValija: guia?.pesoValija || "",
     pesoOficial: guia?.pesoOficial || "",
     numeroPaquetes: guia?.numeroPaquetes || "",
-    descripcionContenido: guia?.descripcionContenido || "",
     observaciones: guia?.observaciones || "",
     preparadoPor: guia?.preparadoPor || "",
     revisadoPor: guia?.revisadoPor || "",
@@ -66,8 +80,39 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
+  const validateForm = () => {
+    if (!formData.numeroGuia.trim()) {
+      setError("El número de guía es requerido")
+      return false
+    }
+    if (!formData.tipoValija) {
+      setError("El tipo de valija es requerido")
+      return false
+    }
+    if (!formData.fechaEmision) {
+      setError("La fecha de emisión es requerida")
+      return false
+    }
+
+    // Validar items usando el ref
+    if (validateRef.current?.validate()) {
+      // Validación exitosa
+    } else if (items.length === 0) {
+      setError("Debe agregar al menos un item")
+      return false
+    }
+
+    setError("")
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) {
+      return
+    }
+
     setError("")
     setLoading(true)
 
@@ -76,10 +121,15 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
         ? `/api/dashboard/guias-valija/${guia.id}`
         : "/api/dashboard/guias-valija"
 
+      const payload = {
+        ...formData,
+        items: items,
+      }
+
       const response = await fetch(url, {
         method: guia ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       })
 
       const data = await response.json()
@@ -268,7 +318,7 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
           <div className="space-y-4">
             <div>
               <h4 className="text-sm font-medium text-[var(--kt-text-dark)] mb-3">Remitente</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="remitenteNombre">Nombre</Label>
                   <Input
@@ -278,33 +328,12 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
                     placeholder="Juan Pérez"
                   />
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="remitenteCargo">Cargo</Label>
-                  <Input
-                    id="remitenteCargo"
-                    value={formData.remitenteCargo}
-                    onChange={(e) => handleChange("remitenteCargo", e.target.value)}
-                    placeholder="Embajador"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="remitenteEmail">Email</Label>
-                  <Input
-                    id="remitenteEmail"
-                    type="email"
-                    value={formData.remitenteEmail}
-                    onChange={(e) => handleChange("remitenteEmail", e.target.value)}
-                    placeholder="ejemplo@email.com"
-                  />
-                </div>
               </div>
             </div>
 
             <div>
               <h4 className="text-sm font-medium text-[var(--kt-text-dark)] mb-3">Destinatario</h4>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="destinatarioNombre">Nombre</Label>
                   <Input
@@ -312,27 +341,6 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
                     value={formData.destinatarioNombre}
                     onChange={(e) => handleChange("destinatarioNombre", e.target.value)}
                     placeholder="María González"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="destinatarioCargo">Cargo</Label>
-                  <Input
-                    id="destinatarioCargo"
-                    value={formData.destinatarioCargo}
-                    onChange={(e) => handleChange("destinatarioCargo", e.target.value)}
-                    placeholder="Cónsul"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="destinatarioEmail">Email</Label>
-                  <Input
-                    id="destinatarioEmail"
-                    type="email"
-                    value={formData.destinatarioEmail}
-                    onChange={(e) => handleChange("destinatarioEmail", e.target.value)}
-                    placeholder="ejemplo@email.com"
                   />
                 </div>
               </div>
@@ -386,17 +394,6 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="descripcionContenido">Descripción del Contenido</Label>
-            <Textarea
-              id="descripcionContenido"
-              value={formData.descripcionContenido}
-              onChange={(e) => handleChange("descripcionContenido", e.target.value)}
-              placeholder="Descripción detallada del contenido..."
-              rows={3}
-            />
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="observaciones">Observaciones</Label>
             <Textarea
               id="observaciones"
@@ -408,6 +405,15 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
           </div>
         </CardContent>
       </Card>
+
+      {/* Items de la Guía */}
+      <GuiaValijaItems
+        items={items}
+        onChange={setItems}
+        validateRef={validateRef}
+        editable={!loading}
+        title="Items de la Guía de Valija"
+      />
 
       {/* Personal de Control */}
       <Card>

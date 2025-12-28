@@ -47,6 +47,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "El número de guía ya existe" }, { status: 400 })
     }
 
+    // Crear la guía
     const guia = await prisma.guiaValija.create({
       data: {
         userId: session.user.id,
@@ -76,13 +77,33 @@ export async function POST(req: Request) {
         estado: body.estado || "pendiente",
         processingStatus: "completed",
       },
+    })
+
+    // Agregar items si existen
+    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      await prisma.guiaValijaItem.createMany({
+        data: body.items.map((item: any) => ({
+          guiaValijaId: guia.id,
+          numeroItem: item.numeroItem || 0,
+          destinatario: item.destinatario || '',
+          contenido: item.contenido || '',
+          remitente: item.remitente || null,
+          cantidad: item.cantidad || null,
+          peso: item.peso || null,
+        })),
+      })
+    }
+
+    // Obtener la guía con items incluidos
+    const guiaConItems = await prisma.guiaValija.findUnique({
+      where: { id: guia.id },
       include: {
         items: true,
         precintos: true,
       },
     })
 
-    return NextResponse.json(guia, { status: 201 })
+    return NextResponse.json(guiaConItems, { status: 201 })
   } catch (error) {
     console.error("Error creating guia:", error)
     return NextResponse.json({ error: "Error creating guia" }, { status: 500 })

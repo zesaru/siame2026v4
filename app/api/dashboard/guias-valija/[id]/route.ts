@@ -74,7 +74,8 @@ export async function PUT(
       }
     }
 
-    const guia = await prisma.guiaValija.update({
+    // Actualizar los datos principales de la guía
+    await prisma.guiaValija.update({
       where: { id },
       data: {
         numeroGuia: body.numeroGuia,
@@ -102,13 +103,40 @@ export async function PUT(
         firmaReceptor: body.firmaReceptor,
         estado: body.estado,
       },
+    })
+
+    // Eliminar items existentes
+    await prisma.guiaValijaItem.deleteMany({
+      where: { guiaValijaId: id },
+    })
+
+    // Agregar nuevos items si existen
+    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
+      await prisma.guiaValijaItem.createMany({
+        data: body.items.map((item: any) => ({
+          guiaValijaId: id,
+          numeroItem: item.numeroItem || 0,
+          destinatario: item.destinatario || '',
+          contenido: item.contenido || '',
+          remitente: item.remitente || null,
+          cantidad: item.cantidad || null,
+          peso: item.peso || null,
+        })),
+      })
+    }
+
+    // Obtener la guía actualizada con items
+    const guiaActualizada = await prisma.guiaValija.findUnique({
+      where: { id },
       include: {
-        items: true,
+        items: {
+          orderBy: { numeroItem: "asc" },
+        },
         precintos: true,
       },
     })
 
-    return NextResponse.json(guia)
+    return NextResponse.json(guiaActualizada)
   } catch (error) {
     console.error("Error updating guia:", error)
     return NextResponse.json({ error: "Error updating guia" }, { status: 500 })

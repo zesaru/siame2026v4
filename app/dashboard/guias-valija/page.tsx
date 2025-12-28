@@ -5,13 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+// Dialog component removed - now using separate pages
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,21 +17,47 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import Icon from "@/components/ui/Icon"
 import GuiaValijaForm from "@/components/dashboard/GuiaValijaForm"
+import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
 import { toast } from "sonner"
 
-const tipoValijaColors: Record<string, string> = {
-  ENTRADA: "bg-[var(--kt-info-light)] text-[var(--kt-info)]",
-  SALIDA: "bg-[var(--kt-warning-light)] text-[var(--kt-warning)]",
+// Tipo mapping for badge styling
+const tipoValijaVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  ENTRADA: "default",
+  SALIDA: "default",
 }
 
+// Tipo colors for custom styling
+const tipoValijaColors: Record<string, string> = {
+  ENTRADA: "bg-blue-100 text-blue-700",
+  SALIDA: "bg-orange-100 text-orange-700",
+}
+
+// Estado colors for custom styling
 const estadoColors: Record<string, string> = {
-  pendiente: "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]",
+  pendiente: "bg-gray-100 text-gray-700",
   en_transito: "bg-blue-100 text-blue-700",
-  entregado: "bg-[var(--kt-success-light)] text-[var(--kt-success)]",
-  cancelado: "bg-[var(--kt-danger-light)] text-[var(--kt-danger)]",
+  entregado: "bg-green-100 text-green-700",
+  cancelado: "bg-red-100 text-red-700",
+}
+
+// Estado mapping for better badge styling
+const estadoVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+  pendiente: "secondary",
+  en_transito: "default",
+  entregado: "default",
+  cancelado: "destructive",
 }
 
 const estadoLabels: Record<string, string> = {
@@ -55,9 +75,7 @@ export default function GuiasValijaPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
 
-  // Modal states
-  const [showForm, setShowForm] = useState(false)
-  const [editingGuia, setEditingGuia] = useState<any>(null)
+  // Form states - Removed, now using separate pages
   const [deleteConfirm, setDeleteConfirm] = useState<any>(null)
 
   useEffect(() => {
@@ -97,13 +115,7 @@ export default function GuiasValijaPage() {
   }
 
   function handleCreate() {
-    setEditingGuia(null)
-    setShowForm(true)
-  }
-
-  function handleEdit(guia: any) {
-    setEditingGuia(guia)
-    setShowForm(true)
+    router.push("/guias-valija/create")
   }
 
   function handleDelete(guia: any) {
@@ -125,8 +137,6 @@ export default function GuiasValijaPage() {
   }
 
   function handleFormSuccess() {
-    setShowForm(false)
-    setEditingGuia(null)
     fetchGuias()
   }
 
@@ -145,15 +155,19 @@ export default function GuiasValijaPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--kt-text-dark)]">
             Guías de Valija
           </h1>
-          <p className="text-[var(--kt-text-muted)] mt-1">
-            Gestiona tus documentos diplomáticos ({guias.length} registros)
+          <p className="text-[var(--kt-text-muted)]">
+            Gestiona tus documentos diplomáticos y de valija
           </p>
         </div>
-        <Button onClick={handleCreate} className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)]">
+        <Button
+          onClick={handleCreate}
+          className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)] shadow-sm"
+          size="lg"
+        >
           <Icon name="plus" size="sm" className="mr-2" />
           Nueva Guía
         </Button>
@@ -163,12 +177,12 @@ export default function GuiasValijaPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
-            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--kt-text-muted)]" />
+            <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--kt-text-muted)] h-4 w-4" />
             <Input
               placeholder="Buscar por número, destinatario o ciudad..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-base"
             />
           </div>
         </CardContent>
@@ -177,106 +191,105 @@ export default function GuiasValijaPage() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Guías Registradas</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">Guías Registradas</CardTitle>
+            <div className="text-sm text-muted-foreground">
+              {filteredGuias.length} de {guias.length} guías
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {filteredGuias.length === 0 ? (
-            <div className="text-center py-12">
-              <Icon name="suitcase" size="xl" className="mx-auto text-[var(--kt-text-muted)] mb-4" />
-              <p className="text-[var(--kt-text-muted)]">
-                {searchTerm ? "No se encontraron resultados" : "No hay guías de valija registradas"}
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="mb-6 rounded-full bg-[var(--kt-gray-100)] p-4">
+                <Icon name="suitcase" size="xl" className="text-[var(--kt-text-muted)]" />
+              </div>
+              <h3 className="mb-2 text-lg font-semibold">
+                {searchTerm ? "No se encontraron resultados" : "No hay guías de valija"}
+              </h3>
+              <p className="mb-6 text-[var(--kt-text-muted)] max-w-sm">
+                {searchTerm
+                  ? "No se encontraron guías que coincidan con tu búsqueda."
+                  : "Comienza creando tu primera guía de valija para gestionar tus documentos diplomáticos."}
               </p>
               {!searchTerm && (
-                <Button onClick={handleCreate} variant="outline" className="mt-4">
+                <Button
+                  onClick={handleCreate}
+                  className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)]"
+                >
                   <Icon name="plus" size="sm" className="mr-2" />
                   Crear Primera Guía
                 </Button>
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[var(--kt-gray-200)]">
-                <thead className="bg-[var(--kt-gray-50)]">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Número
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Destino
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Fecha Envío
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Items
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-[var(--kt-gray-200)]">
+            <div className="rounded-md border">
+              <Table>
+                <TableCaption>
+                  Lista de guías de valija registradas ({filteredGuias.length} registros)
+                </TableCaption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[120px]">Número</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Destino</TableHead>
+                    <TableHead>Fecha Envío</TableHead>
+                    <TableHead className="text-center">Items</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {filteredGuias.map((guia) => (
-                    <tr key={guia.id} className="hover:bg-[var(--kt-gray-50)]">
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-[var(--kt-text-dark)]">
-                          {guia.numeroGuia}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${tipoValijaColors[guia.tipoValija]}`}>
+                    <TableRow key={guia.id}>
+                      <TableCell className="font-medium">
+                        {guia.numeroGuia}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={tipoValijaColors[guia.tipoValija]}>
                           {guia.tipoValija}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div>
-                          <p className="text-sm text-[var(--kt-text-dark)]">
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <p className="font-medium">
                             {guia.destinatarioNombre || "-"}
                           </p>
-                          <p className="text-xs text-[var(--kt-text-muted)]">
+                          <p className="text-sm text-muted-foreground">
                             {guia.destinoCiudad || "-"}
                           </p>
                         </div>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-[var(--kt-text-muted)]">
-                          {guia.fechaEnvio
-                            ? new Date(guia.fechaEnvio).toLocaleDateString()
-                            : "-"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm text-[var(--kt-text-muted)]">
-                          {guia.items?.length || 0}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className={`text-xs font-medium px-2 py-1 rounded ${estadoColors[guia.estado]}`}>
+                      </TableCell>
+                      <TableCell>
+                        {guia.fechaEnvio
+                          ? new Date(guia.fechaEnvio).toLocaleDateString()
+                          : "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline">
+                          {guia.items?.length || 0} items
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={estadoVariants[guia.estado]}>
                           {estadoLabels[guia.estado] || guia.estado}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right">
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEdit(guia)}
-                            title="Editar"
+                            onClick={() => window.open(`/guias-valija/${guia.id}/view`, '_blank')}
+                            title="Ver Detalles"
                           >
-                            <Icon name="search" size="sm" />
+                            <Icon name="eye" size="sm" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleEdit(guia)}
+                            onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit?id=${guia.id}`)}
                             title="Editar"
-                            className="text-[var(--kt-info)] hover:text-[var(--kt-info)]"
                           >
                             <Icon name="refresh" size="sm" />
                           </Button>
@@ -290,34 +303,17 @@ export default function GuiasValijaPage() {
                             <Icon name="trash" size="sm" />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Form Dialog */}
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingGuia ? "Editar Guía de Valija" : "Nueva Guía de Valija"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingGuia ? "Actualiza la información de la guía" : "Completa el formulario para crear una nueva guía"}
-            </DialogDescription>
-          </DialogHeader>
-          <GuiaValijaForm
-            guia={editingGuia}
-            onSuccess={handleFormSuccess}
-            onCancel={() => setShowForm(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      {/* Form Dialog - Removed, now using separate pages */}
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
