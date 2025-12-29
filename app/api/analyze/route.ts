@@ -82,19 +82,11 @@ export async function POST(req: NextRequest) {
       result.content.toLowerCase().includes('nota')
     )
 
-    if (hasDocumentTypeAnalysis) {
-      // Redirect to verification page for better UX
-      return NextResponse.json({
-        redirectTo: `/verify?documentId=${document.id}`,
-        message: "Documento analizado correctamente, redirigiendo a verificación",
-        documentId: document.id,
-        hasAdvancedAnalysis: true
-      })
-    }
-
+    // Always include the analysis data in the response
     return NextResponse.json({
       ...result,
       documentId: document.id,
+      hasDocumentTypeAnalysis,
     })
   } catch (error) {
     logger.error("Document analysis error", error)
