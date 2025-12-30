@@ -6,9 +6,20 @@ import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Package, MapPin, User, Calendar, Weight, Truck, Save, X } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { ArrowLeft, Package, MapPin, User, Calendar, Weight, Truck, Save, X, Trash2, MoreVertical } from "lucide-react"
 import { toast } from "sonner"
 import GuiaValijaItems from "@/components/dashboard/GuiaValijaItems"
+import Icon from "@/components/ui/Icon"
 
 interface GuiaValijaItem {
   id: string
@@ -57,6 +68,7 @@ export default function GuiaValijaViewPage() {
   const [items, setItems] = useState<GuiaValijaItem[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
 
   useEffect(() => {
@@ -133,6 +145,22 @@ export default function GuiaValijaViewPage() {
     setError("")
   }
 
+  const confirmDelete = async () => {
+    try {
+      const response = await fetch(`/api/guias-valija/${params.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) throw new Error("Error al eliminar la guía")
+
+      toast.success("Guía eliminada correctamente")
+      setDeleteConfirm(false)
+      router.push("/dashboard/guias-valija")
+    } catch (error) {
+      toast.error("Error al eliminar la guía")
+    }
+  }
+
   const tipoValijaColors: Record<string, string> = {
     ENTRADA: "bg-[var(--kt-info-light)] text-[var(--kt-info)]",
     SALIDA: "bg-[var(--kt-warning-light)] text-[var(--kt-warning)]",
@@ -178,18 +206,42 @@ export default function GuiaValijaViewPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
-            Detalles de Guía de Valija
-          </h1>
-          <p className="text-[var(--kt-text-muted)]">
-            Número: {guia.numeroGuia}
-          </p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" onClick={() => router.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Volver
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
+              Detalles de Guía de Valija
+            </h1>
+            <p className="text-[var(--kt-text-muted)]">
+              Número: {guia.numeroGuia}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {!isEditing && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/dashboard/guias-valija?edit=${guia.id}`)}
+              >
+                Editar Guía
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setDeleteConfirm(true)}
+                className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)]"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -426,14 +478,31 @@ export default function GuiaValijaViewPage() {
                 </>
               )}
             </div>
-            {!isEditing && (
-              <Button onClick={() => router.push(`/dashboard/guias-valija?edit=${guia.id}`)}>
-                Editar Guía
-              </Button>
-            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar Guía de Valija</AlertDialogTitle>
+            <AlertDialogDescription>
+              ¿Estás seguro de que deseas eliminar la guía de valija <strong>{guia?.numeroGuia}</strong>?
+              Esta acción no se puede deshacer y se eliminarán todos los items y precintos asociados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
+            >
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

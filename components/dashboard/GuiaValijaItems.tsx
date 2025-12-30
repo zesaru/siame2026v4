@@ -173,8 +173,8 @@ export default function GuiaValijaItems({
                 <Label className="text-xs font-medium">Peso</Label>
                 <Input
                   type="number"
-                  step="0.01"
-                  value={item.peso || ""}
+                  step="0.001"
+                  value={item.peso ?? ""}
                   onChange={(e) => updateItem(index, "peso", e.target.value ? parseFloat(e.target.value) : undefined)}
                   placeholder="Kg"
                 />
