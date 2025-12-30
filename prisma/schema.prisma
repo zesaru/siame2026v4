@@ -209,12 +209,17 @@ model GuiaValijaItem {
   cantidad      Int?        // CAN T. (cantidad de items)
   peso          Float?      // PESO P/ ITEM (ej: 0.410, 34.700, 7.700, 21.000)
 
+  // ===== RELACIÓN CON HOJA DE REMISIÓN =====
+  hojaRemisionId  String?               // ID de la Hoja de Remisión creada desde este item
+  hojaRemision    HojaRemision?         @relation(fields: [hojaRemisionId], references: [id], onDelete: SetNull)
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
   @@index([guiaValijaId])
   @@index([guiaValijaId, numeroItem])
   @@unique([guiaValijaId, numeroItem])
+  @@index([hojaRemisionId])  // Nuevo índice para búsqueda inversa
 }
 
 // Precintos de la Guía de Valija (tabla de precintos/guías aéreas)
@@ -241,94 +246,39 @@ model HojaRemision {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // ===== Campos Identificativos =====
-  numeroRemision  String   @unique
-  tipoRemision    String   // "entrada", "salida", "traslado"
-  fechaRemision   DateTime @default(now())
+  numero            Int      @default(0)                           // Numérico: 22
+  numeroCompleto    String   @unique                              // "HR N°22-6-HH/12"
+  siglaUnidad       String   @db.VarChar(10)                      // Max 10 caracteres
+  fecha             DateTime @default(now())
 
-  // ===== Direcciones =====
-  origenDireccion Json     @db.JsonB
-  destinoDireccion Json    @db.JsonB
-  origenCiudad     String
-  destinoCiudad    String
-  origenPais       String
-  destinoPais      String
+  // ===== Campos Diplomáticos =====
+  para              String   @db.Text                             // Destinatario
+  remitente         String   @db.Text                             // Remitente
+  referencia        String?  @db.Text                             // Opcional
+  documento         String   @db.Text                             // Multilinea
+  asunto            String   @db.Text                             // Multilinea
+  destino           String   @db.Text                             // Multilinea
+  peso              Float?                                         // Opcional
 
-  // ===== Personas =====
-  remitenteNombre     String
-  remitenteEmpresa    String?
-  remitenteRUC        String?
-  remitenteEmail      String?
-  remitenteTelefono   String?
-  destinatarioNombre  String
-  destinatarioEmpresa String?
-  destinatarioRUC     String?
-  destinatarioEmail   String?
-  destinatarioTelefono String?
+  // ===== Estados (MANTENER) =====
+  estado            String   @default("borrador")                 // borrador, enviada, recibida, anulada
+  processingStatus  String   @default("pending")                  // pending, processing, completed, failed
+  errorMessage      String?  @db.Text
 
-  // ===== Ítems =====
-  items         RemisionItem[]
-  totalCantidad Int       @default(0)
-  totalPeso     Float?
+  // ===== Auditoría (MANTENER) =====
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  processedAt       DateTime?
 
-  // ===== Campos Adicionales =====
-  observaciones   String?  @db.Text
-  ordenCompraRef  String?
-  facturaRef      String?
-
-  // ===== Estados =====
-  estado           String  @default("borrador")  // borrador, enviada, recibida, anulada
-  processingStatus String  @default("pending")   // pending, processing, completed, failed
-  errorMessage     String?  @db.Text
-
-  // ===== Datos de Azure =====
-  azureRawData      Json?   @db.JsonB
-  contenidoTexto    String?  @db.Text
-  paresClaveValor   Json?   @db.JsonB
-  entidades         Json?   @db.JsonB
-  tablas            Json?   @db.JsonB
-  metadatos         Json?   @db.JsonB
-
-  // ===== Auditoría =====
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
-  processedAt     DateTime?
+  // ===== RELACIÓN CON GUÍA DE VALIJA =====
+  guiaValijaItems  GuiaValijaItem[]  // Items que originaron esta Hoja de Remisión
 
   // ===== Índices =====
   @@index([userId])
-  @@index([numeroRemision])
-  @@index([tipoRemision])
-  @@index([fechaRemision])
-  @@index([origenCiudad, destinoCiudad])
-  @@index([origenPais, destinoPais])
+  @@index([numeroCompleto])
+  @@index([siglaUnidad])
+  @@index([fecha])
   @@index([estado])
   @@index([processingStatus])
   @@index([createdAt])
-  @@index([remitenteNombre])
-  @@index([destinatarioNombre])
-  @@index([remitenteRUC])
-  @@index([destinatarioRUC])
-}
-
-model RemisionItem {
-  id             String       @id @default(cuid())
-  hojaRemisionId String
-  hojaRemision   HojaRemision @relation(fields: [hojaRemisionId], references: [id], onDelete: Cascade)
-
-  numeroLinea    Int
-  codigo         String?
-  descripcion    String
-  cantidad       Int
-  unidadMedida   String?
-  precioUnitario Float?
-  total          Float?
-  peso           Float?
-  observaciones  String?      @db.Text
-
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-
-  @@index([hojaRemisionId])
-  @@index([codigo])
-  @@index([hojaRemisionId, numeroLinea])
-  @@unique([hojaRemisionId, numeroLinea])
 }
