@@ -248,16 +248,39 @@ export class DocumentAnalyzer {
   private static extractHojaRemisionData(content: string, tables?: any[], keyValuePairs?: any[]) {
     const extracted: any = {}
 
-    // Buscar número de remisión
-    const remisionMatch = content.match(/(remisión|remision|remito)[\s\.-]*(\d{4,6})/i)
-    if (remisionMatch) {
-      extracted.numeroRemision = remisionMatch[2]
+    // Extraer numero (numérico)
+    const numeroMatch = content.match(/(?:n[úu]mero|no\s*\.?)\s*(\d+)/i)
+    if (numeroMatch) {
+      extracted.numero = parseInt(numeroMatch[1])
     }
 
-    // Buscar destinatario
-    const destinatarioMatch = content.match(/destinatario[:\s]+([^\n]+)/i)
-    if (destinatarioMatch) {
-      extracted.destinatario = destinatarioMatch[1].trim()
+    // Extraer siglaUnidad (2-4 letras mayúsculas)
+    const siglaMatch = content.match(/\b([A-Z]{2,4})\b/)
+    if (siglaMatch) {
+      extracted.siglaUnidad = siglaMatch[1]
+    }
+
+    // Extraer para (destinatario)
+    const paraMatch = content.match(/(?:para|a)\s*:\s*([^\n]+)/i)
+    if (paraMatch) {
+      extracted.para = paraMatch[1].trim()
+    }
+
+    // Extraer remitente
+    const remitenteMatch = content.match(/(?:de|desde|remitente)\s*:\s*([^\n]+)/i)
+    if (remitenteMatch) {
+      extracted.remitente = remitenteMatch[1].trim()
+    }
+
+    // Extraer asunto
+    const asuntoMatch = content.match(/(?:asunto|referencia)\s*:\s*([^\n]+)/i)
+    if (asuntoMatch) {
+      extracted.asunto = asuntoMatch[1].trim()
+    }
+
+    // Generar numeroCompleto
+    if (extracted.numero) {
+      extracted.numeroCompleto = `HR N°${extracted.numero}-${extracted.siglaUnidad || 'HH'}`
     }
 
     return extracted

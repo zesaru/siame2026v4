@@ -118,7 +118,7 @@ export async function getDashboardMetrics(userId: string): Promise<DashboardMetr
         _count: true,
       }),
       prisma.hojaRemision.groupBy({
-        by: ["tipoRemision"],
+        by: ["siglaUnidad"],
         where: { userId },
         _count: true,
       }),
@@ -131,7 +131,7 @@ export async function getDashboardMetrics(userId: string): Promise<DashboardMetr
 
     const hojasByType: Record<string, number> = {}
     hojasByTypeRaw.forEach((item) => {
-      hojasByType[item.tipoRemision] = item._count
+      hojasByType[item.siglaUnidad] = item._count
     })
 
     const hojasActive =

@@ -78,16 +78,82 @@ export function parseFecha(fechaStr: string): Date | null {
 
 /**
  * Extrae peso numérico de un string
- * Ej: "63.810 Kgrs." -> 63.810
+ * Formato peruano: punto como separador decimal (ej: "0.930", "63.810")
+ * También soporta formato con coma decimal (ej: "0,930" -> 0.930)
  */
 export function extractPeso(pesoStr: string): number | null {
   if (!pesoStr) return null
-  const match = pesoStr.match(/([\d.,]+)/)
-  if (match) {
-    const cleaned = match[1].replace(/[.,]/g, (m) => m === ',' ? '.' : '')
-    return parseFloat(cleaned)
+
+  // Limpiar espacios
+  const cleaned = pesoStr.trim()
+
+  // Buscar el último separador (punto o coma) - asumimos que es el decimal
+  const lastDotIndex = cleaned.lastIndexOf('.')
+  const lastCommaIndex = cleaned.lastIndexOf(',')
+
+  let numberStr = cleaned
+
+  if (lastDotIndex > lastCommaIndex) {
+    // El punto es el separador decimal (formato peruano: 0.930)
+    // Eliminar solo las comas (separadores de miles)
+    numberStr = cleaned.replace(/,/g, '')
+  } else if (lastCommaIndex > lastDotIndex) {
+    // La coma es el separador decimal (formato europeo: 0,930)
+    // Eliminar puntos (separadores de miles) y convertir coma a punto
+    numberStr = cleaned.replace(/\./g, '').replace(',', '.')
+  } else {
+    // No tiene separadores decimales, eliminar ambos
+    numberStr = cleaned.replace(/[.,]/g, '')
   }
+
+  // Extraer solo la parte numérica con posible decimal
+  const match = numberStr.match(/(\d+\.?\d*)/)
+  if (match) {
+    return parseFloat(match[1])
+  }
+
   return null
+}
+
+/**
+ * Extrae numeroCompleto de un contenido que empieza con "HR Nº"
+ * Ej: "HR Nº5-18-A/ 3 CAJA" -> {
+ *   numeroCompleto: "HR Nº5-18-A/ 3 CAJA",
+ *   numero: 5,
+ *   siglaUnidad: "HH",
+ *   match: true
+ * }
+ */
+export function extractHRNumeroFromContenido(contenido: string): {
+  match: boolean
+  numeroCompleto?: string
+  numero?: number
+  siglaUnidad?: string
+  contenidoRestante?: string
+} {
+  if (!contenido) return { match: false }
+
+  // Patrón: "HR Nº" seguido de números y opcionalmente texto
+  const hrPattern = /^HR\s*N[º°]\s*(\d+)([^/]*)/i
+  const match = contenido.match(hrPattern)
+
+  if (!match) return { match: false }
+
+  const numero = parseInt(match[1]) || 0
+  const numeroCompleto = contenido.trim()  // Guardar el contenido completo como numeroCompleto
+
+  // Intentar extraer sigla de unidad del formato (ej: "HR Nº5-18-A/ 3 CAJA")
+  // El formato parece ser: HR Nº{numero}-{algo}-{sigla}/ ...
+  const siglaMatch = contenido.match(/HR\s*N[º°]\s*\d+[^/]*-([A-Z]{2,4})/i)
+  const siglaUnidad = siglaMatch ? siglaMatch[1].toUpperCase() : null
+
+  return {
+    match: true,
+    numeroCompleto,
+    numero,
+    siglaUnidad,
+    contenidoRestante: contenido
+  }
 }
 
 /**
@@ -657,6 +723,66 @@ export async function processGuiaValijaFromAzure(
       })),
     })
     logger.success(`✅ Items creados exitosamente`)
+
+    // ===== NUEVA LÓGICA: Detectar y crear Hojas de Remisión =====
+    logger.info(`🔍 Buscando items que contienen 'HR Nº'...`)
+
+    // Obtener items creados con sus IDs
+    const createdItems = await prisma.guiaValijaItem.findMany({
+      where: { guiaValijaId: guia.id },
+    })
+
+    let hojasRemisionCreadas = 0
+
+    for (const item of createdItems) {
+      const hrData = extractHRNumeroFromContenido(item.contenido)
+
+      if (hrData.match) {
+        logger.info(`   ✨ Item ${item.numeroItem} contiene referencia HR: ${hrData.numeroCompleto}`)
+
+        // Usar upsert para crear o actualizar si ya existe
+        const hojaRemision = await prisma.hojaRemision.upsert({
+          where: { numeroCompleto: hrData.numeroCompleto || `HR-${item.numeroItem}` },
+          create: {
+            userId: userId,
+            numero: hrData.numero || 0,
+            numeroCompleto: hrData.numeroCompleto || `HR-${item.numeroItem}`,
+            siglaUnidad: hrData.siglaUnidad || 'HH',
+            fecha: new Date(),
+            para: item.destinatario || 'Por Asignar',
+            remitente: item.remitente || 'Por Asignar',
+            documento: `Extraído de Guía de Valija ${guia.numeroGuia}`,
+            asunto: `Item ${item.numeroItem} de Guía de Valija`,
+            destino: `${guia.destinoCiudad || ''}, ${guia.destinoPais || ''}`,
+            peso: item.peso || null,
+            estado: 'borrador',
+            processingStatus: 'completed',
+          },
+          update: {
+            // Actualizar campos si ya existe
+            para: item.destinatario || 'Por Asignar',
+            remitente: item.remitente || 'Por Asignar',
+            peso: item.peso || null,
+            updatedAt: new Date(),
+          },
+        })
+
+        // Actualizar el item con la referencia a la Hoja de Remisión
+        await prisma.guiaValijaItem.update({
+          where: { id: item.id },
+          data: { hojaRemisionId: hojaRemision.id },
+        })
+
+        hojasRemisionCreadas++
+        logger.success(`   ✅ Hoja de Remisión ${hojaRemision.createdAt === hojaRemision.updatedAt ? 'creada' : 'actualizada'}: ID=${hojaRemision.id}, ${hojaRemision.numeroCompleto}`)
+      }
+    }
+
+    if (hojasRemisionCreadas > 0) {
+      logger.success(`🎉 Total de Hojas de Remisión creadas: ${hojasRemisionCreadas}`)
+    } else {
+      logger.info(`ℹ️  No se encontraron items con formato 'HR Nº'`)
+    }
   }
 
   // Crear precintos
