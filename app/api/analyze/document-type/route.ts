@@ -98,14 +98,16 @@ export async function POST(req: NextRequest) {
         specificRecord = await prisma.hojaRemision.create({
           data: {
             userId: session.user.id,
-            numeroRemision: extractedData.numeroRemision || '',
-            tipo: direccion.toUpperCase(),
-            estado: 'pendiente',
-            fechaRemision: new Date(),
-            destino: extractedData.destinatario || '',
-            observaciones: `Detectado automáticamente: ${idioma}, ${direccion}`,
-            analysisSource: 'ai_detection',
-            documentId: document.id
+            numero: extractedData.numero || 0,
+            numeroCompleto: extractedData.numeroCompleto || `HR-${Date.now()}`,
+            siglaUnidad: extractedData.siglaUnidad || 'HH',
+            para: extractedData.para || 'Por Asignar',
+            remitente: extractedData.remitente || 'Por Asignar',
+            asunto: extractedData.asunto || 'Detectado automáticamente',
+            documento: azureResult.content || '',
+            destino: 'Por Asignar',
+            estado: 'borrador',
+            processingStatus: 'completed',
           }
         })
         break

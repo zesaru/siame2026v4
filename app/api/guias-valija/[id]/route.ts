@@ -38,3 +38,40 @@ export async function GET(
     return NextResponse.json({ error: "Error fetching guia" }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth()
+
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  try {
+    const { id } = await params
+
+    // Verificar que la guía pertenece al usuario
+    const guia = await prisma.guiaValija.findFirst({
+      where: {
+        id,
+        userId: session.user.id,
+      },
+    })
+
+    if (!guia) {
+      return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
+    }
+
+    // Eliminar la guía (los items y precintos se eliminan en cascade por el schema)
+    await prisma.guiaValija.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true, message: "Guía eliminada correctamente" })
+  } catch (error) {
+    console.error("Error deleting guia:", error)
+    return NextResponse.json({ error: "Error deleting guia" }, { status: 500 })
+  }
+}

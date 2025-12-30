@@ -17,7 +17,6 @@ export async function GET(req: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "10")
     const search = searchParams.get("search") || ""
     const estado = searchParams.get("estado") || ""
-    const tipo = searchParams.get("tipo") || ""
 
     const skip = (page - 1) * limit
 
@@ -28,11 +27,11 @@ export async function GET(req: NextRequest) {
 
     if (search) {
       where.OR = [
-        { numeroRemision: { contains: search, mode: "insensitive" } },
-        { remitenteNombre: { contains: search, mode: "insensitive" } },
-        { destinatarioNombre: { contains: search, mode: "insensitive" } },
-        { origenCiudad: { contains: search, mode: "insensitive" } },
-        { destinoCiudad: { contains: search, mode: "insensitive" } },
+        { numeroCompleto: { contains: search, mode: "insensitive" } },
+        { para: { contains: search, mode: "insensitive" } },
+        { remitente: { contains: search, mode: "insensitive" } },
+        { destino: { contains: search, mode: "insensitive" } },
+        { asunto: { contains: search, mode: "insensitive" } },
       ]
     }
 
@@ -40,24 +39,15 @@ export async function GET(req: NextRequest) {
       where.estado = estado
     }
 
-    if (tipo) {
-      where.tipoRemision = tipo
-    }
-
     // Get total count
     const total = await prisma.hojaRemision.count({ where })
 
-    // Get hojas de remision
+    // Get hojas de remision (sin items)
     const hojas = await prisma.hojaRemision.findMany({
       where,
       skip,
       take: limit,
       orderBy: { createdAt: "desc" },
-      include: {
-        items: {
-          orderBy: { numeroLinea: "asc" },
-        },
-      },
     })
 
     return NextResponse.json({
@@ -90,87 +80,50 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     // Validate required fields
-    if (!body.numeroRemision) {
+    if (!body.numeroCompleto) {
       return NextResponse.json(
-        { error: "numeroRemision is required" },
+        { error: "numeroCompleto is required" },
         { status: 400 }
       )
     }
 
-    if (!body.tipoRemision || !["entrada", "salida", "traslado"].includes(body.tipoRemision)) {
+    if (!body.siglaUnidad || body.siglaUnidad.length > 10) {
       return NextResponse.json(
-        { error: "tipoRemision must be 'entrada', 'salida', or 'traslado'" },
+        { error: "siglaUnidad is required (max 10 chars)" },
         { status: 400 }
       )
     }
 
-    if (!body.origenCiudad || !body.destinoCiudad) {
+    if (!body.para || !body.remitente) {
       return NextResponse.json(
-        { error: "origenCiudad and destinoCiudad are required" },
+        { error: "para and remitente are required" },
         { status: 400 }
       )
     }
 
-    if (!body.origenPais || !body.destinoPais) {
+    if (!body.documento || !body.asunto || !body.destino) {
       return NextResponse.json(
-        { error: "origenPais and destinoPais are required" },
+        { error: "documento, asunto, and destino are required" },
         { status: 400 }
       )
     }
 
-    if (!body.remitenteNombre || !body.destinatarioNombre) {
-      return NextResponse.json(
-        { error: "remitenteNombre and destinatarioNombre are required" },
-        { status: 400 }
-      )
-    }
-
-    // Calculate totals from items
-    const items = body.items || []
-    const totalCantidad = items.reduce((sum: number, item: any) => sum + (item.cantidad || 0), 0)
-
-    // Create hoja de remision with items
+    // Create hoja de remision (sin items)
     const hoja = await prisma.hojaRemision.create({
       data: {
         userId: session.user.id,
-        numeroRemision: body.numeroRemision,
-        tipoRemision: body.tipoRemision,
-        fechaRemision: body.fechaRemision ? new Date(body.fechaRemision) : new Date(),
-        origenDireccion: body.origenDireccion || {},
-        destinoDireccion: body.destinoDireccion || {},
-        origenCiudad: body.origenCiudad,
-        destinoCiudad: body.destinoCiudad,
-        origenPais: body.origenPais,
-        destinoPais: body.destinoPais,
-        remitenteNombre: body.remitenteNombre,
-        remitenteEmpresa: body.remitenteEmpresa,
-        remitenteRUC: body.remitenteRUC,
-        remitenteEmail: body.remitenteEmail,
-        remitenteTelefono: body.remitenteTelefono,
-        destinatarioNombre: body.destinatarioNombre,
-        destinatarioEmpresa: body.destinatarioEmpresa,
-        destinatarioRUC: body.destinatarioRUC,
-        destinatarioEmail: body.destinatarioEmail,
-        destinatarioTelefono: body.destinatarioTelefono,
-        totalCantidad,
-        totalPeso: body.totalPeso,
-        observaciones: body.observaciones,
-        ordenCompraRef: body.ordenCompraRef,
-        facturaRef: body.facturaRef,
+        numero: body.numero || 0,
+        numeroCompleto: body.numeroCompleto,
+        siglaUnidad: body.siglaUnidad,
+        fecha: body.fecha ? new Date(body.fecha) : new Date(),
+        para: body.para,
+        remitente: body.remitente,
+        referencia: body.referencia,
+        documento: body.documento,
+        asunto: body.asunto,
+        destino: body.destino,
+        peso: body.peso,
         estado: body.estado || "borrador",
-        items: {
-          create: items.map((item: any, index: number) => ({
-            numeroLinea: index + 1,
-            codigo: item.codigo,
-            descripcion: item.descripcion,
-            cantidad: item.cantidad,
-            unidadMedida: item.unidadMedida,
-            precioUnitario: item.precioUnitario,
-            total: item.total,
-            peso: item.peso,
-            observaciones: item.observaciones,
-          })),
-        },
       },
     })
 
@@ -181,7 +134,7 @@ export async function POST(req: NextRequest) {
     // Handle unique constraint violation
     if (error.code === "P2002") {
       return NextResponse.json(
-        { error: "Ya existe una hoja de remisión con ese número" },
+        { error: "Ya existe una hoja de remisión con ese número completo" },
         { status: 409 }
       )
     }
