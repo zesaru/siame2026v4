@@ -32,18 +32,6 @@ import GuiaValijaForm from "@/components/dashboard/GuiaValijaForm"
 import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
 import { toast } from "sonner"
 
-// Tipo mapping for badge styling
-const tipoValijaVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  ENTRADA: "default",
-  SALIDA: "default",
-}
-
-// Tipo colors for custom styling
-const tipoValijaColors: Record<string, string> = {
-  ENTRADA: "bg-blue-100 text-blue-700",
-  SALIDA: "bg-orange-100 text-orange-700",
-}
-
 // Estado colors for custom styling
 const estadoColors: Record<string, string> = {
   pendiente: "bg-gray-100 text-gray-700",
@@ -246,8 +234,8 @@ export default function GuiasValijaPage() {
                         {guia.numeroGuia}
                       </TableCell>
                       <TableCell>
-                        <Badge className={tipoValijaColors[guia.tipoValija]}>
-                          {guia.tipoValija}
+                        <Badge className="bg-blue-100 text-blue-700">
+                          Entrada
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -288,7 +276,7 @@ export default function GuiasValijaPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit?id=${guia.id}`)}
+                            onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
                             title="Editar"
                           >
                             <Icon name="refresh" size="sm" />

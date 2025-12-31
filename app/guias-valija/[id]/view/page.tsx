@@ -161,11 +161,6 @@ export default function GuiaValijaViewPage() {
     }
   }
 
-  const tipoValijaColors: Record<string, string> = {
-    ENTRADA: "bg-[var(--kt-info-light)] text-[var(--kt-info)]",
-    SALIDA: "bg-[var(--kt-warning-light)] text-[var(--kt-warning)]",
-  }
-
   const estadoColors: Record<string, string> = {
     pendiente: "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]",
     en_transito: "bg-blue-100 text-blue-700",
@@ -228,7 +223,7 @@ export default function GuiaValijaViewPage() {
             <>
               <Button
                 variant="outline"
-                onClick={() => router.push(`/dashboard/guias-valija?edit=${guia.id}`)}
+                onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
               >
                 Editar Guía
               </Button>
@@ -253,8 +248,8 @@ export default function GuiaValijaViewPage() {
               <Package className="h-5 w-5 text-[var(--kt-primary)]" />
               <div>
                 <p className="text-xs text-[var(--kt-text-muted)]">Tipo</p>
-                <Badge className={tipoValijaColors[guia.tipoValija]}>
-                  {guia.tipoValija}
+                <Badge className="bg-[var(--kt-info-light)] text-[var(--kt-info)]">
+                  Entrada
                 </Badge>
               </div>
             </div>
