@@ -178,23 +178,17 @@ function QuickStats({ metrics }: { metrics: DashboardMetrics }) {
 
       <Card className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Guías Entrada vs Salida</CardTitle>
+          <CardTitle className="text-lg">Total de Guías</CardTitle>
           <CardDescription className="text-sm text-[var(--kt-text-muted)]">
-            Comparación de guías por tipo
+            Total de guías de valija registradas
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <div className="flex-1">
-              <p className="text-xs text-[var(--kt-text-muted)]">Entrada</p>
-              <p className="text-lg font-semibold text-[var(--kt-info)]">
-                {metrics.guiasValija.byType["ENTRADA"] || 0}
-              </p>
-            </div>
-            <div className="flex-1">
-              <p className="text-xs text-[var(--kt-text-muted)]">Salida</p>
-              <p className="text-lg font-semibold text-[var(--kt-warning)]">
-                {metrics.guiasValija.byType["SALIDA"] || 0}
+              <p className="text-xs text-[var(--kt-text-muted)]">Total</p>
+              <p className="text-lg font-semibold text-[var(--kt-primary)]">
+                {metrics.guiasValija.total || 0}
               </p>
             </div>
           </div>
