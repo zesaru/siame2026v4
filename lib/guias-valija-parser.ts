@@ -242,30 +242,10 @@ export function findKeyValue(keyValuePairs: any[], searchKey: string): string | 
 }
 
 /**
- * Determina el tipo de valija (ENTRADA o SALIDA)
- * Si el remitente es UNIDAD DE VALIJA DIPLOMÁTICA → SALIDA
- * Si el destinatario es UNIDAD DE VALIJA DIPLOMÁTICA → ENTRADA
+ * Determina el tipo de valija (siempre ENTRADA)
  */
-export function determinarTipoValija(remitente: string, destinatario: string): string {
-  const remitenteUpper = remitente.toUpperCase()
-  const destinatarioUpper = destinatario.toUpperCase()
-
-  // Si el remitente contiene "UNIDAD DE VALIJA DIPLOMÁTICA" o variantes
-  if (remitenteUpper.includes('UNIDAD DE VALIJA') ||
-      remitenteUpper.includes('VALIJA DIPLOMATICA') ||
-      remitenteUpper.includes('MINISTERIO DE RELACIONES EXTERIORES')) {
-    return 'SALIDA'
-  }
-
-  // Si el destinatario contiene "UNIDAD DE VALIJA DIPLOMÁTICA" o variantes
-  if (destinatarioUpper.includes('UNIDAD DE VALIJA') ||
-      destinatarioUpper.includes('VALIJA DIPLOMATICA') ||
-      destinatarioUpper.includes('MINISTERIO DE RELACIONES EXTERIORES')) {
-    return 'ENTRADA'
-  }
-
-  // Por defecto, asumimos SALIDA
-  return 'SALIDA'
+export function determinarTipoValija(): string {
+  return 'ENTRADA'
 }
 
 /**
@@ -593,8 +573,8 @@ export async function processGuiaValijaFromAzure(
   // Parsear total de items
   const numeroPaquetes = totalItemsStr ? parseInt(totalItemsStr.replace(/\D/g, '')) : null
 
-  // Determinar tipo de valija (ENTRADA o SALIDA) usando el remitenteRaw
-  const tipoValija = determinarTipoValija(remitenteRaw, destinatario)
+  // Determinar tipo de valija (siempre ENTRADA)
+  const tipoValija = determinarTipoValija()
 
   // Extraer ciudades de origen y destino (usar remitenteRaw para búsqueda)
   const origenCiudad = extractCiudad(remitenteRaw)
