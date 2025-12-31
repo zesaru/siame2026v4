@@ -31,11 +31,6 @@ interface GuiaValijaItem {
   peso?: number
 }
 
-const tipoValijaOptions = [
-  { value: "ENTRADA", label: "Entrada" },
-  { value: "SALIDA", label: "Salida" },
-]
-
 const estadoOptions = [
   { value: "pendiente", label: "Pendiente" },
   { value: "en_transito", label: "En Tránsito" },
@@ -212,22 +207,8 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
               <Icon name="suitcase" className="h-5 w-5 text-[var(--kt-primary)]" />
               <div>
                 <p className="text-xs text-[var(--kt-text-muted)]">Tipo</p>
-                <Select
-                  value={formData.tipoValija}
-                  onValueChange={(v) => handleChange("tipoValija", v)}
-                  disabled={loading}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tipoValijaOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Badge className="bg-blue-100 text-blue-700">Entrada</Badge>
+                <input type="hidden" name="tipoValija" value="ENTRADA" />
               </div>
             </div>
           </CardContent>

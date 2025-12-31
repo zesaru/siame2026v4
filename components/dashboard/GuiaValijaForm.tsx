@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import Icon from "@/components/ui/Icon"
 import GuiaValijaItems from "./GuiaValijaItems"
 import { toast } from "sonner"
@@ -27,11 +28,6 @@ interface GuiaValijaItem {
   cantidad?: number
   peso?: number
 }
-
-const tipoValijaOptions = [
-  { value: "ENTRADA", label: "Entrada" },
-  { value: "SALIDA", label: "Salida" },
-]
 
 const estadoOptions = [
   { value: "pendiente", label: "Pendiente" },
@@ -182,18 +178,8 @@ export default function GuiaValijaForm({ guia, onSuccess, onCancel }: GuiaValija
 
             <div className="space-y-2">
               <Label htmlFor="tipoValija">Tipo de Valija *</Label>
-              <Select value={formData.tipoValija} onValueChange={(v) => handleChange("tipoValija", v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {tipoValijaOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Badge className="bg-blue-100 text-blue-700">Entrada</Badge>
+              <input type="hidden" name="tipoValija" value="ENTRADA" />
             </div>
 
             <div className="space-y-2">
