@@ -124,7 +124,7 @@ model GuiaValija {
   fechaEmision    DateTime @default(now())
 
   // ===== Tipo de Valija =====
-  tipoValija      String   // "ENTRADA" o "SALIDA"
+  tipoValija      String   @default("ENTRADA") // Siempre "ENTRADA"
 
   // ===== Fechas específicas de Guía de Valija =====
   fechaEnvio      DateTime?
