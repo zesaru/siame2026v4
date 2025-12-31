@@ -52,7 +52,7 @@ export async function POST(req: Request) {
       data: {
         userId: session.user.id,
         numeroGuia: body.numeroGuia,
-        tipoValija: body.tipoValija,
+        tipoValija: "ENTRADA",
         fechaEmision: body.fechaEmision ? new Date(body.fechaEmision) : new Date(),
         fechaEnvio: body.fechaEnvio ? new Date(body.fechaEnvio) : null,
         fechaRecibo: body.fechaRecibo ? new Date(body.fechaRecibo) : null,

@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
           data: {
             userId: session.user.id,
             numeroGuia: extractedData.numeroGuia || '',
-            tipoValija: direccion.toUpperCase(),
+            tipoValija: "ENTRADA",
             estado: 'pendiente',
             fechaEmision: extractedData.fechaEmision || new Date(),
             pesoValija: extractedData.peso || 0,
