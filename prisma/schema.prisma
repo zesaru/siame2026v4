@@ -28,6 +28,7 @@ model User {
   documents     Document[]
   guiasValija   GuiaValija[]
   hojasRemision HojaRemision[]
+  fileAuditLogs FileAuditLog[]
 }
 
 model Account {
@@ -79,6 +80,9 @@ model Document {
   fileSize      Int      // Store in bytes
   fileType      String   // MIME type
   fileExtension String
+  filePath      String?  // Local file path (relative to storage root)
+  fileHash      String?  @unique  // SHA-256 hash for integrity
+  fileMimeType  String?           // Real MIME type from magic bytes
 
   // Analysis summary fields (for quick filtering/searching)
   contentText       String?   @db.Text  // Full extracted text
@@ -162,6 +166,11 @@ model GuiaValija {
   estado           String  @default("pendiente")  // pendiente, en_transito, entregado, cancelado
   processingStatus String  @default("pending")   // pending, processing, completed, failed
   errorMessage     String?  @db.Text
+
+  // ===== Archivo =====
+  filePath         String?  // Ruta relativa del archivo local
+  fileHash         String?  @unique  // SHA-256 hash
+  fileMimeType     String?           // MIME type real detectado
 
   // ===== Relaciones =====
   items            GuiaValijaItem[]
@@ -265,6 +274,11 @@ model HojaRemision {
   processingStatus  String   @default("pending")                  // pending, processing, completed, failed
   errorMessage      String?  @db.Text
 
+  // ===== Archivo =====
+  filePath          String?  // Ruta relativa del archivo local
+  fileHash          String?  @unique  // SHA-256 hash
+  fileMimeType      String?           // MIME type real detectado
+
   // ===== Auditoría (MANTENER) =====
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
@@ -281,4 +295,28 @@ model HojaRemision {
   @@index([estado])
   @@index([processingStatus])
   @@index([createdAt])
+}
+
+// ============================================
+// File Audit Log Model
+// ============================================
+
+model FileAuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  filePath    String
+  action      String   // UPLOAD, DOWNLOAD, DELETE, VIEW
+  ipAddress   String?
+  userAgent   String?
+  fileSize    Int?
+  fileHash    String?
+  timestamp   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([action])
+  @@index([timestamp])
+  @@index([filePath])
+  @@index([fileHash])
 }

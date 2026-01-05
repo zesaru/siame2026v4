@@ -3,6 +3,7 @@ import { analyzeDocument } from "@/lib/document-intelligence"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { logger } from "@/lib/logger"
+import { fileStorageService } from "@/lib/services/file-storage.service"
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     logger.separator()
 
-    // Save analysis results to database
+    // Save analysis results to database first
     const document = await prisma.document.create({
       data: {
         userId: session.user.id,
@@ -71,6 +72,45 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Save file to local storage with actual document ID
+    try {
+      logger.info('Attempting to save file to storage...')
+      const saveResult = await fileStorageService.saveFile({
+        entityType: 'DOCUMENT',
+        entityId: document.id,
+        file: file,
+        date: new Date()
+      })
+
+      if (saveResult.success && saveResult.relativePath) {
+        // Update document with file path and security metadata (hash, MIME type)
+        await prisma.document.update({
+          where: { id: document.id },
+          data: {
+            filePath: saveResult.relativePath,
+            fileHash: saveResult.fileHash,
+            fileMimeType: saveResult.fileMimeType
+          }
+        })
+        logger.storage('FILE_SAVED', saveResult.relativePath)
+        if (saveResult.fileHash) {
+          logger.storage('FILE_HASH', `SHA-256: ${saveResult.fileHash.substring(0, 16)}...`)
+        }
+        if (saveResult.fileMimeType) {
+          logger.storage('FILE_MIME', `Detected: ${saveResult.fileMimeType}`)
+        }
+      } else {
+        logger.warn(`File storage failed: ${saveResult.error}`)
+      }
+    } catch (error) {
+      logger.error('File storage error:', error)
+      if (error instanceof Error) {
+        logger.error('Error message:', error.message)
+        logger.error('Error stack:', error.stack)
+      }
+      // Continue even if file storage fails
+    }
+
     logger.database('CREATE', `Document saved with ID: ${document.id}`)
     logger.success(`Document analysis completed: ${file.name}`)
     logger.separator()
@@ -90,10 +130,22 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     logger.error("Document analysis error", error)
+    if (error instanceof Error) {
+      logger.error("Error message:", error.message)
+      logger.error("Error stack:", error.stack)
+    }
     logger.separator()
+
+    const errorMessage = error instanceof Error
+      ? error.message
+      : typeof error === 'string'
+        ? error
+        : "Failed to analyze document"
+
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : "Failed to analyze document"
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
       },
       { status: 500 }
     )

@@ -35,6 +35,7 @@ const icons = {
   azure: '🤖',
   database: '💾',
   document: '📄',
+  storage: '📁',
 }
 
 class Logger {
@@ -160,6 +161,11 @@ class Logger {
   document(operation: string, fileName: string, details?: string) {
     const msg = details ? `${icons.document} ${operation} - ${fileName}: ${details}` : `${icons.document} ${operation} - ${fileName}`
     console.log(`${colors.blue}${msg}${colors.reset}`)
+  }
+
+  // Log para operaciones de almacenamiento de archivos
+  storage(operation: string, details: string) {
+    console.log(`${colors.magenta}${icons.storage} STORAGE [${operation}]: ${details}${colors.reset}`)
   }
 
   // Separator visual

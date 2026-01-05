@@ -1,12 +1,14 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import Icon from "@/components/ui/Icon"
+import { toast } from "sonner"
 import GuiaValijaForm from "./GuiaValijaForm"
 
 interface KeyValuePair {
@@ -24,6 +26,7 @@ interface DocumentResultsProps {
 }
 
 export default function DocumentResults(props: DocumentResultsProps) {
+  const router = useRouter()
   const { result, fileName, fileUrl, documentId } = props
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
@@ -72,17 +75,18 @@ export default function DocumentResults(props: DocumentResultsProps) {
             tables: editedTables
           },
           fileName: fileName,
+          documentId: documentId, // Pass documentId to retrieve the file
         }),
       })
 
       const data = await response.json()
 
       if (response.ok) {
-        setSaveMessage({
-          type: 'success',
-          text: `Guía de valija guardada exitosamente. Nº: ${data.guia.numeroGuia}`
-        })
-        console.log("Guía de valija guardada:", data.guia)
+        // Mostrar notificación de éxito
+        toast.success(`Guía de valija guardada exitosamente. Nº: ${data.guia.numeroGuia}`)
+
+        // Redirigir a la lista de Guías de Valija
+        router.push('/dashboard/guias-valija')
       } else {
         setSaveMessage({
           type: 'error',

@@ -304,7 +304,7 @@ export default function HojasRemisionClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/hojas-remision/${hoja.id}/view`)}
+                            onClick={() => router.push(`/dashboard/hojas-remision/${hoja.id}/view`)}
                             title="Ver detalles"
                           >
                             <Icon name="eye" size="sm" />

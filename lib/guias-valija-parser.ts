@@ -1,5 +1,6 @@
 import { prisma } from "./db"
 import { logger } from "./logger"
+import { fileStorageService } from "./services/file-storage.service"
 
 /**
  * Extrae solo el número de guía del remitente cuando contiene el formato completo
@@ -520,7 +521,8 @@ export function parsePrecintosFromTables(tables: any[]): any[] {
 export async function processGuiaValijaFromAzure(
   azureResult: any,
   userId: string,
-  fileName: string
+  fileName: string,
+  file?: File
 ) {
   const { keyValuePairs, tables, content } = azureResult
 
@@ -675,6 +677,31 @@ export async function processGuiaValijaFromAzure(
   })
 
   logger.success(`✅ Guía de valija guardada: ID=${guia.id}, Nº=${numeroGuia}`)
+
+  // Save file to local storage if provided
+  if (file) {
+    try {
+      const saveResult = await fileStorageService.saveFile({
+        entityType: 'GUIAENTRADA',
+        entityId: guia.id,
+        file: file,
+        date: fechaEnvio || new Date()
+      })
+
+      if (saveResult.success && saveResult.relativePath) {
+        await prisma.guiaValija.update({
+          where: { id: guia.id },
+          data: { filePath: saveResult.relativePath }
+        })
+        logger.storage('FILE_SAVED', `Guía de Valija ${numeroGuia}: ${saveResult.relativePath}`)
+      } else {
+        logger.warn('File storage failed:', saveResult.error)
+      }
+    } catch (error) {
+      logger.error('File storage error:', error)
+      // Continue with DB save even if file storage fails
+    }
+  }
 
   // Eliminar items y precintos existentes si estamos actualizando
   if (itemsData.length > 0 || precintosData.length > 0) {

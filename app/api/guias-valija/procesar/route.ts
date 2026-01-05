@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { processGuiaValijaFromAzure } from "@/lib/guias-valija-parser"
 import { logger } from "@/lib/logger"
+import { prisma } from "@/lib/db"
+import { fileStorageService } from "@/lib/services/file-storage.service"
+import fs from "fs/promises"
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +20,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json()
-    const { azureResult, fileName } = body
+    const { azureResult, fileName, documentId } = body
 
     if (!azureResult) {
       return NextResponse.json(
@@ -33,12 +36,84 @@ export async function POST(req: NextRequest) {
     // Log de los key-value pairs recibidos
     logger.azureKeyValuePairs(azureResult.keyValuePairs)
 
+    // Get document file path if documentId is provided
+    let sourceFilePath: string | undefined
+    let sourceFileBuffer: Buffer | null | undefined
+
+    if (documentId) {
+      try {
+        const document = await prisma.document.findUnique({
+          where: { id: documentId },
+          select: { filePath: true, fileName: true, userId: true }
+        })
+
+        // Verify ownership
+        if (document && document.userId === session.user.id && document.filePath) {
+          sourceFilePath = document.filePath
+          sourceFileBuffer = await fileStorageService.readFile(document.filePath)
+
+          if (sourceFileBuffer) {
+            logger.storage('FILE_FOUND', `Document file found: ${document.filePath}`)
+          }
+        }
+      } catch (error) {
+        logger.warn(`Error retrieving document file: ${error}`)
+      }
+    }
+
     // Procesar y guardar la guía de valija
     const guia = await processGuiaValijaFromAzure(
       azureResult,
       session.user.id,
-      fileName || "documento.pdf"
+      fileName || "documento.pdf",
+      undefined // File parameter - will be handled separately
     )
+
+    if (!guia) {
+      throw new Error("Failed to create Guia de Valija")
+    }
+
+    // Copy file from Document to GuiaValija location if available
+    if (sourceFileBuffer && guia.fechaEnvio) {
+      try {
+        // Generate new path for GuiaValija
+        const fileExtension = sourceFilePath?.split('.').pop() || 'pdf'
+
+        // Convert Buffer to File-like object
+        const fileLike = new File([sourceFileBuffer.toString('base64')], fileName || "documento.pdf", {
+          type: "application/pdf"
+        })
+
+        const saveResult = await fileStorageService.saveFile({
+          entityType: 'GUIAENTRADA',
+          entityId: guia.id,
+          file: fileLike,
+          date: guia.fechaEnvio
+        })
+
+        if (saveResult.success && saveResult.relativePath) {
+          // Update GuiaValija with file path and security metadata (hash, MIME type)
+          await prisma.guiaValija.update({
+            where: { id: guia.id },
+            data: {
+              filePath: saveResult.relativePath,
+              fileHash: saveResult.fileHash,
+              fileMimeType: saveResult.fileMimeType
+            }
+          })
+          logger.storage('FILE_COPIED', `Document -> GuiaValija: ${saveResult.relativePath}`)
+          if (saveResult.fileHash) {
+            logger.storage('FILE_HASH', `SHA-256: ${saveResult.fileHash.substring(0, 16)}...`)
+          }
+          if (saveResult.fileMimeType) {
+            logger.storage('FILE_MIME', `Detected: ${saveResult.fileMimeType}`)
+          }
+        }
+      } catch (error) {
+        logger.error('Error copying file to GuiaValija location:', error)
+        // Continue even if file copy fails
+      }
+    }
 
     logger.separator('═', 60)
     logger.success('GUÍA DE VALIJA CREADA EXITOSAMENTE')
