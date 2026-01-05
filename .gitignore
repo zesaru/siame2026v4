@@ -44,3 +44,20 @@ next-env.d.ts
 
 
 /public/pdf/*.pdf
+
+# Claude Code settings
+.claude/settings.local.json
+
+# Windows Service artifacts (node-windows)
+daemon/
+
+# PM2 and service logs
+logs/
+*.log
+
+# PM2 and Windows service scripts (local only)
+ecosystem.config.js
+install-service.js
+
+# Temporary files
+nul
