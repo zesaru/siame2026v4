@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
 import { toast } from "sonner"
 
@@ -44,19 +44,20 @@ interface GuiaValijaItem {
 
 export default function EditGuiaValijaPage() {
   const router = useRouter()
+  const params = useParams()
   const [guia, setGuia] = useState<GuiaValijaDetails | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get("id")
+    const id = params.id as string
     if (!id) {
       toast.error("ID de guía no especificado")
-      window.location.href = "/dashboard/guias-valija"
+      router.push("/dashboard/guias-valija")
       return
     }
 
     fetchGuia(id)
-  }, [])
+  }, [params.id])
 
   async function fetchGuia(id: string) {
     try {
