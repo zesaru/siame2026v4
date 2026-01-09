@@ -44,7 +44,6 @@ export default function DashboardLayout({ children, session }: DashboardLayoutPr
       >
         {/* Header */}
         <Header
-          session={session}
           toggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           toggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)}
         />

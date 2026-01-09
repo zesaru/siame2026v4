@@ -1,18 +1,18 @@
 "use client"
 
 import { useState } from "react"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import Icon from "@/components/ui/Icon"
 import Button from "@/components/ui/Button"
 
 interface HeaderProps {
-  session: any
   toggleSidebar: () => void
   toggleMobileMenu: () => void
 }
 
-export default function Header({ session, toggleSidebar, toggleMobileMenu }: HeaderProps) {
+export default function Header({ toggleSidebar, toggleMobileMenu }: HeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const { data: session } = useSession()
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/auth/signin" })
@@ -53,14 +53,14 @@ export default function Header({ session, toggleSidebar, toggleMobileMenu }: Hea
             >
               <div className="hidden sm:block text-left">
                 <p className="text-sm font-medium text-[var(--kt-text-dark)]">
-                  {session.user?.name || "Usuario"}
+                  {session?.user?.name || "Usuario"}
                 </p>
                 <p className="text-xs text-[var(--kt-text-muted)]">
-                  {session.user?.email}
+                  {session?.user?.email}
                 </p>
               </div>
               <div className="h-8 w-8 rounded-full bg-[var(--kt-primary)] flex items-center justify-center text-white font-semibold">
-                {(session.user?.name || "U")[0].toUpperCase()}
+                {(session?.user?.name || "U")[0].toUpperCase()}
               </div>
             </button>
 
@@ -74,10 +74,10 @@ export default function Header({ session, toggleSidebar, toggleMobileMenu }: Hea
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-[var(--kt-gray-200)] py-1 z-20">
                   <div className="px-4 py-3 border-b border-[var(--kt-gray-200)]">
                     <p className="text-sm font-medium text-[var(--kt-text-dark)]">
-                      {session.user?.name || "Usuario"}
+                      {session?.user?.name || "Usuario"}
                     </p>
                     <p className="text-xs text-[var(--kt-text-muted)] truncate">
-                      {session.user?.email}
+                      {session?.user?.email}
                     </p>
                   </div>
                   <button
