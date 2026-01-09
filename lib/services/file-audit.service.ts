@@ -6,6 +6,8 @@ import { prisma } from "@/lib/db"
 
 export type AuditAction = 'UPLOAD' | 'DOWNLOAD' | 'DELETE' | 'VIEW' | 'COPY'
 
+export type DocumentType = 'GUIA_VALIJA' | 'HOJA_REMISION' | 'DOCUMENT' | 'FILE'
+
 export interface AuditLogOptions {
   userId: string
   filePath: string
@@ -14,6 +16,15 @@ export interface AuditLogOptions {
   userAgent?: string
   fileSize?: number
   fileHash?: string
+}
+
+export interface DocumentViewAuditOptions {
+  userId: string
+  documentType: DocumentType
+  documentId: string
+  documentTitle: string
+  ipAddress?: string
+  userAgent?: string
 }
 
 // ============================================
@@ -172,4 +183,83 @@ export function extractIpAddress(request: Request): string | undefined {
  */
 export function extractUserAgent(request: Request): string | undefined {
   return request.headers.get('user-agent') || undefined
+}
+
+// ============================================
+// Document View Audit Functions
+// ============================================
+
+/**
+ * Logs a document view event to the audit trail
+ * This extends the base logFileOperation with document metadata
+ */
+export async function logDocumentView(options: DocumentViewAuditOptions): Promise<void> {
+  try {
+    await prisma.fileAuditLog.create({
+      data: {
+        userId: options.userId,
+        filePath: `${options.documentType}/${options.documentId}`, // Encode type in path
+        action: 'VIEW',
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+        documentType: options.documentType,
+        documentId: options.documentId,
+        documentTitle: options.documentTitle,
+        timestamp: new Date()
+      }
+    })
+
+    console.log(`[FileAudit] VIEW ${options.documentType}: ${options.documentTitle} (User: ${options.userId})`)
+  } catch (error) {
+    console.error('[FileAudit] Failed to log document view:', error)
+    // Don't throw - audit logging failures shouldn't break the main operation
+  }
+}
+
+/**
+ * Gets all audit logs for SUPER_ADMIN with filtering
+ */
+export async function getAuditLogsForAdmin(options: {
+  documentType?: DocumentType
+  documentId?: string
+  userId?: string
+  action?: AuditAction
+  startDate?: Date
+  endDate?: Date
+  limit?: number
+  offset?: number
+}): Promise<{ logs: any[], total: number }> {
+  const where: any = {}
+
+  if (options.documentType) where.documentType = options.documentType
+  if (options.documentId) where.documentId = options.documentId
+  if (options.userId) where.userId = options.userId
+  if (options.action) where.action = options.action
+
+  if (options.startDate || options.endDate) {
+    where.timestamp = {}
+    if (options.startDate) where.timestamp.gte = options.startDate
+    if (options.endDate) where.timestamp.lte = options.endDate
+  }
+
+  const [logs, total] = await Promise.all([
+    prisma.fileAuditLog.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      take: options.limit || 50,
+      skip: options.offset || 0,
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      }
+    }),
+    prisma.fileAuditLog.count({ where })
+  ])
+
+  return { logs, total }
 }
