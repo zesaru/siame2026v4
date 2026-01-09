@@ -129,6 +129,7 @@ model GuiaValija {
 
   // ===== Tipo de Valija =====
   tipoValija      String   @default("ENTRADA") // Siempre "ENTRADA"
+  isExtraordinaria Boolean @default(false)     // Guía diplomática extraordinaria
 
   // ===== Fechas específicas de Guía de Valija =====
   fechaEnvio      DateTime?
@@ -163,7 +164,7 @@ model GuiaValija {
   firmaReceptor       String?        // Firma del receptor (ej: "VARGAS ALVAREZ")
 
   // ===== Estados =====
-  estado           String  @default("pendiente")  // pendiente, en_transito, entregado, cancelado
+  estado           String  @default("recibido")  // recibido, en_transito, entregado, cancelado
   processingStatus String  @default("pending")   // pending, processing, completed, failed
   errorMessage     String?  @db.Text
 

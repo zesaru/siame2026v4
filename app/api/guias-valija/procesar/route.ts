@@ -40,12 +40,22 @@ export async function POST(req: NextRequest) {
     let sourceFilePath: string | undefined
     let sourceFileBuffer: Buffer | null | undefined
 
+    logger.info(`📋 documentId received: ${documentId}`)
+
     if (documentId) {
       try {
         const document = await prisma.document.findUnique({
           where: { id: documentId },
           select: { filePath: true, fileName: true, userId: true }
         })
+
+        logger.info(`📄 Document found in DB: ${JSON.stringify({
+          id: documentId,
+          found: !!document,
+          filePath: document?.filePath,
+          userId: document?.userId,
+          sessionUserId: session.user.id
+        })}`)
 
         // Verify ownership
         if (document && document.userId === session.user.id && document.filePath) {
@@ -55,10 +65,14 @@ export async function POST(req: NextRequest) {
           if (sourceFileBuffer) {
             logger.storage('FILE_FOUND', `Document file found: ${document.filePath}`)
           }
+        } else {
+          logger.warn(`⚠️ Document ownership verification failed or no filePath`)
         }
       } catch (error) {
-        logger.warn(`Error retrieving document file: ${error}`)
+        logger.error(`Error retrieving document file: ${error}`)
       }
+    } else {
+      logger.warn(`⚠️ No documentId provided in request`)
     }
 
     // Procesar y guardar la guía de valija
@@ -73,54 +87,69 @@ export async function POST(req: NextRequest) {
       throw new Error("Failed to create Guia de Valija")
     }
 
-    // Copy file from Document to GuiaValija location if available
-    if (sourceFileBuffer && guia.fechaEnvio) {
+    // Rename/move file from TEMP to GUIAENTRADA with correct naming
+    logger.info(`🔍 Checking rename conditions: sourceFilePath=${!!sourceFilePath}, fechaEnvio=${!!guia.fechaEnvio}`)
+
+    if (sourceFilePath && guia.fechaEnvio) {
       try {
-        // Generate new path for GuiaValija
-        const fileExtension = sourceFilePath?.split('.').pop() || 'pdf'
+        logger.info(`✅ Conditions met, proceeding with rename...`)
 
-        // Convert Buffer to File-like object
-        const fileLike = new File([sourceFileBuffer.toString('base64')], fileName || "documento.pdf", {
-          type: "application/pdf"
-        })
+        // Get file extension from source path
+        const fileExtension = sourceFilePath.split('.').pop() || 'pdf'
 
-        const saveResult = await fileStorageService.saveFile({
-          entityType: 'GUIAENTRADA',
-          entityId: guia.id,
-          file: fileLike,
-          date: guia.fechaEnvio
-        })
+        // Extract guide number (ej: "04-2025" -> "04")
+        const numeroGuia = guia.numeroGuia?.split('-')[0] || 'XX'
 
-        if (saveResult.success && saveResult.relativePath) {
-          // Update GuiaValija with file path and security metadata (hash, MIME type)
+        // Format fechaEnvio as YYYYMMDD
+        const year = guia.fechaEnvio.getFullYear()
+        const month = String(guia.fechaEnvio.getMonth() + 1).padStart(2, '0')
+        const day = String(guia.fechaEnvio.getDate()).padStart(2, '0')
+        const datePart = `${year}${month}${day}`
+
+        // Generate filename: YYYYMMDDGUÍA DE VALIJA XX [EXTRAORDINARIA] ENTRADA_ID.pdf
+        const uniqueId = guia.id.substring(0, 8)
+        const tipoLabel = guia.isExtraordinaria
+          ? `GUÍA DE VALIJA ${numeroGuia} EXTRAORDINARIA ENTRADA`
+          : `GUÍA DE VALIJA ${numeroGuia} ENTRADA`
+        const fileName = `${datePart}${tipoLabel}_${uniqueId}.${fileExtension.toLowerCase()}`
+
+        // Generate directory path: GUIAENTRADA/YYYY/MM/
+        const directory = `GUIAENTRADA/${year}/${month}`
+        const newPath = `${directory}/${fileName}`
+
+        logger.info(`📝 Renaming file: ${sourceFilePath} → ${newPath}`)
+
+        // Rename/move the file
+        const renameResult = await fileStorageService.renameFile(sourceFilePath, newPath)
+
+        if (renameResult.success) {
+          // Update GuiaValija with new path
           await prisma.guiaValija.update({
             where: { id: guia.id },
             data: {
-              filePath: saveResult.relativePath,
-              fileHash: saveResult.fileHash,
-              fileMimeType: saveResult.fileMimeType
+              filePath: newPath
             }
           })
-          logger.storage('FILE_COPIED', `Document -> GuiaValija: ${saveResult.relativePath}`)
-          if (saveResult.fileHash) {
-            logger.storage('FILE_HASH', `SHA-256: ${saveResult.fileHash.substring(0, 16)}...`)
-          }
-          if (saveResult.fileMimeType) {
-            logger.storage('FILE_MIME', `Detected: ${saveResult.fileMimeType}`)
-          }
+
+          logger.storage('FILE_RENAMED', `TEMP -> GUIAENTRADA: ${newPath}`)
+          logger.info(`✅ File organized: ${fileName}`)
+        } else {
+          logger.error('❌ Failed to rename file:', renameResult.error)
         }
       } catch (error) {
-        logger.error('Error copying file to GuiaValija location:', error)
-        // Continue even if file copy fails
+        logger.error('❌ Error renaming file to GuiaValija location:', error)
+        // Continue even if rename fails
       }
+    } else {
+      logger.warn(`⚠️ Skipping rename - Missing requirements: sourceFilePath=${!!sourceFilePath}, fechaEnvio=${!!guia.fechaEnvio}`)
     }
 
     logger.separator('═', 60)
     logger.success('GUÍA DE VALIJA CREADA EXITOSAMENTE')
     console.log(`   Nº Guía:        ${guia.numeroGuia}`)
+    console.log(`   Tipo:           ${guia.tipoValija}${guia.isExtraordinaria ? ' EXTRAORDINARIA' : ''}`)
     console.log(`   Destinatario:   ${guia.destinatarioNombre}`)
     console.log(`   Remitente:      ${guia.remitenteNombre}`)
-    console.log(`   Tipo:           ${guia.tipoValija}`)
     console.log(`   Origen:         ${guia.origenCiudad} (${guia.origenPais})`)
     console.log(`   Destino:        ${guia.destinoCiudad} (${guia.destinoPais})`)
     console.log(`   Fecha Envío:    ${guia.fechaEnvio ? guia.fechaEnvio.toLocaleDateString() : 'N/A'}`)

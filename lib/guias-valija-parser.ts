@@ -250,6 +250,26 @@ export function determinarTipoValija(): string {
 }
 
 /**
+ * Determina si la guía es extraordinaria basándose en el remitente y contenido
+ * Detecta la palabra "EXTRAORDINARIA" en el campo remitenteRaw o en el contenido completo
+ */
+export function determinarIsExtraordinaria(remitenteRaw: string, content?: string): boolean {
+  if (!remitenteRaw && !content) return false
+
+  // Buscar en el campo remitente
+  if (remitenteRaw && remitenteRaw.toUpperCase().includes('EXTRAORDINARIA')) {
+    return true
+  }
+
+  // Buscar en el contenido completo del documento
+  if (content && content.toUpperCase().includes('EXTRAORDINARIA')) {
+    return true
+  }
+
+  return false
+}
+
+/**
  * Extrae la ciudad de un destinatario/remitente
  * Ej: "LEPRU TOKIO" → "TOKIO"
  */
@@ -578,6 +598,9 @@ export async function processGuiaValijaFromAzure(
   // Determinar tipo de valija (siempre ENTRADA)
   const tipoValija = determinarTipoValija()
 
+  // Determinar si es guía extraordinaria
+  const isExtraordinaria = determinarIsExtraordinaria(remitenteRaw, content)
+
   // Extraer ciudades de origen y destino (usar remitenteRaw para búsqueda)
   const origenCiudad = extractCiudad(remitenteRaw)
   const destinoCiudad = extractCiudad(destinatario)
@@ -629,6 +652,7 @@ export async function processGuiaValijaFromAzure(
       userId,
       numeroGuia,
       tipoValija,
+      isExtraordinaria,
       fechaEnvio,
       fechaRecibo,
       destinatarioNombre: destinatario,
@@ -654,6 +678,7 @@ export async function processGuiaValijaFromAzure(
     },
     update: {
       tipoValija,
+      isExtraordinaria,
       fechaEnvio,
       fechaRecibo,
       destinatarioNombre: destinatario,

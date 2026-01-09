@@ -30,6 +30,20 @@ import { Input } from "@/components/ui/input"
 import Icon from "@/components/ui/Icon"
 import GuiaValijaForm from "@/components/dashboard/GuiaValijaForm"
 import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
+import { TableSkeleton, StatCardsSkeleton } from "@/components/dashboard/SkeletonLoaders"
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { DataTablePagination, SortableHeader } from "@/components/ui/data-table"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useTableSort } from "@/lib/hooks/useTableSort"
+import { useTablePagination } from "@/lib/hooks/useTablePagination"
+import { exportToCSV, exportToExcel, getExportFilename } from "@/lib/utils/export"
 import { toast } from "sonner"
 
 // Estado colors for custom styling
@@ -42,14 +56,14 @@ const estadoColors: Record<string, string> = {
 
 // Estado mapping for better badge styling
 const estadoVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pendiente: "secondary",
+  recibido: "default",
   en_transito: "default",
   entregado: "default",
   cancelado: "destructive",
 }
 
 const estadoLabels: Record<string, string> = {
-  pendiente: "Pendiente",
+  recibido: "Recibido",
   en_transito: "En Tránsito",
   entregado: "Entregado",
   cancelado: "Cancelado",
@@ -65,6 +79,7 @@ export default function GuiasValijaPage() {
 
   // Form states - Removed, now using separate pages
   const [deleteConfirm, setDeleteConfirm] = useState<any>(null)
+  const [isExporting, setIsExporting] = useState(false)
 
   useEffect(() => {
     if (status === "loading") return
@@ -87,6 +102,22 @@ export default function GuiasValijaPage() {
       setFilteredGuias(guias)
     }
   }, [searchTerm, guias])
+
+  // Sorting
+  const { sortConfig, handleSort, sortedData, getSortIndicator, isSorted } = useTableSort(
+    filteredGuias,
+    { defaultSort: { key: "fechaEmision", direction: "desc" } }
+  )
+
+  // Pagination
+  const {
+    currentPage,
+    totalPages,
+    itemsPerPage,
+    paginatedData,
+    goToPage,
+    setItemsPerPage,
+  } = useTablePagination(sortedData, { itemsPerPage: 10 })
 
   async function fetchGuias() {
     try {
@@ -116,11 +147,26 @@ export default function GuiasValijaPage() {
         method: "DELETE",
       })
       if (!response.ok) throw new Error("Error deleting guia")
-      toast.success("Guía eliminada correctamente")
+
+      const numeroGuia = deleteConfirm.numeroGuia
+
+      toast.success("Guía eliminada correctamente", {
+        description: `La guía ${numeroGuia} ha sido eliminada del sistema.`,
+        action: {
+          label: "Deshacer",
+          onClick: () => {
+            // TODO: Implementar función de deshacer
+            toast.info("La función de deshacer estará disponible pronto")
+          }
+        }
+      })
+
       setDeleteConfirm(null)
       fetchGuias()
     } catch (error) {
-      toast.error("Error al eliminar la guía")
+      toast.error("Error al eliminar la guía", {
+        description: "No se pudo eliminar la guía. Inténtalo nuevamente."
+      })
     }
   }
 
@@ -128,37 +174,134 @@ export default function GuiasValijaPage() {
     fetchGuias()
   }
 
+  const handleExportCSV = async () => {
+    setIsExporting(true)
+
+    // Pequeño delay para mostrar el estado de carga
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    try {
+      const columns = [
+        { key: "numeroGuia", label: "Número" },
+        { key: "tipoValija", label: "Tipo" },
+        { key: "destinoCiudad", label: "Ciudad Destino" },
+        { key: "destinoPais", label: "País Destino" },
+        { key: "fechaEnvio", label: "Fecha Envío" },
+        { key: "fechaRecibo", label: "Fecha Recibo" },
+        { key: "pesoValija", label: "Peso Valija" },
+        { key: "pesoOficial", label: "Peso Oficial" },
+        { key: "estado", label: "Estado" },
+      ]
+
+      const filename = getExportFilename("guias_valija")
+
+      exportToCSV(
+        sortedData,
+        columns,
+        filename
+      )
+
+      toast.success("Datos exportados a CSV", {
+        description: `${sortedData.length} guías exportadas como ${filename}.csv`
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleExportExcel = async () => {
+    setIsExporting(true)
+
+    // Pequeño delay para mostrar el estado de carga
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    try {
+      const columns = [
+        { key: "numeroGuia", label: "Número" },
+        { key: "tipoValija", label: "Tipo" },
+        { key: "destinoCiudad", label: "Ciudad Destino" },
+        { key: "destinoPais", label: "País Destino" },
+        { key: "fechaEnvio", label: "Fecha Envío" },
+        { key: "fechaRecibo", label: "Fecha Recibo" },
+        { key: "pesoValija", label: "Peso Valija" },
+        { key: "pesoOficial", label: "Peso Oficial" },
+        { key: "estado", label: "Estado" },
+      ]
+
+      const filename = getExportFilename("guias_valija")
+
+      exportToExcel(
+        sortedData,
+        columns,
+        filename
+      )
+
+      toast.success("Datos exportados a Excel", {
+        description: `${sortedData.length} guías exportadas como ${filename}.xls`
+      })
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (status === "loading" || loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[var(--kt-text-muted)]">Cargando...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-9 w-64 bg-[var(--kt-gray-200)] animate-pulse rounded-md" />
+            <div className="h-4 w-96 bg-[var(--kt-gray-200)] animate-pulse rounded-md" />
+          </div>
+          <div className="h-10 w-40 bg-[var(--kt-gray-200)] animate-pulse rounded-md" />
         </div>
+
+        {/* Search Card Skeleton */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="h-10 w-full bg-[var(--kt-gray-200)] animate-pulse rounded-md" />
+          </CardContent>
+        </Card>
+
+        {/* Stats Skeleton */}
+        <StatCardsSkeleton />
+
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-48 bg-[var(--kt-gray-200)] animate-pulse rounded-md" />
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={5} />
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Guías de Valija</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--kt-text-dark)]">
-            Guías de Valija
-          </h1>
-          <p className="text-[var(--kt-text-muted)]">
-            Gestiona tus documentos diplomáticos y de valija
-          </p>
-        </div>
-        <Button
-          onClick={handleCreate}
-          className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)] shadow-sm"
-          size="lg"
-        >
-          <Icon name="plus" size="sm" className="mr-2" />
-          Nueva Guía
-        </Button>
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--kt-text-dark)]">
+          Guías de Valija
+        </h1>
+        <p className="text-[var(--kt-text-muted)]">
+          Gestiona tus documentos diplomáticos y de valija
+        </p>
       </div>
 
       {/* Search */}
@@ -178,16 +321,72 @@ export default function GuiasValijaPage() {
 
       {/* Table */}
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xl">Guías Registradas</CardTitle>
-            <div className="text-sm text-muted-foreground">
-              {filteredGuias.length} de {guias.length} guías
+        <TooltipProvider>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl">Guías Registradas</CardTitle>
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  {sortedData.length} de {guias.length} guías
+                </div>
+                <div className="flex gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportCSV}
+                        disabled={sortedData.length === 0 || isExporting}
+                      >
+                        {isExporting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                            Exportando...
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="download" size="sm" className="mr-2" />
+                            CSV
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Exportar a CSV (compatible con Excel)</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportExcel}
+                        disabled={sortedData.length === 0 || isExporting}
+                      >
+                        {isExporting ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                            Exportando...
+                          </>
+                        ) : (
+                          <>
+                            <Icon name="table" size="sm" className="mr-2" />
+                            Excel
+                          </>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Exportar a Excel (formato .xls)</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
             </div>
-          </div>
-        </CardHeader>
+          </CardHeader>
         <CardContent>
-          {filteredGuias.length === 0 ? (
+          {sortedData.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
               <div className="mb-6 rounded-full bg-[var(--kt-gray-100)] p-4">
                 <Icon name="suitcase" size="xl" className="text-[var(--kt-text-muted)]" />
@@ -195,47 +394,70 @@ export default function GuiasValijaPage() {
               <h3 className="mb-2 text-lg font-semibold">
                 {searchTerm ? "No se encontraron resultados" : "No hay guías de valija"}
               </h3>
-              <p className="mb-6 text-[var(--kt-text-muted)] max-w-sm">
+              <p className="text-[var(--kt-text-muted)] max-w-sm">
                 {searchTerm
                   ? "No se encontraron guías que coincidan con tu búsqueda."
-                  : "Comienza creando tu primera guía de valija para gestionar tus documentos diplomáticos."}
+                  : "No hay guías registradas en el sistema."}
               </p>
-              {!searchTerm && (
-                <Button
-                  onClick={handleCreate}
-                  className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)]"
-                >
-                  <Icon name="plus" size="sm" className="mr-2" />
-                  Crear Primera Guía
-                </Button>
-              )}
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableCaption>
-                  Lista de guías de valija registradas ({filteredGuias.length} registros)
-                </TableCaption>
+              <div className="rounded-md border">
+                <Table>
+                  <TableCaption>
+                    Lista de guías de valija registradas ({sortedData.length} registros)
+                  </TableCaption>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">Número</TableHead>
+                    <TableHead className="w-[120px]">
+                      <SortableHeader
+                        isSorted={isSorted("numeroGuia")}
+                        sortDirection={sortConfig.key === "numeroGuia" ? sortConfig.direction : null}
+                        onSort={() => handleSort("numeroGuia")}
+                      >
+                        Número
+                      </SortableHeader>
+                    </TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Destino</TableHead>
-                    <TableHead>Fecha Envío</TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        isSorted={isSorted("destinoCiudad")}
+                        sortDirection={sortConfig.key === "destinoCiudad" ? sortConfig.direction : null}
+                        onSort={() => handleSort("destinoCiudad")}
+                      >
+                        Destino
+                      </SortableHeader>
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        isSorted={isSorted("fechaEnvio")}
+                        sortDirection={sortConfig.key === "fechaEnvio" ? sortConfig.direction : null}
+                        onSort={() => handleSort("fechaEnvio")}
+                      >
+                        Fecha Envío
+                      </SortableHeader>
+                    </TableHead>
                     <TableHead className="text-center">Items</TableHead>
-                    <TableHead>Estado</TableHead>
+                    <TableHead>
+                      <SortableHeader
+                        isSorted={isSorted("estado")}
+                        sortDirection={sortConfig.key === "estado" ? sortConfig.direction : null}
+                        onSort={() => handleSort("estado")}
+                      >
+                        Estado
+                      </SortableHeader>
+                    </TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredGuias.map((guia) => (
+                  {paginatedData.map((guia) => (
                     <TableRow key={guia.id}>
                       <TableCell className="font-medium">
                         {guia.numeroGuia}
                       </TableCell>
                       <TableCell>
                         <Badge className="bg-blue-100 text-blue-700">
-                          Entrada
+                          GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]}{guia.isExtraordinaria && ' EXTRAORDINARIA'} ENTRADA
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -265,40 +487,71 @@ export default function GuiasValijaPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => window.open(`/guias-valija/${guia.id}/view`, '_blank')}
-                            title="Ver Detalles"
-                          >
-                            <Icon name="eye" size="sm" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
-                            title="Editar"
-                          >
-                            <Icon name="refresh" size="sm" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(guia)}
-                            title="Eliminar"
-                            className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                          >
-                            <Icon name="trash" size="sm" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => window.open(`/guias-valija/${guia.id}/view`, '_blank')}
+                              >
+                                <Icon name="eye" size="sm" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Ver detalles completos de la guía {guia.numeroGuia}</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
+                              >
+                                <Icon name="refresh" size="sm" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Editar información de la guía {guia.numeroGuia}</p>
+                            </TooltipContent>
+                          </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(guia)}
+                                className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                              >
+                                <Icon name="trash" size="sm" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Eliminar guía {guia.numeroGuia} (no se puede deshacer)</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+
+              {/* Pagination */}
+              <DataTablePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={sortedData.length}
+                itemsPerPage={itemsPerPage}
+                onPageChange={goToPage}
+                onItemsPerPageChange={(size) => setItemsPerPage(size)}
+              />
             </div>
           )}
         </CardContent>
+        </TooltipProvider>
       </Card>
 
       {/* Form Dialog - Removed, now using separate pages */}
