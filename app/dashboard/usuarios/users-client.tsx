@@ -86,6 +86,8 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
   const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [saving, setSaving] = useState(false)
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
+  const [isEditingSelf, setIsEditingSelf] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -93,6 +95,13 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
     email: "",
     password: "",
     role: "USER" as Role,
+  })
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   })
 
   useEffect(() => {
@@ -147,14 +156,22 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
     setSaving(true)
 
     try {
+      // Don't send role when editing self (security)
+      const updateData = isEditingSelf
+        ? {
+            name: formData.name,
+            email: formData.email,
+          }
+        : {
+            name: formData.name,
+            email: formData.email,
+            role: formData.role,
+          }
+
       const response = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-        }),
+        body: JSON.stringify(updateData),
       })
 
       const data = await response.json()
@@ -166,6 +183,7 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
       toast.success("Usuario actualizado correctamente")
       setEditDialogOpen(false)
       setSelectedUser(null)
+      setIsEditingSelf(false)
       resetForm()
       fetchUsers()
     } catch (error: any) {
@@ -197,7 +215,50 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
     }
   }
 
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("Las contraseñas no coinciden")
+      return
+    }
+
+    setSaving(true)
+
+    try {
+      const response = await fetch("/api/user/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Error al cambiar contraseña")
+      }
+
+      toast.success("Contraseña cambiada correctamente")
+      setPasswordDialogOpen(false)
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+    } catch (error: any) {
+      toast.error(error.message || "Error al cambiar contraseña")
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function openEditDialog(user: User) {
+    const editingSelf = user.id === currentUserId
+    setIsEditingSelf(editingSelf)
+
     setSelectedUser(user)
     setFormData({
       name: user.name || "",
@@ -206,6 +267,10 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
       role: user.role,
     })
     setEditDialogOpen(true)
+  }
+
+  function openPasswordDialog() {
+    setPasswordDialogOpen(true)
   }
 
   function resetForm() {
@@ -295,6 +360,29 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Edit own profile button */}
+                        {user.id === currentUserId && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditDialog(user)}
+                            >
+                              <Icon name="refresh" size="sm" className="mr-2" />
+                              Perfil
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={openPasswordDialog}
+                            >
+                              <Icon name="lock" size="sm" className="mr-2" />
+                              Contraseña
+                            </Button>
+                          </>
+                        )}
+
+                        {/* Edit other users button */}
                         {canManageUser(user.role) && user.id !== currentUserId && (
                           <>
                             <Button
@@ -313,9 +401,6 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                               <Icon name="trash" size="sm" />
                             </Button>
                           </>
-                        )}
-                        {user.id === currentUserId && (
-                          <Badge variant="outline">Tú</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -406,9 +491,11 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogTitle>{isEditingSelf ? "Editar Mi Perfil" : "Editar Usuario"}</DialogTitle>
             <DialogDescription>
-              Actualiza la información del usuario.
+              {isEditingSelf
+                ? "Actualiza tu información personal. No puedes cambiar tu propio rol."
+                : "Actualiza la información del usuario."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateUser}>
@@ -433,26 +520,39 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                   required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-role">Rol</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value as Role })}
-                >
-                  <SelectTrigger id="edit-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USER">Usuario</SelectItem>
-                    {canAssignRole("ADMIN") && (
-                      <SelectItem value="ADMIN">Administrador</SelectItem>
-                    )}
-                    {canAssignRole("SUPER_ADMIN") && (
-                      <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isEditingSelf && (
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-role">Rol</Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value) => setFormData({ ...formData, role: value as Role })}
+                  >
+                    <SelectTrigger id="edit-role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USER">Usuario</SelectItem>
+                      {canAssignRole("ADMIN") && (
+                        <SelectItem value="ADMIN">Administrador</SelectItem>
+                      )}
+                      {canAssignRole("SUPER_ADMIN") && (
+                        <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {isEditingSelf && (
+                <div className="grid gap-2">
+                  <Label>Rol</Label>
+                  <div className="px-3 py-2 bg-[var(--kt-gray-100)] rounded-md text-sm text-[var(--kt-text-muted)]">
+                    {roleLabels[formData.role]}
+                  </div>
+                  <p className="text-xs text-[var(--kt-text-muted)]">
+                    No puedes cambiar tu propio rol por razones de seguridad.
+                  </p>
+                </div>
+              )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
@@ -487,6 +587,65 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Cambiar Contraseña</DialogTitle>
+            <DialogDescription>
+              Actualiza tu contraseña. Asegúrate de recordar la nueva contraseña.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleChangePassword}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="current-password">Contraseña Actual</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="new-password">Nueva Contraseña</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  required
+                  minLength={8}
+                />
+                <p className="text-xs text-[var(--kt-text-muted)]">
+                  Mínimo 8 caracteres, una mayúscula, una minúscula y un número.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="confirm-password">Confirmar Nueva Contraseña</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  required
+                  minLength={8}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setPasswordDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving ? "Cambiando..." : "Cambiar Contraseña"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Action Button for Create */}
       {currentUserRole === "SUPER_ADMIN" && (
