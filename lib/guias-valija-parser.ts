@@ -601,6 +601,15 @@ export async function processGuiaValijaFromAzure(
   // Determinar si es guía extraordinaria
   const isExtraordinaria = determinarIsExtraordinaria(remitenteRaw, content)
 
+  // Agregar sufijo al número de guía si es extraordinaria para evitar duplicados
+  if (isExtraordinaria && numeroGuia) {
+    // Remover el año si existe, agregar sufijo EXT, y volver a agregar el año
+    const parts = numeroGuia.split('-')
+    const num = parts[0] // "01"
+    const year = parts[1] || new Date().getFullYear().toString() // "2025"
+    numeroGuia = `${num}EXT-${year}` // "01EXT-2025"
+  }
+
   // Extraer ciudades de origen y destino (usar remitenteRaw para búsqueda)
   const origenCiudad = extractCiudad(remitenteRaw)
   const destinoCiudad = extractCiudad(destinatario)

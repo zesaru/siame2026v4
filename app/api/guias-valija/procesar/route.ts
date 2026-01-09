@@ -97,8 +97,10 @@ export async function POST(req: NextRequest) {
         // Get file extension from source path
         const fileExtension = sourceFilePath.split('.').pop() || 'pdf'
 
-        // Extract guide number (ej: "04-2025" -> "04")
-        const numeroGuia = guia.numeroGuia?.split('-')[0] || 'XX'
+        // Extract guide number (ej: "04-2025" -> "04", "04EXT-2025" -> "04")
+        let numeroGuia = guia.numeroGuia?.split('-')[0] || 'XX'
+        // Remove "EXT" suffix from number for filename display
+        numeroGuia = numeroGuia.replace('EXT', '')
 
         // Format fechaEnvio as YYYYMMDD
         const year = guia.fechaEnvio.getFullYear()

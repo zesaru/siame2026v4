@@ -249,7 +249,7 @@ export default function GuiaValijaViewPage() {
               <div>
                 <p className="text-xs text-[var(--kt-text-muted)]">Tipo</p>
                 <Badge className="bg-[var(--kt-info-light)] text-[var(--kt-info)]">
-                  GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]}{guia.isExtraordinaria && ' EXTRAORDINARIA'} ENTRADA
+                  GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]?.replace('EXT', '')} ENTRADA{guia.isExtraordinaria && ' EXTRAORDINARIA'}
                 </Badge>
               </div>
             </div>

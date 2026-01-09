@@ -457,7 +457,7 @@ export default function GuiasValijaPage() {
                       </TableCell>
                       <TableCell>
                         <Badge className="bg-blue-100 text-blue-700">
-                          GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]}{guia.isExtraordinaria && ' EXTRAORDINARIA'} ENTRADA
+                          GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]?.replace('EXT', '')} ENTRADA{guia.isExtraordinaria && ' EXTRAORDINARIA'}
                         </Badge>
                       </TableCell>
                       <TableCell>
