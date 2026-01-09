@@ -2,7 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useSession } from "next-auth/react"
 import Icon from "@/components/ui/Icon"
+import type { Role } from "@prisma/client"
 
 interface SidebarProps {
   collapsed: boolean
@@ -12,7 +14,7 @@ interface SidebarProps {
   currentPath: string
 }
 
-const navigationItems = [
+const allNavigationItems = [
   {
     title: "Dashboard",
     href: "/dashboard",
@@ -33,6 +35,12 @@ const navigationItems = [
     href: "/dashboard/hojas-remision",
     icon: "shipping",
   },
+  {
+    title: "Usuarios",
+    href: "/dashboard/usuarios",
+    icon: "users",
+    requiredRole: ["SUPER_ADMIN", "ADMIN"] as Role[],
+  },
 ]
 
 export default function Sidebar({
@@ -43,6 +51,13 @@ export default function Sidebar({
   currentPath,
 }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
+
+  // Filter navigation items based on user role
+  const navigationItems = allNavigationItems.filter((item) => {
+    if (!item.requiredRole) return true
+    return session?.user.role && item.requiredRole.includes(session.user.role)
+  })
 
   return (
     <>
@@ -145,7 +160,7 @@ export default function Sidebar({
                   `}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[var(--kt-primary)] rounded-r-full" />
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[var(--kt-primary-dark)] rounded-r-full" />
                   )}
                   <Icon name={item.icon} />
                   {!collapsed && <span>{item.title}</span>}

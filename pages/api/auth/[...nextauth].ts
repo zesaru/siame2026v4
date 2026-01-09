@@ -2,16 +2,7 @@ import NextAuth, { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/db"
-
-// Simple in-memory user store for demonstration
-const users = [
-  {
-    id: "1",
-    name: "Demo User",
-    email: "demo@example.com",
-    password: "temp123"
-  }
-]
+import * as authService from "@/lib/services/auth.service"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -27,10 +18,13 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Simple validation - in production use hashed passwords
-        const user = users.find(u => u.email === credentials.email)
+        // Validate credentials using auth service
+        const user = await authService.validateCredentials(
+          credentials.email,
+          credentials.password
+        )
 
-        if (!user || user.password !== credentials.password) {
+        if (!user) {
           return null
         }
 
@@ -38,6 +32,7 @@ export const authOptions: NextAuthOptions = {
           id: user.id,
           email: user.email,
           name: user.name,
+          role: user.role,
         }
       }
     })
@@ -53,12 +48,14 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id
+        token.role = user.role
       }
       return token
     },
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string
+        session.user.role = token.role as any
       }
       return session
     }
