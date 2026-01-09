@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSession } from "next-auth/react"
+import { useSession, update } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -178,6 +178,33 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
 
       if (!response.ok) {
         throw new Error(data.error || "Error al actualizar usuario")
+      }
+
+      // If editing self, update the session
+      if (isEditingSelf && session?.user) {
+        // Update NextAuth session
+        await fetch("/api/auth/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...session,
+            user: {
+              ...session.user,
+              name: formData.name,
+              email: formData.email,
+            }
+          })
+        })
+
+        // Trigger session refresh
+        await update({
+          ...session,
+          user: {
+            ...session.user,
+            name: formData.name,
+            email: formData.email,
+          }
+        })
       }
 
       toast.success("Usuario actualizado correctamente")
