@@ -41,6 +41,12 @@ const allNavigationItems = [
     icon: "users",
     requiredRole: ["SUPER_ADMIN", "ADMIN"] as Role[],
   },
+  {
+    title: "Audit Logs",
+    href: "/dashboard/audit-logs",
+    icon: "shield",
+    requiredRole: ["SUPER_ADMIN"] as Role[],
+  },
 ]
 
 export default function Sidebar({
