@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
+import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 
 export const dynamic = 'force-dynamic'
 
 // GET /api/documents/[id] - Get a specific document
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
   if (!session) {
@@ -18,9 +19,13 @@ export async function GET(
   }
 
   try {
+    const { id } = await params
+    const ipAddress = extractIpAddress(req)
+    const userAgent = extractUserAgent(req)
+
     const document = await prisma.document.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     })
@@ -31,6 +36,16 @@ export async function GET(
         { status: 404 }
       )
     }
+
+    // Log document view (non-blocking)
+    logDocumentView({
+      userId: session.user.id,
+      documentType: 'DOCUMENT',
+      documentId: document.id,
+      documentTitle: document.fileName,
+      ipAddress,
+      userAgent
+    }).catch(err => console.error('[Audit] Failed to log view:', err))
 
     return NextResponse.json(document)
   } catch (error) {

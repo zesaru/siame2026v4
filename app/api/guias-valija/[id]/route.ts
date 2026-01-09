@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 
 export async function GET(
   req: Request,
@@ -14,6 +15,8 @@ export async function GET(
 
   try {
     const { id } = await params
+    const ipAddress = extractIpAddress(req)
+    const userAgent = extractUserAgent(req)
 
     const guia = await prisma.guiaValija.findFirst({
       where: {
@@ -31,6 +34,16 @@ export async function GET(
     if (!guia) {
       return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
     }
+
+    // Log document view (non-blocking)
+    logDocumentView({
+      userId: session.user.id,
+      documentType: 'GUIA_VALIJA',
+      documentId: guia.id,
+      documentTitle: guia.numeroGuia,
+      ipAddress,
+      userAgent
+    }).catch(err => console.error('[Audit] Failed to log view:', err))
 
     return NextResponse.json(guia)
   } catch (error) {

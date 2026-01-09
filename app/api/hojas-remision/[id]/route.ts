@@ -2,22 +2,27 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
+import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 
 // GET /api/hojas-remision/[id] - Obtener hoja de remisión específica
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const ipAddress = extractIpAddress(req)
+    const userAgent = extractUserAgent(req)
+
     const hoja = await prisma.hojaRemision.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     })
@@ -25,6 +30,16 @@ export async function GET(
     if (!hoja) {
       return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
     }
+
+    // Log document view (non-blocking)
+    logDocumentView({
+      userId: session.user.id,
+      documentType: 'HOJA_REMISION',
+      documentId: hoja.id,
+      documentTitle: hoja.numeroCompleto,
+      ipAddress,
+      userAgent
+    }).catch(err => console.error('[Audit] Failed to log view:', err))
 
     return NextResponse.json(hoja)
   } catch (error) {
