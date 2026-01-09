@@ -311,21 +311,30 @@ model HojaRemision {
 // ============================================
 
 model FileAuditLog {
-  id          String   @id @default(cuid())
-  userId      String
-  filePath    String
-  action      String   // UPLOAD, DOWNLOAD, DELETE, VIEW
-  ipAddress   String?
-  userAgent   String?
-  fileSize    Int?
-  fileHash    String?
-  timestamp   DateTime @default(now())
+  id            String   @id @default(cuid())
+  userId        String
+  filePath      String
+  action        String   // UPLOAD, DOWNLOAD, DELETE, VIEW, COPY
+  ipAddress     String?
+  userAgent     String?
+  fileSize      Int?
+  fileHash      String?
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Document metadata for audit logging
+  documentType  String?  // 'GUIA_VALIJA', 'HOJA_REMISION', 'DOCUMENT', 'FILE'
+  documentId    String?  // ID del documento (GuiaValija.id, HojaRemision.id, Document.id)
+  documentTitle String?  // Título legible (numeroGuia, numeroCompleto, fileName)
+
+  timestamp     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([action])
   @@index([timestamp])
   @@index([filePath])
   @@index([fileHash])
+  @@index([documentType, timestamp])
+  @@index([documentId])
+  @@index([userId, documentType])
 }
