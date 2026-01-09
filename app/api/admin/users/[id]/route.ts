@@ -13,12 +13,13 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireRole(["SUPER_ADMIN", "ADMIN"])
 
-    const user = await userService.getUserById(params.id)
+    const { id } = await params
+    const user = await userService.getUserById(id)
 
     if (!user) {
       return NextResponse.json(
@@ -50,7 +51,7 @@ export async function GET(
  */
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -63,8 +64,10 @@ export async function PUT(
 
     await requireRole(["SUPER_ADMIN", "ADMIN"])
 
+    const { id } = await params
+
     // Get target user to check roles
-    const targetUser = await userService.getUserById(params.id)
+    const targetUser = await userService.getUserById(id)
 
     if (!targetUser) {
       return NextResponse.json(
@@ -94,7 +97,7 @@ export async function PUT(
     }
 
     // Update user
-    const updatedUser = await userService.updateUser(params.id, validatedData)
+    const updatedUser = await userService.updateUser(id, validatedData)
 
     return NextResponse.json(updatedUser)
   } catch (error: any) {
@@ -134,7 +137,7 @@ export async function PUT(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await auth()
@@ -147,8 +150,10 @@ export async function DELETE(
 
     await requireRole(["SUPER_ADMIN", "ADMIN"])
 
+    const { id } = await params
+
     // Prevent users from deleting themselves
-    if (params.id === session.user.id) {
+    if (id === session.user.id) {
       return NextResponse.json(
         { error: "You cannot delete your own account" },
         { status: 400 }
@@ -156,7 +161,7 @@ export async function DELETE(
     }
 
     // Get target user to check roles
-    const targetUser = await userService.getUserById(params.id)
+    const targetUser = await userService.getUserById(id)
 
     if (!targetUser) {
       return NextResponse.json(
@@ -174,7 +179,7 @@ export async function DELETE(
     }
 
     // Delete user
-    await userService.deleteUser(params.id)
+    await userService.deleteUser(id)
 
     return NextResponse.json(
       { message: "User deleted successfully" },
