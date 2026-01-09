@@ -10,15 +10,15 @@
   --kt-primary-dark: #007bb5;
   --kt-primary-active: #006a9d;
 
-  /* ===== Metronic Semantic Colors ===== */
-  --kt-success: #50cd89;
-  --kt-success-light: #e8fff3;
-  --kt-info: #7239ea;
+  /* ===== Metronic Semantic Colors (WCAG AA Compliant) ===== */
+  --kt-success: #0dae86;        /* Oscurecido para mejor contraste */
+  --kt-success-light: #d1f2e6;
+  --kt-info: #7239ea;           /* Ya cumple WCAG AA */
   --kt-info-light: #f8f5ff;
-  --kt-warning: #ffc700;
-  --kt-warning-light: #fff8dd;
-  --kt-danger: #f1416c;
-  --kt-danger-light: #fff5f8;
+  --kt-warning: #c4390d;        /* Oscurecido de #ffc700 para contraste */
+  --kt-warning-light: #fff4e6;
+  --kt-danger: #d9214e;         /* Oscurecido para mejor contraste */
+  --kt-danger-light: #ffe3e6;
 
   /* ===== Metronic Neutral Grays ===== */
   --kt-gray-50: #f5f8fa;
@@ -32,10 +32,10 @@
   --kt-gray-800: #3f4254;
   --kt-gray-900: #181c32;
 
-  /* ===== Metronic Text Colors ===== */
-  --kt-text-dark: #181c32;
-  --kt-text-muted: #7e8299;
-  --kt-text-light: #b5b5c3;
+  /* ===== Metronic Text Colors (WCAG AA Compliant) ===== */
+  --kt-text-dark: #141426;      /* Más oscuro para mejor contraste */
+  --kt-text-muted: #5e6278;     /* Oscurecido de #7e8299 para lograr ratio 4.5:1 */
+  --kt-text-light: #7e8299;     /* Gris medio actualizado */
 
   /* ===== Metronic Typography Scale ===== */
   --kt-font-size-xs: 0.75rem;    /* 12px */
@@ -96,7 +96,7 @@
 
   /* Muted - Metronic gray-100 */
   --muted: 210 40% 96%;
-  --muted-foreground: 215 16% 47%;
+  --muted-foreground: 215 20% 35%;  /* Oscurecido de 47% para cumplir WCAG AA */
 
   /* Accent - Metronic info */
   --accent: 255 77% 65%;

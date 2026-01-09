@@ -8,7 +8,7 @@ import { fileTypeFromBuffer } from 'file-type'
 // Types & Interfaces
 // ============================================
 
-export type DocumentType = 'GUIAENTRADA' | 'HOJAREMISION' | 'DOCUMENT'
+export type DocumentType = 'GUIAENTRADA' | 'HOJAREMISION' | 'DOCUMENT' | 'TEMP'
 
 export interface StorageConfig {
   rootPath: string
@@ -246,7 +246,7 @@ class FileStorageService {
       await fs.mkdir(this.config.rootPath, { recursive: true })
 
       // Create entity type subdirectories
-      const entityTypes: DocumentType[] = ['GUIAENTRADA', 'HOJAREMISION', 'DOCUMENT']
+      const entityTypes: DocumentType[] = ['GUIAENTRADA', 'HOJAREMISION', 'DOCUMENT', 'TEMP']
 
       for (const type of entityTypes) {
         const typePath = path.join(this.config.rootPath, type)
@@ -427,6 +427,48 @@ class FileStorageService {
   }
 
   /**
+   * Renames/moves a file from old relative path to new relative path
+   * Useful for reorganizing files after processing (e.g., TEMP → GUIAENTRADA)
+   */
+  async renameFile(
+    oldRelativePath: string,
+    newRelativePath: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const normalizedOldPath = oldRelativePath.replace(/\//g, path.sep)
+      const normalizedNewPath = newRelativePath.replace(/\//g, path.sep)
+
+      const oldAbsolutePath = path.join(this.config.rootPath, normalizedOldPath)
+      const newAbsolutePath = path.join(this.config.rootPath, normalizedNewPath)
+
+      // Security: Ensure both paths are within root directory
+      const resolvedRoot = path.resolve(this.config.rootPath)
+      const resolvedOld = path.resolve(oldAbsolutePath)
+      const resolvedNew = path.resolve(newAbsolutePath)
+
+      if (!resolvedOld.startsWith(resolvedRoot) || !resolvedNew.startsWith(resolvedRoot)) {
+        throw new Error('Path traversal attempt detected')
+      }
+
+      // Create target directory if it doesn't exist
+      const targetDirectory = path.dirname(newAbsolutePath)
+      await fs.mkdir(targetDirectory, { recursive: true })
+
+      // Move/rename the file
+      await fs.rename(oldAbsolutePath, newAbsolutePath)
+
+      console.log(`[FileStorage] File renamed: ${oldRelativePath} → ${newRelativePath}`)
+      return { success: true }
+    } catch (error) {
+      console.error(`[FileStorage] Failed to rename file: ${oldRelativePath}`, error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      }
+    }
+  }
+
+  /**
    * Checks if a file exists
    */
   async fileExists(relativePath: string): Promise<boolean> {
@@ -464,7 +506,7 @@ class FileStorageService {
     }
 
     try {
-      const entityTypes: DocumentType[] = ['GUIAENTRADA', 'HOJAREMISION', 'DOCUMENT']
+      const entityTypes: DocumentType[] = ['GUIAENTRADA', 'HOJAREMISION', 'DOCUMENT', 'TEMP']
 
       for (const type of entityTypes) {
         const typePath = path.join(this.config.rootPath, type)

@@ -79,7 +79,7 @@ export default function Sidebar({
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
                   className={`
-                    flex items-center gap-3 px-4 py-3
+                    relative flex items-center gap-3 px-4 py-3
                     rounded-lg font-medium text-sm
                     transition-colors duration-200
                     ${
@@ -89,6 +89,9 @@ export default function Sidebar({
                     }
                   `}
                 >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[var(--kt-primary)] rounded-r-full" />
+                  )}
                   <Icon name={item.icon} />
                   {!collapsed && <span>{item.title}</span>}
                 </Link>
@@ -131,7 +134,7 @@ export default function Sidebar({
                   href={item.href}
                   title={collapsed ? item.title : undefined}
                   className={`
-                    flex items-center gap-3 px-4 py-3
+                    relative flex items-center gap-3 px-4 py-3
                     rounded-lg font-medium text-sm
                     transition-colors duration-200
                     ${
@@ -141,6 +144,9 @@ export default function Sidebar({
                     }
                   `}
                 >
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-[var(--kt-primary)] rounded-r-full" />
+                  )}
                   <Icon name={item.icon} />
                   {!collapsed && <span>{item.title}</span>}
                 </Link>

@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { toast } from "sonner"
 
 interface GuiaValijaDetails {
@@ -112,6 +120,23 @@ export default function EditGuiaValijaPage() {
 
   return (
     <div className="container mx-auto p-6">
+      {/* Breadcrumb */}
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/dashboard/guias-valija">Guías de Valija</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Editar: {guia.numeroGuia}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
       <GuiaValijaEditableForm
         guia={guia}
         onSuccess={handleSuccess}

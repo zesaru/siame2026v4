@@ -72,11 +72,11 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // Save file to local storage with actual document ID
+    // Save file to local storage with actual document ID (TEMPORAL)
     try {
-      logger.info('Attempting to save file to storage...')
+      logger.info('Attempting to save file to storage as TEMP...')
       const saveResult = await fileStorageService.saveFile({
-        entityType: 'DOCUMENT',
+        entityType: 'TEMP',
         entityId: document.id,
         file: file,
         date: new Date()
