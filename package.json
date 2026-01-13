@@ -7,7 +7,9 @@
     "build": "cross-env NODE_ENV=production next build",
     "start": "node server.js",
     "start:next": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:reset": "npx tsx scripts/reset-data.ts",
+    "db:verify": "npx tsx scripts/verify-data.ts"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
