@@ -13,9 +13,55 @@ export async function GET() {
   try {
     const guias = await prisma.guiaValija.findMany({
       where: { userId: session.user.id },
-      include: {
-        items: true,
-        precintos: true,
+      select: {
+        id: true,
+        numeroGuia: true,
+        fechaEmision: true,
+        tipoValija: true,
+        isExtraordinaria: true,
+        fechaEnvio: true,
+        fechaRecibo: true,
+        origenCiudad: true,
+        destinoCiudad: true,
+        origenPais: true,
+        destinoPais: true,
+        destinatarioNombre: true,
+        remitenteNombre: true,
+        pesoValija: true,
+        numeroPaquetes: true,
+        estado: true,
+        processingStatus: true,
+        filePath: true,
+        fileMimeType: true,
+        userId: true,
+        createdAt: true,
+        updatedAt: true,
+        items: {
+          select: {
+            id: true,
+            numeroItem: true,
+            destinatario: true,
+            contenido: true,
+            remitente: true,
+            cantidad: true,
+            peso: true,
+          },
+        },
+        precintos: {
+          select: {
+            id: true,
+            precinto: true,
+            precintoCable: true,
+            numeroBolsaTamano: true,
+            guiaAereaNumero: true,
+          },
+        },
+        _count: {
+          select: {
+            items: true,
+            precintos: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     })
