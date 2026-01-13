@@ -758,32 +758,25 @@ export async function processGuiaValijaFromAzure(
     }
   }
 
-  // Eliminar items y precintos existentes si estamos actualizando
-  if (itemsData.length > 0 || precintosData.length > 0) {
-    logger.info(`🗑️  Eliminando items y precintos anteriores...`)
-    await prisma.guiaValijaItem.deleteMany({
-      where: { guiaValijaId: guia.id }
-    })
+  // Siempre eliminar items y precintos existentes antes de crear nuevos (para re-subidas)
+  logger.info(`🗑️  Eliminando items y precintos anteriores de la guía...`)
+  await prisma.guiaValijaItem.deleteMany({
+    where: { guiaValijaId: guia.id }
+  })
 
-    await prisma.guiaValijaPrecinto.deleteMany({
-      where: { guiaValijaId: guia.id }
-    })
-  }
+  await prisma.guiaValijaPrecinto.deleteMany({
+    where: { guiaValijaId: guia.id }
+  })
 
-  // Crear items (usar deleteMany + createMany para evitar duplicados)
+  // Crear items (usar createMany después de deleteMany para evitar duplicados)
   if (itemsData.length > 0) {
     logger.info(`📦 Creando ${itemsData.length} items...`)
 
-    // Eliminar items existentes de esta guía para evitar duplicados
-    await prisma.guiaValijaItem.deleteMany({
-      where: { guiaValijaId: guia.id }
-    })
-
-    // Crear los nuevos items
+    // Crear los nuevos items - asignar numeroItem automáticamente si es undefined/null
     await prisma.guiaValijaItem.createMany({
-      data: itemsData.map(item => ({
+      data: itemsData.map((item, index) => ({
         guiaValijaId: guia.id,
-        numeroItem: item.numeroItem || 0,
+        numeroItem: item.numeroItem ?? (index + 1), // Usar índice+1 si numeroItem es undefined/null
         destinatario: item.destinatario || '',
         contenido: item.contenido || '',
         remitente: item.remitente || null,
