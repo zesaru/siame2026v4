@@ -266,6 +266,9 @@ export default function HojasRemisionClient({
                       Fecha
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
+                      Archivo
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
                       Asunto
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
@@ -298,6 +301,24 @@ export default function HojasRemisionClient({
                         <span className="text-sm text-[var(--kt-text-muted)]">
                           {new Date(hoja.fecha).toLocaleDateString('es-PE')}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {hoja.filePath ? (
+                          <a
+                            href={`/api/hojas-remision/file/${hoja.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-[var(--kt-primary)] hover:text-[var(--kt-primary-dark)]"
+                            title="Ver PDF"
+                          >
+                            <Icon name="file-text" size="sm" />
+                            <span className="ml-1">Ver PDF</span>
+                          </a>
+                        ) : (
+                          <span className="text-sm text-[var(--kt-text-muted)]">
+                            Sin archivo
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-[var(--kt-text-muted)]">

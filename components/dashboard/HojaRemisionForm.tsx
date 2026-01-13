@@ -32,7 +32,7 @@ interface HojaRemisionFormData {
 }
 
 interface HojaRemisionFormProps {
-  initialData: ParsedHojaRemisionData
+  initialData?: ParsedHojaRemisionData
   onSave: (data: HojaRemisionFormData) => void
   onCancel: () => void
 }
@@ -43,17 +43,17 @@ export default function HojaRemisionForm({
   onCancel,
 }: HojaRemisionFormProps) {
   const [formData, setFormData] = useState<HojaRemisionFormData>({
-    numero: initialData.numero || 0,
-    numeroCompleto: initialData.numeroCompleto || "",
-    siglaUnidad: initialData.siglaUnidad || "",
-    fecha: initialData.fecha || new Date(),
-    para: initialData.para || "",
-    remitente: initialData.remitente || "",
-    referencia: initialData.referencia || "",
-    documento: initialData.documento || "",
-    asunto: initialData.asunto || "",
-    destino: initialData.destino || "",
-    peso: initialData.peso || undefined,
+    numero: initialData?.numero || 0,
+    numeroCompleto: initialData?.numeroCompleto || "",
+    siglaUnidad: initialData?.siglaUnidad || "",
+    fecha: initialData?.fecha || new Date(),
+    para: initialData?.para || "",
+    remitente: initialData?.remitente || "",
+    referencia: initialData?.referencia || "",
+    documento: initialData?.documento || "",
+    asunto: initialData?.asunto || "",
+    destino: initialData?.destino || "",
+    peso: initialData?.peso || undefined,
     estado: "borrador",
   })
 

@@ -4,13 +4,15 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { hojaRemisionSchema, type HojaRemisionInput } from "./schemas"
 import { logger } from "@/lib/logger"
+import { fileStorageService } from "@/lib/services/file-storage.service"
 import { z } from "zod"
 
 /**
  * Crea una nueva Hoja de Remisión
  */
 export async function createHojaRemision(
-  data: HojaRemisionInput
+  data: HojaRemisionInput,
+  file?: File
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   const session = await auth()
 
@@ -26,6 +28,9 @@ export async function createHojaRemision(
     logger.info('⏳ Creando Hoja de Remisión')
     logger.info(`   Número: ${validated.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
+    if (file) {
+      logger.info(`   Archivo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+    }
     logger.separator('─', 70)
 
     // Verificar unicidad de numeroCompleto
@@ -50,6 +55,35 @@ export async function createHojaRemision(
         processedAt: new Date(),
       },
     })
+
+    // Guardar archivo si se proporciona
+    if (file) {
+      try {
+        const saveResult = await fileStorageService.saveFile({
+          entityType: 'HOJAREMISION',
+          entityId: hoja.id,
+          file: file,
+          date: validated.fecha ? new Date(validated.fecha) : new Date()
+        })
+
+        if (saveResult.success && saveResult.relativePath) {
+          await prisma.hojaRemision.update({
+            where: { id: hoja.id },
+            data: {
+              filePath: saveResult.relativePath,
+              fileHash: saveResult.hash,
+              fileMimeType: file.type
+            }
+          })
+          logger.storage('FILE_SAVED', `Hoja de Remisión ${hoja.numeroCompleto}: ${saveResult.relativePath}`)
+        } else {
+          logger.warn('File storage failed:', saveResult.error)
+        }
+      } catch (error) {
+        logger.error('File storage error:', error)
+        // Continuar con DB save aunque falle el archivo
+      }
+    }
 
     logger.success(`✅ Hoja de Remisión creada exitosamente`)
     logger.database('CREATE', `ID: ${hoja.id}, Número: ${hoja.numeroCompleto}`)
@@ -78,7 +112,8 @@ export async function createHojaRemision(
  */
 export async function updateHojaRemision(
   id: string,
-  data: HojaRemisionInput
+  data: HojaRemisionInput,
+  file?: File
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   const session = await auth()
 
@@ -95,6 +130,9 @@ export async function updateHojaRemision(
     logger.info(`   ID: ${id}`)
     logger.info(`   Número: ${validated.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
+    if (file) {
+      logger.info(`   Archivo nuevo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+    }
     logger.separator('─', 70)
 
     // Verificar que la hoja de remisión existe y pertenece al usuario
@@ -138,6 +176,35 @@ export async function updateHojaRemision(
         processedAt: new Date(),
       },
     })
+
+    // Guardar archivo nuevo si se proporciona
+    if (file) {
+      try {
+        const saveResult = await fileStorageService.saveFile({
+          entityType: 'HOJAREMISION',
+          entityId: hoja.id,
+          file: file,
+          date: validated.fecha ? new Date(validated.fecha) : new Date()
+        })
+
+        if (saveResult.success && saveResult.relativePath) {
+          await prisma.hojaRemision.update({
+            where: { id: hoja.id },
+            data: {
+              filePath: saveResult.relativePath,
+              fileHash: saveResult.hash,
+              fileMimeType: file.type
+            }
+          })
+          logger.storage('FILE_UPDATED', `Hoja de Remisión ${hoja.numeroCompleto}: ${saveResult.relativePath}`)
+        } else {
+          logger.warn('File storage failed:', saveResult.error)
+        }
+      } catch (error) {
+        logger.error('File storage error:', error)
+        // Continuar aunque falle el guardado del archivo
+      }
+    }
 
     logger.success(`✅ Hoja de Remisión actualizada exitosamente`)
     logger.database('UPDATE', `ID: ${hoja.id}, Número: ${hoja.numeroCompleto}`)

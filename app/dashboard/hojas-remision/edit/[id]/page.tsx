@@ -10,11 +10,13 @@ import PDFViewer from "@/components/dashboard/PDFViewer"
 import HojaRemisionForm, {
   type HojaRemisionFormData,
 } from "@/components/dashboard/HojaRemisionForm"
+import { HojaRemisionConfirmacion } from "@/components/dashboard/HojaRemisionConfirmacion"
 import { updateHojaRemision, getHojaRemision } from "@/app/dashboard/hojas-remision/actions"
 import type { HojaRemision } from "@prisma/client"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
 
 type UploadState = "idle" | "uploading" | "analyzing" | "ready" | "saving" | "error"
+type WizardStep = "form" | "confirmation" | "edit"
 
 export default function EditHojaRemisionPage() {
   const router = useRouter()
@@ -28,6 +30,7 @@ export default function EditHojaRemisionPage() {
   const [extractedData, setExtractedData] = useState<ParsedHojaRemisionData | null>(null)
   const [azureResult, setAzureResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
+  const [wizardStep, setWizardStep] = useState<WizardStep>("form")
   const [showPDF, setShowPDF] = useState(true)
   const [showAzureJson, setShowAzureJson] = useState(false)
   const [showKeyValuePairs, setShowKeyValuePairs] = useState(false)
@@ -89,6 +92,7 @@ export default function EditHojaRemisionPage() {
       setAzureResult(azure)
       setExtractedData(data)
       setUploadState("ready")
+      setWizardStep("confirmation")
       toast.success("Documento analizado correctamente")
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Error al analizar el documento"
@@ -102,7 +106,7 @@ export default function EditHojaRemisionPage() {
     try {
       setUploadState("saving")
 
-      const result = await updateHojaRemision(params.id as string, formData)
+      const result = await updateHojaRemision(params.id as string, formData, file)
 
       if (!result.success) {
         throw new Error(result.error || "Error al actualizar")
@@ -133,6 +137,40 @@ export default function EditHojaRemisionPage() {
     setShowPDF(true)
     setShowAzureJson(false)
     setShowKeyValuePairs(false)
+  }
+
+  const handleConfirmData = () => {
+    // Validar campos requeridos
+    if (!extractedData?.numeroCompleto || !extractedData.fecha || !extractedData.remitente) {
+      toast.error("Faltan campos requeridos. Edita manualmente o reintenta.")
+      return
+    }
+
+    // Poblar formulario con datos extraídos
+    setWizardStep("edit")
+    toast.success("Datos confirmados. Puedes editar antes de guardar.")
+  }
+
+  const handleRejectData = () => {
+    // Mantener datos existentes
+    setWizardStep("form")
+    setExtractedData(null)
+    setFile(null)
+    toast.info("Datos rechazados. Puedes editar manualmente.")
+  }
+
+  const handleRetryUpload = () => {
+    // Permitir subir otro PDF
+    setWizardStep("form")
+    setFile(null)
+    setExtractedData(null)
+    setAzureResult(null)
+    setUploadState("idle")
+    fileInputRef.current?.click()
+  }
+
+  const handleDataChanged = (newData: ParsedHojaRemisionData) => {
+    setExtractedData(newData)
   }
 
   // Convertir hoja existente a formato del formulario
@@ -184,32 +222,42 @@ export default function EditHojaRemisionPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
-              Editar Hoja de Remisión
+              {wizardStep === "confirmation"
+                ? "Confirmar Datos Extraídos"
+                : wizardStep === "edit"
+                ? "Editar Datos Extraídos"
+                : "Editar Hoja de Remisión"}
             </h1>
             <p className="text-[var(--kt-text-muted)]">
-              {hoja.numeroCompleto} - Sube un nuevo PDF o edita manualmente
+              {wizardStep === "confirmation"
+                ? "Verifica los datos extraídos del PDF antes de continuar"
+                : wizardStep === "edit"
+                ? `${hoja.numeroCompleto} - Edita los datos extraídos antes de guardar`
+                : `${hoja.numeroCompleto} - Sube un nuevo PDF o edita manualmente`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf,application/pdf"
-            className="hidden"
-            onChange={(e) => {
-              const selectedFile = e.target.files?.[0]
-              if (selectedFile) handleFileSelect(selectedFile)
-            }}
-          />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving"}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Subir PDF
-          </Button>
-        </div>
+        {wizardStep === "form" && (
+          <div className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const selectedFile = e.target.files?.[0]
+                if (selectedFile) handleFileSelect(selectedFile)
+              }}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving"}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Subir PDF
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Loading State */}
@@ -243,162 +291,236 @@ export default function EditHojaRemisionPage() {
         </Card>
       )}
 
-      {/* File Info Bar */}
-      {file && uploadState === "ready" && (
-        <Card className="border-l-4 border-l-[var(--kt-primary)]">
-          <CardContent className="py-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-[var(--kt-primary)]" />
-                <span className="text-sm font-medium">{file.name}</span>
-                <span className="text-xs text-[var(--kt-text-muted)]">
-                  ({(file.size / 1024).toFixed(1)} KB)
-                </span>
-                <span className="text-xs text-[var(--kt-warning)] ml-2">
-                  Los datos extraídos reemplazarán los actuales
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearFile}
-                className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* PASO 1: Formulario inicial (sin PDF subido o después de rechazar) */}
+      {wizardStep === "form" && (
+        <>
+          {/* File Info Bar */}
+          {file && uploadState === "ready" && (
+            <Card className="border-l-4 border-l-[var(--kt-primary)]">
+              <CardContent className="py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-[var(--kt-primary)]" />
+                    <span className="text-sm font-medium">{file.name}</span>
+                    <span className="text-xs text-[var(--kt-text-muted)]">
+                      ({(file.size / 1024).toFixed(1)} KB)
+                    </span>
+                    <span className="text-xs text-[var(--kt-warning)] ml-2">
+                      Los datos extraídos reemplazarán los actuales
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClearFile}
+                    className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Main Grid: PDF (collapsible) + Form */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: PDF Viewer (Collapsible) */}
-        {file && uploadState === "ready" && (
-          <Card>
-            <button
-              onClick={() => setShowPDF(!showPDF)}
-              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
-            >
-              <div>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  PDF Nuevo
+          {/* Main Grid: PDF (collapsible) + Form */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: PDF Viewer (Collapsible) */}
+            {file && uploadState === "ready" && (
+              <Card>
+                <button
+                  onClick={() => setShowPDF(!showPDF)}
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
+                >
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      PDF Nuevo
+                    </CardTitle>
+                    <CardDescription>
+                      {file.name}
+                    </CardDescription>
+                  </div>
+                  {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+
+                {showPDF && (
+                  <CardContent className="border-t border-[var(--kt-gray-200)]">
+                    <div className="h-[500px]">
+                      <PDFViewer file={file} />
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+            )}
+
+            {/* Right: Form (Always Visible) */}
+            <Card className={file && uploadState === "ready" ? "" : "lg:col-span-2"}>
+              <CardHeader>
+                <CardTitle>
+                  {uploadState === "ready" && extractedData ? "Datos Extraídos" : "Editar Datos"}
                 </CardTitle>
                 <CardDescription>
-                  {file.name}
+                  {uploadState === "ready" && extractedData
+                    ? "Los datos extraídos reemplazarán los actuales. Verifica antes de guardar."
+                    : "Edita los datos de la hoja de remisión o sube un nuevo PDF"}
                 </CardDescription>
-              </div>
-              {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-            </button>
+              </CardHeader>
+              <CardContent>
+                <HojaRemisionForm
+                  initialData={extractedData || initialFormData}
+                  onSave={handleSave}
+                  onCancel={() => router.push("/dashboard/hojas-remision")}
+                />
+              </CardContent>
+            </Card>
+          </div>
 
-            {showPDF && (
-              <CardContent className="border-t border-[var(--kt-gray-200)]">
+          {/* Azure JSON & KeyValuePairs Section (Only when ready) */}
+          {uploadState === "ready" && azureResult && (
+            <div className="space-y-4">
+              {/* KeyValuePairs Toggle */}
+              <Card>
+                <button
+                  onClick={() => setShowKeyValuePairs(!showKeyValuePairs)}
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
+                >
+                  <div>
+                    <CardTitle className="text-lg">KeyValuePairs Extraídos</CardTitle>
+                    <CardDescription>
+                      Pares clave-valor detectados por Azure AI ({azureResult.keyValuePairs?.length || 0} campos)
+                    </CardDescription>
+                  </div>
+                  {showKeyValuePairs ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+
+                {showKeyValuePairs && azureResult?.keyValuePairs && (
+                  <CardContent className="border-t border-[var(--kt-gray-200)]">
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {azureResult.keyValuePairs.map((pair: any, index: number) => (
+                        <div key={index} className="p-3 bg-[var(--kt-gray-50)] rounded-lg border border-[var(--kt-gray-200)]">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <span className="text-xs font-semibold text-[var(--kt-text-muted)] uppercase">Key</span>
+                              <p className="text-sm font-medium text-[var(--kt-text-dark)]">{pair.key?.content || '(vacío)'}</p>
+                            </div>
+                            <div>
+                              <span className="text-xs font-semibold text-[var(--kt-text-muted)] uppercase">Value</span>
+                              <p className="text-sm text-[var(--kt-text-dark)]">{pair.value?.content || '(vacío)'}</p>
+                            </div>
+                          </div>
+                          {pair.confidence && (
+                            <div className="mt-2">
+                              <span className="text-xs text-[var(--kt-text-muted)]">
+                                Confianza: {(pair.confidence * 100).toFixed(1)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                )}
+              </Card>
+
+              {/* Azure JSON Toggle */}
+              <Card>
+                <button
+                  onClick={() => {
+                    const newShowAzureJson = !showAzureJson
+                    setShowAzureJson(newShowAzureJson)
+                    if (newShowAzureJson) setShowKeyValuePairs(false)
+                  }}
+                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
+                >
+                  <div>
+                    <CardTitle className="text-lg">JSON Completo de Azure AI</CardTitle>
+                    <CardDescription>
+                      Respuesta cruda del servicio Azure Document Intelligence
+                    </CardDescription>
+                  </div>
+                  {showAzureJson && !showKeyValuePairs ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                </button>
+
+                {showAzureJson && !showKeyValuePairs && (
+                  <CardContent className="border-t border-[var(--kt-gray-200)]">
+                    <pre className="bg-[var(--kt-gray-900)] text-[var(--kt-gray-100)] p-4 rounded-lg overflow-x-auto text-xs max-h-96 overflow-y-auto">
+                      {JSON.stringify(azureResult, null, 2)}
+                    </pre>
+                  </CardContent>
+                )}
+              </Card>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* PASO 2: Confirmación de datos extraídos */}
+      {wizardStep === "confirmation" && extractedData && file && (
+        <HojaRemisionConfirmacion
+          extractedData={extractedData}
+          azureResult={azureResult}
+          fileName={file.name}
+          fileSize={file.size}
+          file={file}
+          onConfirm={handleConfirmData}
+          onReject={handleRejectData}
+          onRetry={handleRetryUpload}
+          onDataChanged={handleDataChanged}
+        />
+      )}
+
+      {/* PASO 3: Edición final con datos extraídos confirmados */}
+      {wizardStep === "edit" && extractedData && file && (
+        <>
+          {/* File Info Bar - Confirmed */}
+          <Card className="border-l-4 border-l-[var(--kt-success)]">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-[var(--kt-success)]" />
+                  <span className="text-sm font-medium">{file.name}</span>
+                  <span className="text-xs text-[var(--kt-success)]">
+                    ✓ Datos confirmados
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setWizardStep("confirmation")}
+                >
+                  Volver a confirmación
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* PDF Viewer + Form */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardContent className="p-4">
                 <div className="h-[500px]">
                   <PDFViewer file={file} />
                 </div>
               </CardContent>
-            )}
-          </Card>
-        )}
+            </Card>
 
-        {/* Right: Form (Always Visible) */}
-        <Card className={file && uploadState === "ready" ? "" : "lg:col-span-2"}>
-          <CardHeader>
-            <CardTitle>
-              {uploadState === "ready" && extractedData ? "Datos Extraídos" : "Editar Datos"}
-            </CardTitle>
-            <CardDescription>
-              {uploadState === "ready" && extractedData
-                ? "Los datos extraídos reemplazarán los actuales. Verifica antes de guardar."
-                : "Edita los datos de la hoja de remisión o sube un nuevo PDF"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <HojaRemisionForm
-              initialData={extractedData || initialFormData}
-              onSave={handleSave}
-              onCancel={() => router.push("/dashboard/hojas-remision")}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Azure JSON & KeyValuePairs Section (Only when ready) */}
-      {uploadState === "ready" && azureResult && (
-        <div className="space-y-4">
-          {/* KeyValuePairs Toggle */}
-          <Card>
-            <button
-              onClick={() => setShowKeyValuePairs(!showKeyValuePairs)}
-              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
-            >
-              <div>
-                <CardTitle className="text-lg">KeyValuePairs Extraídos</CardTitle>
+            <Card>
+              <CardHeader>
+                <CardTitle>Editar Datos Extraídos</CardTitle>
                 <CardDescription>
-                  Pares clave-valor detectados por Azure AI ({azureResult.keyValuePairs?.length || 0} campos)
+                  Verifica y edita los datos extraídos antes de guardar
                 </CardDescription>
-              </div>
-              {showKeyValuePairs ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-            </button>
-
-            {showKeyValuePairs && azureResult?.keyValuePairs && (
-              <CardContent className="border-t border-[var(--kt-gray-200)]">
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {azureResult.keyValuePairs.map((pair: any, index: number) => (
-                    <div key={index} className="p-3 bg-[var(--kt-gray-50)] rounded-lg border border-[var(--kt-gray-200)]">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <span className="text-xs font-semibold text-[var(--kt-text-muted)] uppercase">Key</span>
-                          <p className="text-sm font-medium text-[var(--kt-text-dark)]">{pair.key?.content || '(vacío)'}</p>
-                        </div>
-                        <div>
-                          <span className="text-xs font-semibold text-[var(--kt-text-muted)] uppercase">Value</span>
-                          <p className="text-sm text-[var(--kt-text-dark)]">{pair.value?.content || '(vacío)'}</p>
-                        </div>
-                      </div>
-                      {pair.confidence && (
-                        <div className="mt-2">
-                          <span className="text-xs text-[var(--kt-text-muted)]">
-                            Confianza: {(pair.confidence * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+              </CardHeader>
+              <CardContent>
+                <HojaRemisionForm
+                  initialData={extractedData}
+                  onSave={handleSave}
+                  onCancel={() => router.push("/dashboard/hojas-remision")}
+                />
               </CardContent>
-            )}
-          </Card>
-
-          {/* Azure JSON Toggle */}
-          <Card>
-            <button
-              onClick={() => {
-                const newShowAzureJson = !showAzureJson
-                setShowAzureJson(newShowAzureJson)
-                if (newShowAzureJson) setShowKeyValuePairs(false)
-              }}
-              className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
-            >
-              <div>
-                <CardTitle className="text-lg">JSON Completo de Azure AI</CardTitle>
-                <CardDescription>
-                  Respuesta cruda del servicio Azure Document Intelligence
-                </CardDescription>
-              </div>
-              {showAzureJson && !showKeyValuePairs ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-            </button>
-
-            {showAzureJson && !showKeyValuePairs && (
-              <CardContent className="border-t border-[var(--kt-gray-200)]">
-                <pre className="bg-[var(--kt-gray-900)] text-[var(--kt-gray-100)] p-4 rounded-lg overflow-x-auto text-xs max-h-96 overflow-y-auto">
-                  {JSON.stringify(azureResult, null, 2)}
-                </pre>
-              </CardContent>
-            )}
-          </Card>
-        </div>
+            </Card>
+          </div>
+        </>
       )}
     </div>
   )
