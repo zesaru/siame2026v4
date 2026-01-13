@@ -106,7 +106,7 @@ export default function GuiasValijaPage() {
   // Sorting
   const { sortConfig, handleSort, sortedData, getSortIndicator, isSorted } = useTableSort(
     filteredGuias,
-    { defaultSort: { key: "fechaEmision", direction: "desc" } }
+    { defaultSort: { key: "fechaEnvio", direction: "desc" } }
   )
 
   // Pagination
