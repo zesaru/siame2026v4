@@ -36,6 +36,10 @@ export async function GET(
       )
     }
 
+    // 1.5. Check if user is ADMIN or SUPER_ADMIN (can view any file)
+    const userRole = session.user.role as 'USER' | 'ADMIN' | 'SUPER_ADMIN'
+    const isAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN'
+
     // 2. Reconstruct the file path from URL segments
     const relativePath = pathSegments.join('/')
 
@@ -54,56 +58,72 @@ export async function GET(
     let fileSize: number | undefined
     let fileHash: string | undefined
 
-    // Check Document model
+    // Check Document model (allow admins to access any document)
     const document = await prisma.document.findFirst({
       where: {
-        userId,
         filePath: relativePath
       },
-      select: { fileName: true, fileType: true, fileSize: true, fileHash: true }
+      select: { userId: true, fileName: true, fileType: true, fileSize: true, fileHash: true }
     })
 
     if (document) {
-      isOwner = true
-      fileName = document.fileName
-      mimeType = document.fileType
-      fileSize = document.fileSize
-      fileHash = document.fileHash ?? undefined
-    }
-
-    // Check GuiaValija model
-    if (!isOwner) {
-      const guia = await prisma.guiaValija.findFirst({
-        where: {
-          userId,
-          filePath: relativePath
-        },
-        select: { numeroGuia: true, fileHash: true }
-      })
-
-      if (guia) {
+      // Allow access if owner OR admin
+      if (document.userId === userId || isAdmin) {
         isOwner = true
-        fileName = `GuiaValija_${guia.numeroGuia}.pdf`
-        mimeType = "application/pdf"
-        fileHash = guia.fileHash ?? undefined
+        fileName = document.fileName
+        mimeType = document.fileType
+        fileSize = document.fileSize
+        fileHash = document.fileHash ?? undefined
       }
     }
 
-    // Check HojaRemision model
+    // Check GuiaValija model (allow admins to access any guia)
+    if (!isOwner) {
+      const guia = await prisma.guiaValija.findFirst({
+        where: {
+          filePath: relativePath
+        },
+        select: { userId: true, numeroGuia: true, fileHash: true }
+      })
+
+      if (guia) {
+        // Allow access if owner OR admin
+        if (guia.userId === userId || isAdmin) {
+          isOwner = true
+          fileName = `GuiaValija_${guia.numeroGuia}.pdf`
+          mimeType = "application/pdf"
+          fileHash = guia.fileHash ?? undefined
+
+          // Log admin access to other user's file
+          if (isAdmin && guia.userId !== userId) {
+            console.log(`[FileAPI] Admin ${userId} accessing GuiaValija file of user ${guia.userId}`)
+          }
+        }
+      }
+    }
+
+    // Check HojaRemision model (allow admins to access any hoja)
     if (!isOwner) {
       const hoja = await prisma.hojaRemision.findFirst({
         where: {
-          userId,
           filePath: relativePath
         },
-        select: { numeroCompleto: true, fileHash: true }
+        select: { userId: true, numeroCompleto: true, fileHash: true }
       })
 
       if (hoja) {
-        isOwner = true
-        fileName = `HojaRemision_${hoja.numeroCompleto}.pdf`
-        mimeType = "application/pdf"
-        fileHash = hoja.fileHash ?? undefined
+        // Allow access if owner OR admin
+        if (hoja.userId === userId || isAdmin) {
+          isOwner = true
+          fileName = `HojaRemision_${hoja.numeroCompleto}.pdf`
+          mimeType = "application/pdf"
+          fileHash = hoja.fileHash ?? undefined
+
+          // Log admin access to other user's file
+          if (isAdmin && hoja.userId !== userId) {
+            console.log(`[FileAPI] Admin ${userId} accessing HojaRemision file of user ${hoja.userId}`)
+          }
+        }
       }
     }
 
