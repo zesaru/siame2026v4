@@ -770,9 +770,16 @@ export async function processGuiaValijaFromAzure(
     })
   }
 
-  // Crear items
+  // Crear items (usar deleteMany + createMany para evitar duplicados)
   if (itemsData.length > 0) {
     logger.info(`📦 Creando ${itemsData.length} items...`)
+
+    // Eliminar items existentes de esta guía para evitar duplicados
+    await prisma.guiaValijaItem.deleteMany({
+      where: { guiaValijaId: guia.id }
+    })
+
+    // Crear los nuevos items
     await prisma.guiaValijaItem.createMany({
       data: itemsData.map(item => ({
         guiaValijaId: guia.id,
