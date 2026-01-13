@@ -60,19 +60,40 @@ export function extractNumeroGuia(text: string): string {
 }
 
 /**
- * Parsea fecha en formato DD/MM/YYYY
+ * Parsea fecha en diferentes formatos:
+ * - DD/MM/YYYY
+ * - D de MMMM del YYYY (ej: "5 de Septiembre del 2025")
  */
 export function parseFecha(fechaStr: string): Date | null {
   if (!fechaStr) return null
 
   // Formato DD/MM/YYYY
-  const match = fechaStr.match(/(\d{2})\/(\d{2})\/(\d{4})/)
-  if (match) {
-    const [, day, month, year] = match
+  const matchSlash = fechaStr.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  if (matchSlash) {
+    const [, day, month, year] = matchSlash
     return new Date(`${year}-${month}-${day}`)
   }
 
-  // Intentar parseo directo
+  // Formato "D de MMMM del YYYY" o "DD de MMMM del YYYY"
+  // Ejemplo: "5 de Septiembre del 2025"
+  const matchText = fechaStr.match(/(\d{1,2})\s+de\s+(\w+)\s+del\s+(\d{4})/i)
+  if (matchText) {
+    const [, day, monthStr, year] = matchText
+
+    // Mapeo de meses en español a inglés (para Date constructor)
+    const meses: Record<string, number> = {
+      'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+      'julio': 6, 'agosto': 7, 'septiembre': 8, 'setiembre': 8, 'octubre': 9,
+      'noviembre': 10, 'diciembre': 11
+    }
+
+    const month = meses[monthStr.toLowerCase()]
+    if (month !== undefined) {
+      return new Date(parseInt(year), month, parseInt(day))
+    }
+  }
+
+  // Intentar parseo directo (como fallback)
   const date = new Date(fechaStr)
   return isNaN(date.getTime()) ? null : date
 }
@@ -788,8 +809,8 @@ export async function processGuiaValijaFromAzure(
             userId: userId,
             numero: hrData.numero || 0,
             numeroCompleto: hrData.numeroCompleto || `HR-${item.numeroItem}`,
-            siglaUnidad: hrData.siglaUnidad || 'HH',
-            fecha: new Date(),
+            siglaUnidad: hrData.siglaUnidad || '',
+            fecha: guia.fechaEnvio || new Date(),
             para: item.destinatario || 'Por Asignar',
             remitente: item.remitente || 'Por Asignar',
             documento: `Extraído de Guía de Valija ${guia.numeroGuia}`,
