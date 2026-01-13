@@ -502,6 +502,23 @@ export default function GuiasValijaPage() {
                             </TooltipContent>
                           </Tooltip>
 
+                          {guia.filePath && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(`/api/files/${guia.filePath}?inline=true`, '_blank')}
+                                >
+                                  <Icon name="document" size="sm" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>📄 Ver Archivo PDF de la guía {guia.numeroGuia}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
