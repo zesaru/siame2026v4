@@ -31,6 +31,11 @@ const allNavigationItems = [
     icon: "suitcase",
   },
   {
+    title: "Items de Valija",
+    href: "/dashboard/guias-valija-items",
+    icon: "package",
+  },
+  {
     title: "Hojas de Remisión",
     href: "/dashboard/hojas-remision",
     icon: "shipping",
