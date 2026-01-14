@@ -63,5 +63,8 @@ logs/
 ecosystem.config.js
 install-service.js
 
+# Deployment scripts (server only)
+deploy.ps1
+
 # Temporary files
 nul
