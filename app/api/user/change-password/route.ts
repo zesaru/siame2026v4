@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth-v4"
 import * as userService from "@/lib/services/user.service"
 import { changePasswordSchema } from "@/lib/schemas/user"
 
-export const dynamic = 'force-dynamic'
+// POST mutations don't need force-dynamic (never cached anyway)
 
 /**
  * POST /api/user/change-password

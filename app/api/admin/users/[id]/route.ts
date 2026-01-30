@@ -5,7 +5,7 @@ import { updateUserSchema } from "@/lib/schemas/user"
 import { canManageUser, canAssignRole, requireRole } from "@/lib/middleware/authorization"
 import { AuthorizationError } from "@/lib/middleware/authorization"
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 30
 
 /**
  * GET /api/admin/users/[id]

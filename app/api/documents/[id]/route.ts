@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 // GET /api/documents/[id] - Get a specific document
 export async function GET(

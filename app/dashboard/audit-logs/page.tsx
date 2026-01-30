@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { requireRole } from "@/lib/middleware/authorization"
 import AuditLogsClient from "./audit-logs-client"
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 60
 
 export const metadata = {
   title: "Audit Logs - SIAME 2026",

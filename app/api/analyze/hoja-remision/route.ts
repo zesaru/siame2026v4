@@ -3,7 +3,7 @@ import { analyzeDocument } from "@/lib/document-intelligence"
 import { parseHojaRemisionFromAzure } from "@/lib/hojas-remision-parser"
 import { auth } from "@/lib/auth-v4"
 
-export const dynamic = 'force-dynamic'
+// POST mutations don't need force-dynamic (never cached anyway)
 
 export async function POST(req: NextRequest) {
   // Verify authentication

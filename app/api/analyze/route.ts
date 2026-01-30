@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db"
 import { logger } from "@/lib/logger"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 
-export const dynamic = 'force-dynamic'
+// POST mutations don't need force-dynamic (never cached anyway)
 
 export async function POST(req: NextRequest) {
   // Verify authentication

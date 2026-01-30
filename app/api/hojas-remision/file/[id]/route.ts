@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getHojaRemision } from "@/app/dashboard/hojas-remision/actions"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 
-export const dynamic = 'force-dynamic'
+export const revalidate = 3600
 
 export async function GET(
   req: NextRequest,
