@@ -229,10 +229,14 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const abortController = new AbortController()
+    let mounted = true
+
     async function fetchMetrics() {
       try {
         const response = await fetch(`/api/dashboard?userId=${userId}`, {
           cache: 'no-store',
+          signal: abortController.signal,
           headers: {
             'Cache-Control': 'no-cache',
             'Pragma': 'no-cache'
@@ -244,15 +248,29 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
         }
 
         const data = await response.json()
-        setMetrics(data)
+
+        if (mounted) {
+          setMetrics(data)
+        }
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+        if (err instanceof Error && err.name !== 'AbortError') {
+          if (mounted) {
+            setError(err.message)
+          }
+        }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchMetrics()
+
+    return () => {
+      mounted = false
+      abortController.abort()
+    }
   }, [userId])
 
   if (loading) {

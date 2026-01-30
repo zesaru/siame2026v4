@@ -84,21 +84,40 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
   const [deleteConfirm, setDeleteConfirm] = useState(false)
 
   useEffect(() => {
-    fetchHojaDetails()
-  }, [hojaId])
+    const abortController = new AbortController()
+    let mounted = true
 
-  async function fetchHojaDetails() {
-    try {
-      const response = await fetch(`/api/hojas-remision/${hojaId}`)
-      if (!response.ok) throw new Error("Error al cargar los detalles de la hoja de remisión")
-      const data = await response.json()
-      setHoja(data)
-    } catch (error) {
-      toast.error("Error al cargar los detalles de la hoja de remisión")
-    } finally {
-      setLoading(false)
+    async function fetchHojaDetails() {
+      if (!mounted) return
+
+      try {
+        const response = await fetch(`/api/hojas-remision/${hojaId}`, {
+          signal: abortController.signal
+        })
+        if (!response.ok) throw new Error("Error al cargar los detalles de la hoja de remisión")
+        const data = await response.json()
+
+        if (mounted) {
+          setHoja(data)
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          toast.error("Error al cargar los detalles de la hoja de remisión")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  }
+
+    fetchHojaDetails()
+
+    return () => {
+      mounted = false
+      abortController.abort()
+    }
+  }, [hojaId])
 
   const confirmDelete = async () => {
     try {

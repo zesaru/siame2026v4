@@ -105,21 +105,40 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
   })
 
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    const abortController = new AbortController()
+    let mounted = true
 
-  async function fetchUsers() {
-    try {
-      const response = await fetch("/api/admin/users")
-      if (!response.ok) throw new Error("Failed to fetch users")
-      const data = await response.json()
-      setUsers(data)
-    } catch (error) {
-      toast.error("Error al cargar usuarios")
-    } finally {
-      setLoading(false)
+    async function fetchUsers() {
+      if (!mounted) return
+
+      try {
+        const response = await fetch("/api/admin/users", {
+          signal: abortController.signal
+        })
+        if (!response.ok) throw new Error("Failed to fetch users")
+        const data = await response.json()
+
+        if (mounted) {
+          setUsers(data)
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          toast.error("Error al cargar usuarios")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  }
+
+    fetchUsers()
+
+    return () => {
+      mounted = false
+      abortController.abort()
+    }
+  }, [])
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault()

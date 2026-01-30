@@ -57,6 +57,9 @@ export default function EditGuiaValijaPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const abortController = new AbortController()
+    let mounted = true
+
     const id = params.id as string
     if (!id) {
       toast.error("ID de guía no especificado")
@@ -64,23 +67,39 @@ export default function EditGuiaValijaPage() {
       return
     }
 
-    fetchGuia(id)
-  }, [params.id])
+    async function fetchGuia(id: string) {
+      if (!mounted) return
 
-  async function fetchGuia(id: string) {
-    try {
-      const response = await fetch(`/api/dashboard/guias-valija/${id}`)
-      if (!response.ok) throw new Error("Error al cargar la guía")
+      try {
+        const response = await fetch(`/api/dashboard/guias-valija/${id}`, {
+          signal: abortController.signal
+        })
+        if (!response.ok) throw new Error("Error al cargar la guía")
 
-      const data = await response.json()
-      setGuia(data)
-    } catch (error) {
-      toast.error("Error al cargar la guía")
-      router.push("/dashboard/guias-valija")
-    } finally {
-      setLoading(false)
+        const data = await response.json()
+
+        if (mounted) {
+          setGuia(data)
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          toast.error("Error al cargar la guía")
+          router.push("/dashboard/guias-valija")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  }
+
+    fetchGuia(id)
+
+    return () => {
+      mounted = false
+      abortController.abort()
+    }
+  }, [params.id, router])
 
   const handleSuccess = () => {
     toast.success("Guía actualizada correctamente")

@@ -89,35 +89,55 @@ export default function AuditLogsClient() {
   const pageSize = 50
 
   useEffect(() => {
-    fetchLogs()
-  }, [page, documentTypeFilter, actionFilter, userSearch, startDate, endDate])
+    const abortController = new AbortController()
+    let mounted = true
 
-  async function fetchLogs() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        limit: pageSize.toString(),
-        offset: (page * pageSize).toString(),
-      })
+    async function fetchLogs() {
+      if (!mounted) return
 
-      if (documentTypeFilter !== "all") params.append("documentType", documentTypeFilter)
-      if (actionFilter !== "all") params.append("action", actionFilter)
-      if (userSearch) params.append("userSearch", userSearch)
-      if (startDate) params.append("startDate", startDate)
-      if (endDate) params.append("endDate", endDate)
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({
+          limit: pageSize.toString(),
+          offset: (page * pageSize).toString(),
+        })
 
-      const response = await fetch(`/api/admin/audit-logs?${params}`)
-      if (!response.ok) throw new Error("Failed to fetch audit logs")
+        if (documentTypeFilter !== "all") params.append("documentType", documentTypeFilter)
+        if (actionFilter !== "all") params.append("action", actionFilter)
+        if (userSearch) params.append("userSearch", userSearch)
+        if (startDate) params.append("startDate", startDate)
+        if (endDate) params.append("endDate", endDate)
 
-      const data = await response.json()
-      setLogs(data.logs)
-      setTotal(data.total)
-    } catch (error) {
-      logger.error("Error fetching audit logs:", error)
-    } finally {
-      setLoading(false)
+        const response = await fetch(`/api/admin/audit-logs?${params}`, {
+          signal: abortController.signal
+        })
+
+        if (!response.ok) throw new Error("Failed to fetch audit logs")
+
+        const data = await response.json()
+
+        if (mounted) {
+          setLogs(data.logs)
+          setTotal(data.total)
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          logger.error("Error fetching audit logs:", error)
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  }
+
+    fetchLogs()
+
+    return () => {
+      mounted = false
+      abortController.abort()
+    }
+  }, [page, documentTypeFilter, actionFilter, userSearch, startDate, endDate, pageSize])
 
   function formatDate(date: Date | string): string {
     const d = new Date(date)

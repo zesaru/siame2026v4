@@ -97,35 +97,55 @@ export default function GuiaValijaItemsPage() {
 
   // Cargar items con filtros
   useEffect(() => {
-    fetchItems()
-  }, [searchTerm, filters, pagination.page])
+    const abortController = new AbortController()
+    let mounted = true
 
-  async function fetchItems() {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams({
-        search: searchTerm,
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-        ...Object.entries(filters).reduce((acc, [key, value]) => {
-          if (value && value !== "all") acc[key] = value
-          return acc
-        }, {} as Record<string, string>),
-      })
+    async function fetchItems() {
+      if (!mounted) return
 
-      const response = await fetch(`/api/guias-valija-items?${params}`)
-      if (!response.ok) throw new Error("Error al cargar items")
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({
+          search: searchTerm,
+          page: pagination.page.toString(),
+          limit: pagination.limit.toString(),
+          ...Object.entries(filters).reduce((acc, [key, value]) => {
+            if (value && value !== "all") acc[key] = value
+            return acc
+          }, {} as Record<string, string>),
+        })
 
-      const data = await response.json()
-      setItems(data.items)
-      setPagination(data.pagination)
-    } catch (error) {
-      toast.error("Error al cargar items")
-      logger.error(error)
-    } finally {
-      setLoading(false)
+        const response = await fetch(`/api/guias-valija-items?${params}`, {
+          signal: abortController.signal
+        })
+
+        if (!response.ok) throw new Error("Error al cargar items")
+
+        const data = await response.json()
+
+        if (mounted) {
+          setItems(data.items)
+          setPagination(data.pagination)
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name !== 'AbortError') {
+          toast.error("Error al cargar items")
+          logger.error(error)
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  }
+
+    fetchItems()
+
+    return () => {
+      mounted = false
+      abortController.abort()
+    }
+  }, [searchTerm, filters, pagination.page, pagination.limit])
 
   function clearFilters() {
     setFilters({

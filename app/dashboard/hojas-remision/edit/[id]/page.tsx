@@ -36,25 +36,42 @@ export default function EditHojaRemisionPage() {
   const [showKeyValuePairs, setShowKeyValuePairs] = useState(false)
 
   useEffect(() => {
-    loadHojaRemision()
-  }, [params.id])
+    let mounted = true
 
-  async function loadHojaRemision() {
-    try {
-      const result = await getHojaRemision(params.id as string)
-      if (!result.success || !result.data) {
-        toast.error("Error al cargar la hoja de remisión")
-        router.push("/dashboard/hojas-remision")
-        return
+    async function loadHojaRemision() {
+      if (!mounted) return
+
+      try {
+        const result = await getHojaRemision(params.id as string)
+        if (!result.success || !result.data) {
+          if (mounted) {
+            toast.error("Error al cargar la hoja de remisión")
+            router.push("/dashboard/hojas-remision")
+          }
+          return
+        }
+
+        if (mounted) {
+          setHoja(result.data)
+        }
+      } catch (err) {
+        if (mounted) {
+          toast.error("Error al cargar la hoja de remisión")
+          router.push("/dashboard/hojas-remision")
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
       }
-      setHoja(result.data)
-    } catch (err) {
-      toast.error("Error al cargar la hoja de remisión")
-      router.push("/dashboard/hojas-remision")
-    } finally {
-      setLoading(false)
     }
-  }
+
+    loadHojaRemision()
+
+    return () => {
+      mounted = false
+    }
+  }, [params.id, router])
 
   const handleFileSelect = (selectedFile: File) => {
     if (selectedFile.type !== "application/pdf") {
