@@ -1,4 +1,6 @@
 import { prisma } from "./db"
+import { cache } from "react"
+import { logger } from "./logger"
 
 export interface DashboardMetrics {
   documents: {
@@ -22,10 +24,17 @@ export interface DashboardMetrics {
   }
 }
 
-export async function getDashboardMetrics(userId: string): Promise<DashboardMetrics> {
+/**
+ * Get dashboard metrics with React.cache() for deduplication
+ * This prevents duplicate queries within the same request
+ */
+export const getDashboardMetrics = cache(async (userId: string): Promise<DashboardMetrics> => {
   const now = new Date()
+
+  // Fix: Correctly calculate start of week (Sunday at 00:00:00)
+  const dayOfWeek = now.getDay()
   const startOfWeek = new Date(now)
-  startOfWeek.setDate(now.getDate() - now.getDay())
+  startOfWeek.setDate(now.getDate() - dayOfWeek)
   startOfWeek.setHours(0, 0, 0, 0)
 
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -89,15 +98,14 @@ export async function getDashboardMetrics(userId: string): Promise<DashboardMetr
       }),
     ])
 
-    const guiasByStatus: Record<string, number> = {}
-    guiasByStatusRaw.forEach((item) => {
-      guiasByStatus[item.estado] = item._count
-    })
+    // Optimize: Use Object.fromEntries instead of forEach
+    const guiasByStatus = Object.fromEntries(
+      guiasByStatusRaw.map(item => [item.estado, item._count])
+    )
 
-    const guiasByType: Record<string, number> = {}
-    guiasByTypeRaw.forEach((item) => {
-      guiasByType[item.tipoValija] = item._count
-    })
+    const guiasByType = Object.fromEntries(
+      guiasByTypeRaw.map(item => [item.tipoValija, item._count])
+    )
 
     const guiasActive =
       (guiasByStatus["pendiente"] || 0) +
@@ -124,15 +132,14 @@ export async function getDashboardMetrics(userId: string): Promise<DashboardMetr
       }),
     ])
 
-    const hojasByStatus: Record<string, number> = {}
-    hojasByStatusRaw.forEach((item) => {
-      hojasByStatus[item.estado] = item._count
-    })
+    // Optimize: Use Object.fromEntries instead of forEach
+    const hojasByStatus = Object.fromEntries(
+      hojasByStatusRaw.map(item => [item.estado, item._count])
+    )
 
-    const hojasByType: Record<string, number> = {}
-    hojasByTypeRaw.forEach((item) => {
-      hojasByType[item.siglaUnidad] = item._count
-    })
+    const hojasByType = Object.fromEntries(
+      hojasByTypeRaw.map(item => [item.siglaUnidad, item._count])
+    )
 
     const hojasActive =
       (hojasByStatus["borrador"] || 0) +
@@ -160,7 +167,7 @@ export async function getDashboardMetrics(userId: string): Promise<DashboardMetr
       },
     }
   } catch (error) {
-    console.error("Error fetching dashboard metrics:", error)
+    logger.error("Error fetching dashboard metrics:", error)
     // Return empty metrics on error
     return {
       documents: {
@@ -184,4 +191,4 @@ export async function getDashboardMetrics(userId: string): Promise<DashboardMetr
       },
     }
   }
-}
+})

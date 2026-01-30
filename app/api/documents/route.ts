@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
+import { documentQuerySchema } from "@/lib/schemas/document"
+import { ZodError } from "zod"
+import { logger } from "@/lib/logger"
 
 // Revalidate documents list every 60 seconds (removed force-dynamic to enable caching)
 export const revalidate = 60
@@ -17,9 +20,15 @@ export async function GET(req: NextRequest) {
 
   try {
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
-    const search = searchParams.get("search") || ""
+
+    // Validate query params with Zod schema
+    const queryParams = documentQuerySchema.parse({
+      page: searchParams.get("page"),
+      limit: searchParams.get("limit"),
+      search: searchParams.get("search")
+    })
+
+    const { page, limit, search } = queryParams
 
     const skip = (page - 1) * limit
 
@@ -73,5 +82,27 @@ export async function GET(req: NextRequest) {
       { error: "Failed to fetch documents" },
       { status: 500 }
     )
+  } catch (error) {
+    // Handle Zod validation errors
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        {
+          error: "Invalid query parameters",
+          details: error.errors.map(e => ({
+            path: e.path.join('.'),
+            message: e.message
+          }))
+        },
+        { status: 400 }
+      )
+    }
+
+    logger.error("Error fetching documents:", error)
+    return NextResponse.json(
+      { error: "Failed to fetch documents" },
+      { status: 500 }
+    )
+  }
+}
   }
 }

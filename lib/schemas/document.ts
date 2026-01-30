@@ -74,6 +74,26 @@ export const documentSchema = z.object({
 export type DocumentFormData = z.infer<typeof documentSchema>
 
 /**
+ * Schema para validación de query params en API GET /api/documents
+ */
+export const documentQuerySchema = z.object({
+  page: z.string().transform(Number).pipe(
+    z.number().int().positive().default(1)
+  ).default("1"),
+
+  limit: z.string().transform(Number).pipe(
+    z.number().int().positive().max(100).default(10)
+  ).default("10"),
+
+  search: z.string().max(200).optional()
+})
+
+/**
+ * Tipo TypeScript inferido del schema de query
+ */
+export type DocumentQueryParams = z.infer<typeof documentQuerySchema>
+
+/**
  * Schema para actualización parcial (campos opcionales)
  */
 export const documentUpdateSchema = documentSchema.partial()
