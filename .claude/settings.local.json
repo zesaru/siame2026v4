@@ -39,7 +39,14 @@
       "Bash(psql:*)",
       "Bash(pnpm add:*)",
       "Bash(curl:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(git checkout:*)",
+      "Bash(cd:*)",
+      "Bash(git show:*)",
+      "Bash(app/dashboard/hojas-remision/[id]/view/HojaRemisionViewClient.tsx)",
+      "Bash(grep:*)",
+      "Bash(npm pkg:*)",
+      "Bash(npm test:*)"
     ]
   }
 }

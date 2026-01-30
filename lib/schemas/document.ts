@@ -77,13 +77,19 @@ export type DocumentFormData = z.infer<typeof documentSchema>
  * Schema para validación de query params en API GET /api/documents
  */
 export const documentQuerySchema = z.object({
-  page: z.string().transform(Number).pipe(
-    z.number().int().positive().default(1)
-  ).default("1"),
+  page: z.string().optional().default("1").transform(val => {
+    const num = Number(val)
+    return isNaN(num) ? 1 : num
+  }).pipe(
+    z.number().int().positive()
+  ),
 
-  limit: z.string().transform(Number).pipe(
-    z.number().int().positive().max(100).default(10)
-  ).default("10"),
+  limit: z.string().optional().default("10").transform(val => {
+    const num = Number(val)
+    return isNaN(num) ? 10 : num
+  }).pipe(
+    z.number().int().positive().max(100)
+  ),
 
   search: z.string().max(200).optional()
 })

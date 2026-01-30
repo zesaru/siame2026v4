@@ -13,7 +13,7 @@ export function extractNumeroFromRemitente(remitente: string): string {
   // Buscar patrón: GUÍA DE VALIJA DIPLOMÁTICA NºXX
   const match = remitente.match(/GU[ÍÍ]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d+)/i)
   if (match && match[1]) {
-    return match[1].padStart(2, '0')
+    return match[1]
   }
 
   // Si no tiene el formato, retornar original
@@ -26,7 +26,7 @@ export function extractNumeroFromRemitente(remitente: string): string {
  * También busca: "GUÍA AÉREA Nº 0003014"
  */
 export function extractNumeroGuia(text: string): string {
-  if (!text) return "0001"
+  if (!text) return ""
 
   // Limpiar saltos de línea múltiples y espacios excesivos
   const cleanText = text.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim()
@@ -39,7 +39,7 @@ export function extractNumeroGuia(text: string): string {
   // Primero buscar "GUÍA DE VALIJA DIPLOMÁTICA N°" o similar
   const guiaDiplomaticaMatch = cleanText.match(/GU[ÍÍ]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d+)/i)
   if (guiaDiplomaticaMatch && guiaDiplomaticaMatch[1]) {
-    return guiaDiplomaticaMatch[1].padStart(2, '0') // Mantener formato original (07)
+    return guiaDiplomaticaMatch[1]
   }
 
   // Buscar "GUÍA AÉREA Nº"
@@ -51,12 +51,11 @@ export function extractNumeroGuia(text: string): string {
   // Buscar patrones generales: Nº02, No 02, #02, etc.
   const match = cleanText.match(/N[º°]\s*(\d+)|NO\s*[:.]?\s*(\d+)|#\s*(\d+)/i)
   if (match && match[1]) {
-    return match[1].padStart(2, '0')
+    return match[1]
   }
 
-  // Si no encuentra, extrae cualquier número
-  const numberMatch = cleanText.match(/(\d+)/)
-  return numberMatch ? numberMatch[1].padStart(2, '0') : "01"
+  // Si no encuentra nada, retornar string vacío
+  return ""
 }
 
 /**
@@ -78,7 +77,12 @@ export function parseFecha(fechaStr: string): Date | null {
   const matchSlash = cleanedFechaStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
   if (matchSlash) {
     const [, day, month, year] = matchSlash
-    return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
+    const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
+    // Validar que la fecha sea correcta
+    if (isNaN(date.getTime())) {
+      return null
+    }
+    return date
   }
 
   // Formato "D de MMMM del YYYY" o "DD de MMMM del YYYY"
@@ -96,7 +100,12 @@ export function parseFecha(fechaStr: string): Date | null {
 
     const month = meses[monthStr.toLowerCase()]
     if (month !== undefined) {
-      return new Date(parseInt(year), month, parseInt(day))
+      const date = new Date(parseInt(year), month, parseInt(day))
+      // Validar que la fecha sea correcta
+      if (isNaN(date.getTime())) {
+        return null
+      }
+      return date
     }
   }
 
