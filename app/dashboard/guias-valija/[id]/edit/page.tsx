@@ -10,6 +10,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import { EmptyState } from "@/components/ui/EmptyState"
 import { toast } from "sonner"
 
 // Lazy load heavy component (668 lines)
@@ -114,28 +115,26 @@ export default function EditGuiaValijaPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[var(--kt-text-muted)]">Cargando...</p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>}
+        title="Cargando..."
+      />
     )
   }
 
   if (!guia) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-[var(--kt-text-muted)]">Guía no encontrada</p>
+      <EmptyState
+        title="Guía no encontrada"
+        action={
           <button
             onClick={() => router.push("/dashboard/guias-valija")}
-            className="mt-4 text-[var(--kt-primary)] hover:underline"
+            className="text-[var(--kt-primary)] hover:underline"
           >
             Volver al listado
           </button>
-        </div>
-      </div>
+        }
+      />
     )
   }
 
@@ -159,9 +158,7 @@ export default function EditGuiaValijaPage() {
       </Breadcrumb>
 
       <Suspense fallback={
-        <div className="flex items-center justify-center h-64 text-[var(--kt-text-muted)]">
-          Cargando formulario de edición...
-        </div>
+        <EmptyState message="Cargando formulario de edición..." />
       }>
         <GuiaValijaEditableForm
           guia={guia}
