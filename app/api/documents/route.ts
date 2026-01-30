@@ -77,20 +77,14 @@ export async function GET(req: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Error fetching documents:", error)
-    return NextResponse.json(
-      { error: "Failed to fetch documents" },
-      { status: 500 }
-    )
-  } catch (error) {
     // Handle Zod validation errors
     if (error instanceof ZodError) {
       return NextResponse.json(
         {
           error: "Invalid query parameters",
-          details: error.errors.map(e => ({
-            path: e.path.join('.'),
-            message: e.message
+          details: error.issues.map((issue) => ({
+            path: issue.path.join('.'),
+            message: issue.message
           }))
         },
         { status: 400 }
@@ -102,7 +96,5 @@ export async function GET(req: NextRequest) {
       { error: "Failed to fetch documents" },
       { status: 500 }
     )
-  }
-}
   }
 }

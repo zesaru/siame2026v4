@@ -54,9 +54,10 @@ export async function GET(
 // PUT /api/hojas-remision/[id] - Actualizar hoja de remisión
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -68,7 +69,7 @@ export async function PUT(
     // Verify ownership
     const existing = await prisma.hojaRemision.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     })
@@ -79,7 +80,7 @@ export async function PUT(
 
     // Update hoja de remision (sin items)
     const hoja = await prisma.hojaRemision.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         ...(body.numero !== undefined && { numero: body.numero }),
         ...(body.numeroCompleto && { numeroCompleto: body.numeroCompleto }),

@@ -60,7 +60,7 @@ export async function GET(
 // DELETE /api/documents/[id] - Delete a specific document
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
   if (!session) {
@@ -71,10 +71,12 @@ export async function DELETE(
   }
 
   try {
+    const { id } = await params
+
     // Verify user owns the document
     const document = await prisma.document.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     })
@@ -88,10 +90,10 @@ export async function DELETE(
 
     // Delete the document
     await prisma.document.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
-    console.log(`Document deleted: ${params.id}`)
+    console.log(`Document deleted: ${id}`)
 
     return NextResponse.json({ success: true })
   } catch (error) {
@@ -106,7 +108,7 @@ export async function DELETE(
 // PUT /api/documents/[id] - Update document key-value pairs
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth()
   if (!session) {
@@ -117,6 +119,7 @@ export async function PUT(
   }
 
   try {
+    const { id } = await params
     const body = await req.json()
     const { keyValuePairs } = body
 
@@ -131,7 +134,7 @@ export async function PUT(
     // Verify ownership
     const document = await prisma.document.findFirst({
       where: {
-        id: params.id,
+        id,
         userId: session.user.id,
       },
     })
@@ -145,7 +148,7 @@ export async function PUT(
 
     // Update document
     const updated = await prisma.document.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         keyValuePairs,
         keyValueCount: keyValuePairs.length,
@@ -153,7 +156,7 @@ export async function PUT(
       },
     })
 
-    console.log(`Document ${params.id} updated with ${keyValuePairs.length} key-value pairs`)
+    console.log(`Document ${id} updated with ${keyValuePairs.length} key-value pairs`)
 
     return NextResponse.json(updated)
   } catch (error) {
