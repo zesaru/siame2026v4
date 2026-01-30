@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useSession, update } from "next-auth/react"
+import { useFetchWithAbort } from "@/lib/hooks/useFetchWithAbort"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -79,8 +80,18 @@ const roleLabels: Record<Role, string> = {
 
 export default function UsersClient({ currentUserId, currentUserRole }: UsersClientProps) {
   const { data: session } = useSession()
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+
+  // Use custom hook for fetching users
+  const { data: users = [], loading, refetch } = useFetchWithAbort<User[]>({
+    fetchFn: async (signal) => {
+      const response = await fetch("/api/admin/users", { signal })
+      if (!response.ok) throw new Error("Failed to fetch users")
+      return response.json()
+    },
+    onError: (err) => toast.error("Error al cargar usuarios"),
+    deps: [],
+  })
+
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null)
@@ -103,42 +114,6 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
     newPassword: "",
     confirmPassword: "",
   })
-
-  useEffect(() => {
-    const abortController = new AbortController()
-    let mounted = true
-
-    async function fetchUsers() {
-      if (!mounted) return
-
-      try {
-        const response = await fetch("/api/admin/users", {
-          signal: abortController.signal
-        })
-        if (!response.ok) throw new Error("Failed to fetch users")
-        const data = await response.json()
-
-        if (mounted) {
-          setUsers(data)
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name !== 'AbortError') {
-          toast.error("Error al cargar usuarios")
-        }
-      } finally {
-        if (mounted) {
-          setLoading(false)
-        }
-      }
-    }
-
-    fetchUsers()
-
-    return () => {
-      mounted = false
-      abortController.abort()
-    }
-  }, [])
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault()
