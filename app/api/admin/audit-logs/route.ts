@@ -4,7 +4,8 @@ import { getAuditLogsForAdmin } from "@/lib/services/file-audit.service"
 import { requireRole } from "@/lib/middleware/authorization"
 import { AuthorizationError } from "@/lib/middleware/authorization"
 
-export const dynamic = 'force-dynamic'
+// Revalidate audit logs every 60 seconds (removed force-dynamic to enable caching)
+export const revalidate = 60
 
 /**
  * GET /api/admin/audit-logs

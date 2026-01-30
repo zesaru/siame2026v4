@@ -2,6 +2,9 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 
+// Revalidate guías list every 60 seconds (moderately frequent updates)
+export const revalidate = 60
+
 // GET - Listar todas las guías del usuario
 export async function GET() {
   const session = await auth()

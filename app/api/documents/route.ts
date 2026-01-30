@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 
-export const dynamic = 'force-dynamic'
+// Revalidate documents list every 60 seconds (removed force-dynamic to enable caching)
+export const revalidate = 60
 
 // GET /api/documents - List user's documents with pagination
 export async function GET(req: NextRequest) {

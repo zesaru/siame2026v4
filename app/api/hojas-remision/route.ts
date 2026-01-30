@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
 
+// Revalidate hojas de remision list every 60 seconds
+export const revalidate = 60
+
 // GET /api/hojas-remision - Listar hojas de remisión del usuario
 export async function GET(req: NextRequest) {
   try {
