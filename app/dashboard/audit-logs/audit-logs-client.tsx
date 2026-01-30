@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import type { DocumentType, AuditAction } from "@/lib/services/file-audit.service"
+import { logger } from "@/lib/logger"
 
 interface AuditLog {
   id: string
@@ -112,7 +113,7 @@ export default function AuditLogsClient() {
       setLogs(data.logs)
       setTotal(data.total)
     } catch (error) {
-      console.error("Error fetching audit logs:", error)
+      logger.error("Error fetching audit logs:", error)
     } finally {
       setLoading(false)
     }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { logger } from "@/lib/logger"
 
 interface KeyValuePair {
   key: string
@@ -25,50 +26,38 @@ function extractNumeroGuia(text: string): string {
   const cleanText = text.replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim()
 
   // Logging en cliente-side (solo en desarrollo)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 [GUIA EXTRACTION] Raw text:', text)
-    console.log('🔍 [GUIA EXTRACTION] Clean text:', cleanText)
-  }
+  logger.debug('🔍 [GUIA EXTRACTION] Raw text:', text)
+  logger.debug('🔍 [GUIA EXTRACTION] Clean text:', cleanText)
 
   // 1. Nº o N° seguido de número (1-2 dígitos)
   let match = cleanText.match(/N[º°]\s*(\d{1,2})/i)
   if (match) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ [GUIA EXTRACTION] Pattern 1 matched:', match[1])
-    }
+    logger.debug('✅ [GUIA EXTRACTION] Pattern 1 matched:', match[1])
     return match[1]
   }
 
   // 2. "GUÍA DE VALIJA DIPLOMÁTICA" seguido de Nº y número
   match = cleanText.match(/GUÍA\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d{1,2})/i)
   if (match) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ [GUIA EXTRACTION] Pattern 2 matched:', match[1])
-    }
+    logger.debug('✅ [GUIA EXTRACTION] Pattern 2 matched:', match[1])
     return match[1]
   }
 
   // 3. Cualquier número de 1-2 dígitos después de "GUÍA"
   match = cleanText.match(/GU[ÍÍ]A[^\d]*(\d{1,2})/i)
   if (match) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ [GUIA EXTRACTION] Pattern 3 matched:', match[1])
-    }
+    logger.debug('✅ [GUIA EXTRACTION] Pattern 3 matched:', match[1])
     return match[1]
   }
 
   // 4. Buscar cualquier número de 1-2 dígitos
   match = cleanText.match(/(\d{1,2})/)
   if (match) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ [GUIA EXTRACTION] Pattern 4 matched:', match[1])
-    }
+    logger.debug('✅ [GUIA EXTRACTION] Pattern 4 matched:', match[1])
     return match[1]
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('❌ [GUIA EXTRACTION] No pattern matched')
-  }
+  logger.debug('❌ [GUIA EXTRACTION] No pattern matched')
 
   return ""
 }
@@ -190,12 +179,10 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
   const pesoOficialValue = editedPairs.find(p => p.key.includes("Peso Oficial"))?.value || ""
 
   // Logging en desarrollo
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 [GUIA FORM] Campo DE encontrado:', deField ? `index=${deFieldIndex}, key="${deField.key}"` : 'NO ENCONTRADO')
-    console.log('🔍 [GUIA FORM] Valor del campo DE:', deField?.value)
-    console.log('🔍 [GUIA FORM] Nº de guía extraído:', extractNumeroGuia(deField?.value || ""))
-    console.log('🔍 [GUIA FORM] Nº de guía manual:', numeroGuiaManual)
-  }
+  logger.debug('🔍 [GUIA FORM] Campo DE encontrado:', deField ? `index=${deFieldIndex}, key="${deField.key}"` : 'NO ENCONTRADO')
+  logger.debug('🔍 [GUIA FORM] Valor del campo DE:', deField?.value)
+  logger.debug('🔍 [GUIA FORM] Nº de guía extraído:', extractNumeroGuia(deField?.value || ""))
+  logger.debug('🔍 [GUIA FORM] Nº de guía manual:', numeroGuiaManual)
 
   // Exponer el número de guía manual para que el componente padre pueda acceder
   useEffect(() => {

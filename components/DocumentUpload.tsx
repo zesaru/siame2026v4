@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { getSupportedFormats } from "@/lib/document-intelligence"
+import { logger } from "@/lib/logger"
 
 interface DocumentUploadProps {
   onAnalysisComplete: (result: any, file: File) => void
@@ -51,24 +52,24 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
         body: formData,
       })
 
-      console.log("Response status:", response.status)
-      console.log("Response ok:", response.ok)
+      logger.debug("Response status:", response.status)
+      logger.debug("Response ok:", response.ok)
 
       if (!response.ok) {
         const errorData = await response.json()
-        console.error("Error response:", errorData)
+        logger.error("Error response:", errorData)
         throw new Error(errorData.error || "Failed to analyze document")
       }
 
       const result = await response.json()
-      console.log("Analysis completed, result:", result)
-      console.log("Result has tables:", result.tables?.length)
-      console.log("Result has keyValuePairs:", result.keyValuePairs?.length)
+      logger.debug("Analysis completed, result:", result)
+      logger.debug("Result has tables:", result.tables?.length)
+      logger.debug("Result has keyValuePairs:", result.keyValuePairs?.length)
 
       // 🔍 MOSTRAR KEYS CAPTURADAS EN CONSOLA DEL NAVEGADOR
-      console.log("\n════════════════════════════════════════════════════════════════")
-      console.log("📋 JSON DE KEYS CAPTURADAS (GUÍA DE VALIJA) - CONSOLA NAVEGADOR:")
-      console.log("════════════════════════════════════════════════════════════════")
+      logger.debug("\n════════════════════════════════════════════════════════════════")
+      logger.debug("📋 JSON DE KEYS CAPTURADAS (GUÍA DE VALIJA) - CONSOLA NAVEGADOR:")
+      logger.debug("════════════════════════════════════════════════════════════════")
 
       if (result.keyValuePairs && result.keyValuePairs.length > 0) {
         const keysMap = result.keyValuePairs.reduce((acc: any, pair: any) => {
@@ -76,19 +77,19 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
           return acc
         }, {})
 
-        console.log(JSON.stringify(keysMap, null, 2))
+        logger.debug(JSON.stringify(keysMap, null, 2))
 
-        console.log("\n──────────────────────────────────────────────────────────────")
-        console.log("📝 LISTADO DE KEYS INDIVIDUALES:")
-        console.log("──────────────────────────────────────────────────────────────")
+        logger.debug("\n──────────────────────────────────────────────────────────────")
+        logger.debug("📝 LISTADO DE KEYS INDIVIDUALES:")
+        logger.debug("──────────────────────────────────────────────────────────────")
         result.keyValuePairs.forEach((pair: any, idx: number) => {
-          console.log(`  ${idx + 1}. "${pair.key}" = "${pair.value}"`)
+          logger.debug(`  ${idx + 1}. "${pair.key}" = "${pair.value}"`)
         })
       } else {
-        console.log("⚠️  No se detectaron pares clave-valor")
+        logger.debug("⚠️  No se detectaron pares clave-valor")
       }
 
-      console.log("\n════════════════════════════════════════════════════════════════\n")
+      logger.debug("\n════════════════════════════════════════════════════════════════\n")
 
       if (progressInterval) {
         clearInterval(progressInterval)

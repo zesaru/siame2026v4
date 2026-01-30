@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { logger } from "@/lib/logger"
 
 interface Document {
   id: string
@@ -59,7 +60,7 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
       setDocuments(data.documents)
       setTotalPages(data.pagination.totalPages)
     } catch (error) {
-      console.error("Error fetching documents:", error)
+      logger.error("Error fetching documents:", error)
     } finally {
       setLoading(false)
     }
@@ -79,7 +80,7 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
       // Refresh the list
       fetchDocuments()
     } catch (error) {
-      console.error("Error deleting document:", error)
+      logger.error("Error deleting document:", error)
       alert("Failed to delete document")
     } finally {
       setDeletingId(null)

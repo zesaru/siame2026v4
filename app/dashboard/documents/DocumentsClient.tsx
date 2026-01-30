@@ -5,6 +5,7 @@ import DocumentUpload from "@/components/DocumentUpload"
 import DocumentResults from "@/components/DocumentResults"
 import DocumentHistory from "@/components/DocumentHistory"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
+import { logger } from "@/lib/logger"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -24,7 +25,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
   const [showHistory, setShowHistory] = useState(false)
 
   const handleAnalysisComplete = (result: DocumentAnalysisResult, file: File) => {
-    console.log("handleAnalysisComplete called with:", result)
+    logger.debug("handleAnalysisComplete called with:", result)
     setAnalysisResult(result)
     setFileName(result.metadata.title || "Document")
     setDocumentId((result as any).documentId || "")
@@ -34,7 +35,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
     setFileUrl(url)
 
     setError("")
-    console.log("State updated - analysisResult set, fileName:", result.metadata.title)
+    logger.debug("State updated - analysisResult set, fileName:", result.metadata.title)
   }
 
   const handleError = (errorMessage: string) => {
@@ -78,7 +79,7 @@ export default function DocumentsClient({ session }: DocumentsClientProps) {
       setDocumentId(fullDocument.id)
       setShowHistory(false)
     } catch (error) {
-      console.error("Error loading document:", error)
+      logger.error("Error loading document:", error)
       setError("Error al cargar el documento. Por favor intenta nuevamente.")
       setIsModalOpen(true)
     }

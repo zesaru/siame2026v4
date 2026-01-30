@@ -25,6 +25,7 @@ import {
 import Icon from "@/components/ui/Icon"
 import { Package, Search, Filter, Download, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
+import { logger } from "@/lib/logger"
 
 interface GuiaValijaItem {
   id: string
@@ -120,7 +121,7 @@ export default function GuiaValijaItemsPage() {
       setPagination(data.pagination)
     } catch (error) {
       toast.error("Error al cargar items")
-      console.error(error)
+      logger.error(error)
     } finally {
       setLoading(false)
     }

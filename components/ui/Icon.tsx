@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger"
+
 interface IconProps {
   name: string
   className?: string
@@ -369,7 +371,7 @@ export default function Icon({ name, className = "", size = "md" }: IconProps) {
   const icon = icons[name]
 
   if (!icon) {
-    console.warn(`Icon "${name}" not found`)
+    logger.warn(`Icon "${name}" not found`)
     return null
   }
 

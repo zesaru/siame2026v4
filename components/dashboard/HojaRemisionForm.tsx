@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
+import { logger } from "@/lib/logger"
 
 interface HojaRemisionFormData {
   numero: number
@@ -123,13 +124,13 @@ export default function HojaRemisionForm({
 
       // Validar que la fecha sea válida
       if (isNaN(dateObj.getTime())) {
-        console.warn("Fecha inválida:", date)
+        logger.warn("Fecha inválida:", date)
         return ""
       }
 
       return dateObj.toISOString().split("T")[0]
     } catch (error) {
-      console.error("Error formateando fecha:", error)
+      logger.error("Error formateando fecha:", error)
       return ""
     }
   }

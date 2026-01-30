@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { SmartDocumentUpload } from "@/components/documents/SmartDocumentUpload"
+import { logger } from "@/lib/logger"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
@@ -13,7 +14,7 @@ export default function DemoAnalyzePage() {
 
   const handleUploadComplete = (result: any) => {
     setUploadResult(result)
-    console.log("Upload result:", result)
+    logger.debug("Upload result:", result)
   }
 
   const handleBack = () => {
@@ -81,7 +82,7 @@ export default function DemoAnalyzePage() {
       {/* Upload Component */}
       <SmartDocumentUpload
         onUploadComplete={handleUploadComplete}
-        onError={(error) => console.error("Upload error:", error)}
+        onError={(error) => logger.error("Upload error:", error)}
       />
 
       {/* Expected Results */}
