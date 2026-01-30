@@ -66,5 +66,15 @@ install-service.js
 # Deployment scripts (server only)
 deploy.ps1
 
+# AI/Code Assistant tools (local configurations)
+.agent/
+.agents/
+.claude/
+.codex/
+.cursor/
+.gemini/
+.playwright-mcp/
+
 # Temporary files
 nul
+temp_*.sql
