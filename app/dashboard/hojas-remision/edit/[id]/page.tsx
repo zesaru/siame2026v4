@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, ChevronDown, ChevronRight, FileText, X } from "lucide-react"
 import { toast } from "sonner"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
+import { ErrorState } from "@/components/ui/ErrorState"
 import HojaRemisionForm, {
   type HojaRemisionFormData,
 } from "@/components/dashboard/HojaRemisionForm"
@@ -280,32 +282,22 @@ export default function EditHojaRemisionPage() {
       </div>
 
       {/* Loading State */}
+      {uploadState === "error" && error && (
+        <ErrorState error={error} onRetry={handleRetry} />
+      )}
+
       {(uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving") && (
         <Card>
           <CardContent className="py-8">
-            <div className="flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-8 h-8 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-sm text-[var(--kt-text-muted)]">
-                  {uploadState === "uploading" && "Subiendo archivo..."}
-                  {uploadState === "analyzing" && "Analizando documento con Azure AI..."}
-                  {uploadState === "saving" && "Guardando en base de datos..."}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Error State */}
-      {uploadState === "error" && (
-        <Card>
-          <CardContent className="py-8">
-            <div className="text-center">
-              <div className="text-4xl mb-4">❌</div>
-              <p className="text-[var(--kt-danger)] font-medium mb-4">{error}</p>
-              <Button onClick={handleRetry} size="sm">Intentar de nuevo</Button>
-            </div>
+            <LoadingSpinner
+              message={
+                uploadState === "uploading"
+                  ? "Subiendo archivo..."
+                  : uploadState === "analyzing"
+                  ? "Analizando documento con Azure AI..."
+                  : "Guardando en base de datos..."
+              }
+            />
           </CardContent>
         </Card>
       )}
