@@ -67,11 +67,18 @@ export function extractNumeroGuia(text: string): string {
 export function parseFecha(fechaStr: string): Date | null {
   if (!fechaStr) return null
 
+  // Limpiar caracteres problemáticos que puede incluir Azure OCR
+  // Ejemplo: "19(/12/2025" -> "19/12/2025"
+  const cleanedFechaStr = fechaStr
+    .replace(/[()[\]{}]/g, '') // Eliminar paréntesis, corchetes, llaves
+    .replace(/\s+/g, '')        // Eliminar espacios extras
+    .trim()
+
   // Formato DD/MM/YYYY
-  const matchSlash = fechaStr.match(/(\d{2})\/(\d{2})\/(\d{4})/)
+  const matchSlash = cleanedFechaStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
   if (matchSlash) {
     const [, day, month, year] = matchSlash
-    return new Date(`${year}-${month}-${day}`)
+    return new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
   }
 
   // Formato "D de MMMM del YYYY" o "DD de MMMM del YYYY"

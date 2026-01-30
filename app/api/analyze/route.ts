@@ -84,20 +84,38 @@ export async function POST(req: NextRequest) {
 
       if (saveResult.success && saveResult.relativePath) {
         // Update document with file path and security metadata (hash, MIME type)
-        await prisma.document.update({
-          where: { id: document.id },
-          data: {
-            filePath: saveResult.relativePath,
-            fileHash: saveResult.fileHash,
-            fileMimeType: saveResult.fileMimeType
+        try {
+          await prisma.document.update({
+            where: { id: document.id },
+            data: {
+              filePath: saveResult.relativePath,
+              fileHash: saveResult.fileHash,
+              fileMimeType: saveResult.fileMimeType
+            }
+          })
+          logger.storage('FILE_SAVED', saveResult.relativePath)
+          if (saveResult.fileHash) {
+            logger.storage('FILE_HASH', `SHA-256: ${saveResult.fileHash.substring(0, 16)}...`)
           }
-        })
-        logger.storage('FILE_SAVED', saveResult.relativePath)
-        if (saveResult.fileHash) {
-          logger.storage('FILE_HASH', `SHA-256: ${saveResult.fileHash.substring(0, 16)}...`)
-        }
-        if (saveResult.fileMimeType) {
-          logger.storage('FILE_MIME', `Detected: ${saveResult.fileMimeType}`)
+          if (saveResult.fileMimeType) {
+            logger.storage('FILE_MIME', `Detected: ${saveResult.fileMimeType}`)
+          }
+        } catch (updateError: any) {
+          // Handle unique constraint on fileHash - file can exist but document record is new
+          if (updateError.code === 'P2002' && updateError.meta?.target?.includes('fileHash')) {
+            logger.warn('File hash already exists in database, updating with filePath only')
+            await prisma.document.update({
+              where: { id: document.id },
+              data: {
+                filePath: saveResult.relativePath,
+                fileMimeType: saveResult.fileMimeType
+                // Skip fileHash to avoid unique constraint
+              }
+            })
+            logger.storage('FILE_SAVED', `${saveResult.relativePath} (duplicate hash)`)
+          } else {
+            throw updateError // Re-throw if it's not a unique constraint error
+          }
         }
       } else {
         logger.warn(`File storage failed: ${saveResult.error}`)
