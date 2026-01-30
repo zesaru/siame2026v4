@@ -60,12 +60,6 @@ export async function POST(req: NextRequest) {
         entities: azureResult.entities || null,
         metadata: azureResult.metadata || null,
         processingStatus: "completed",
-        // Guardar también el análisis de tipo de documento
-        analysisData: {
-          documentTypeAnalysis,
-          azureAnalysis: azureResult,
-          processedAt: new Date().toISOString()
-        }
       },
     })
 
@@ -87,9 +81,7 @@ export async function POST(req: NextRequest) {
             destinoCiudad: '',
             remitenteNombre: '',
             destinatarioNombre: '',
-            observaciones: `Detectado automáticamente: ${idioma}, ${direccion}`,
-            analysisSource: 'ai_detection',
-            documentId: document.id
+            observaciones: `Detectado automáticamente: ${idioma}, ${direccion}`
           }
         })
         break
@@ -127,8 +119,7 @@ export async function POST(req: NextRequest) {
               asunto: extractedData.asunto,
               entidadEmisora: extractedData.entidadEmisora,
               detectedAt: new Date().toISOString()
-            },
-            analysisSource: 'ai_detection'
+            }
           }
         })
         break

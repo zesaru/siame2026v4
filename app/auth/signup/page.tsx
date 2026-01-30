@@ -168,7 +168,7 @@ export default function SignUp() {
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-sm text-center text-[var(--kt-text-muted)]">
               ¿Ya tienes una cuenta?{" "}
-              <Link href="/auth/signin" className="font-medium text-[var(--kt-primary)] hover:underline">
+              <Link href="/auth/signin" prefetch={true} className="font-medium text-[var(--kt-primary)] hover:underline">
                 Inicia sesión aquí
               </Link>
             </div>
