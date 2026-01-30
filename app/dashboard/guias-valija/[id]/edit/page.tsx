@@ -1,8 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, lazy, Suspense } from "react"
 import { useRouter, useParams } from "next/navigation"
-import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -12,6 +11,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { toast } from "sonner"
+
+// Lazy load heavy component (668 lines)
+const GuiaValijaEditableForm = lazy(() => import("@/components/dashboard/GuiaValijaEditableForm"))
 
 interface GuiaValijaDetails {
   id: string
@@ -156,11 +158,17 @@ export default function EditGuiaValijaPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
-      <GuiaValijaEditableForm
-        guia={guia}
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-      />
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-64 text-[var(--kt-text-muted)]">
+          Cargando formulario de edición...
+        </div>
+      }>
+        <GuiaValijaEditableForm
+          guia={guia}
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+        />
+      </Suspense>
     </div>
   )
 }

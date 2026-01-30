@@ -28,7 +28,6 @@ import {
 import { Input } from "@/components/ui/input"
 import Icon from "@/components/ui/Icon"
 import GuiaValijaForm from "@/components/dashboard/GuiaValijaForm"
-import GuiaValijaEditableForm from "@/components/dashboard/GuiaValijaEditableForm"
 import { TableSkeleton, StatCardsSkeleton } from "@/components/dashboard/SkeletonLoaders"
 import {
   Breadcrumb,

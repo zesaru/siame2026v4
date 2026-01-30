@@ -1,18 +1,20 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, lazy, Suspense } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Upload, ChevronDown, ChevronRight, FileText, X } from "lucide-react"
 import { toast } from "sonner"
-import PDFViewer from "@/components/dashboard/PDFViewer"
 import HojaRemisionForm, {
   type HojaRemisionFormData,
 } from "@/components/dashboard/HojaRemisionForm"
-import { HojaRemisionConfirmacion } from "@/components/dashboard/HojaRemisionConfirmacion"
 import { createHojaRemision } from "@/app/dashboard/hojas-remision/actions"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
+
+// Lazy load heavy components
+const PDFViewer = lazy(() => import("@/components/dashboard/PDFViewer"))
+const HojaRemisionConfirmacion = lazy(() => import("@/components/dashboard/HojaRemisionConfirmacion"))
 
 type UploadState = "idle" | "uploading" | "analyzing" | "ready" | "saving" | "error"
 type WizardStep = "form" | "confirmation" | "edit"
@@ -281,7 +283,9 @@ export default function NewHojaRemisionPage() {
                 {showPDF && (
                   <CardContent className="border-t border-[var(--kt-gray-200)]">
                     <div className="h-[500px]">
-                      <PDFViewer file={file} />
+                      <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
+                        <PDFViewer file={file} />
+                      </Suspense>
                     </div>
                   </CardContent>
                 )}
@@ -392,17 +396,19 @@ export default function NewHojaRemisionPage() {
 
       {/* PASO 2: Confirmación de datos extraídos */}
       {wizardStep === "confirmation" && extractedData && file && (
-        <HojaRemisionConfirmacion
-          extractedData={extractedData}
-          azureResult={azureResult}
-          fileName={file.name}
-          fileSize={file.size}
-          file={file}
-          onConfirm={handleConfirmData}
-          onReject={handleRejectData}
-          onRetry={handleRetryUpload}
-          onDataChanged={handleDataChanged}
-        />
+        <Suspense fallback={<Card><CardContent className="py-8 text-center">Cargando confirmación...</CardContent></Card>}>
+          <HojaRemisionConfirmacion
+            extractedData={extractedData}
+            azureResult={azureResult}
+            fileName={file.name}
+            fileSize={file.size}
+            file={file}
+            onConfirm={handleConfirmData}
+            onReject={handleRejectData}
+            onRetry={handleRetryUpload}
+            onDataChanged={handleDataChanged}
+          />
+        </Suspense>
       )}
 
       {/* PASO 3: Edición final con datos extraídos confirmados */}
@@ -435,7 +441,9 @@ export default function NewHojaRemisionPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="h-[500px]">
-                  <PDFViewer file={file} />
+                  <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
+                    <PDFViewer file={file} />
+                  </Suspense>
                 </div>
               </CardContent>
             </Card>
