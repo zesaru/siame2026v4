@@ -40,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body cz-shortcut-listen="true">
+      <body>
         <Providers>
           {children}
           <ToasterProvider />

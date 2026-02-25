@@ -10,10 +10,9 @@ export default async function DocumentsPage() {
     redirect("/auth/signin")
   }
 
-  // Pass session to client component (already authenticated)
   return (
     <div className="min-h-screen bg-gray-50">
-      <DocumentsClient session={session} />
+      <DocumentsClient />
     </div>
   )
 }

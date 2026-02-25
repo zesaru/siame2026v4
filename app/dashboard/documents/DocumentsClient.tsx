@@ -7,15 +7,11 @@ import DocumentHistory from "@/components/DocumentHistory"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { logger } from "@/lib/logger"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Icon from "@/components/ui/Icon"
 
-interface DocumentsClientProps {
-  session: any
-}
-
-export default function DocumentsClient({ session }: DocumentsClientProps) {
+export default function DocumentsClient() {
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null)
   const [fileName, setFileName] = useState<string>("")
   const [fileUrl, setFileUrl] = useState<string>("")
