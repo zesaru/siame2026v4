@@ -1,6 +1,14 @@
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
+import { GetGuiaValijaByIdForUserUseCase } from "@/modules/guias-valija/application/queries"
+import {
+  DeleteGuiaValijaByIdForUserUseCase,
+  UpdateGuiaValijaByIdForUserUseCase,
+} from "@/modules/guias-valija/application/use-cases"
+import { toGuiaValijaDetailDto } from "@/modules/guias-valija/application/mappers"
+import { parseUpdateGuiaValijaCommand } from "@/modules/guias-valija/application/validation"
+import { PrismaGuiaValijaRepository } from "@/modules/guias-valija/infrastructure"
 
 // GET - Obtener una guía por ID
 export async function GET(
@@ -15,25 +23,22 @@ export async function GET(
 
   try {
     const { id } = await params
+    const repository = new PrismaGuiaValijaRepository(prisma)
+    const useCase = new GetGuiaValijaByIdForUserUseCase(repository)
+    const result = await useCase.execute({ id, userId: session.user.id })
 
-    const guia = await prisma.guiaValija.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-      include: {
-        items: {
-          orderBy: { numeroItem: "asc" },
-        },
-        precintos: true,
-      },
-    })
+    if (!result.ok) {
+      console.error("Error fetching guia:", result.error)
+      return NextResponse.json({ error: "Error fetching guia" }, { status: 500 })
+    }
+
+    const guia = result.value
 
     if (!guia) {
       return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
     }
 
-    return NextResponse.json(guia)
+    return NextResponse.json(toGuiaValijaDetailDto(guia))
   } catch (error) {
     console.error("Error fetching guia:", error)
     return NextResponse.json({ error: "Error fetching guia" }, { status: 500 })
@@ -54,89 +59,37 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await req.json()
+    const parsedBody = parseUpdateGuiaValijaCommand(body)
 
-    // Verificar que la guía pertenezca al usuario
-    const existing = await prisma.guiaValija.findFirst({
-      where: { id, userId: session.user.id },
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: "Datos inválidos para actualizar guía", details: parsedBody.error.details },
+        { status: 400 },
+      )
+    }
+
+    const repository = new PrismaGuiaValijaRepository(prisma)
+    const useCase = new UpdateGuiaValijaByIdForUserUseCase(repository)
+    const result = await useCase.execute({
+      id,
+      userId: session.user.id,
+      data: parsedBody.value,
     })
 
-    if (!existing) {
+    if (!result.ok) {
+      console.error("Error updating guia:", result.error)
+      return NextResponse.json({ error: "Error updating guia" }, { status: 500 })
+    }
+
+    if (result.value.status === "not_found") {
       return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
     }
 
-    // Si cambia el número de guía, verificar que no exista
-    if (body.numeroGuia && body.numeroGuia !== existing.numeroGuia) {
-      const duplicate = await prisma.guiaValija.findUnique({
-        where: { numeroGuia: body.numeroGuia },
-      })
-      if (duplicate) {
-        return NextResponse.json({ error: "El número de guía ya existe" }, { status: 400 })
-      }
+    if (result.value.status === "duplicate_numero_guia") {
+      return NextResponse.json({ error: "El número de guía ya existe" }, { status: 400 })
     }
 
-    // Actualizar los datos principales de la guía
-    await prisma.guiaValija.update({
-      where: { id },
-      data: {
-        numeroGuia: body.numeroGuia,
-        tipoValija: body.tipoValija,
-        fechaEmision: body.fechaEmision ? new Date(body.fechaEmision) : undefined,
-        fechaEnvio: body.fechaEnvio ? new Date(body.fechaEnvio) : undefined,
-        fechaRecibo: body.fechaRecibo ? new Date(body.fechaRecibo) : undefined,
-        origenCiudad: body.origenCiudad,
-        destinoCiudad: body.destinoCiudad,
-        origenPais: body.origenPais,
-        destinoPais: body.destinoPais,
-        remitenteNombre: body.remitenteNombre,
-        remitenteCargo: body.remitenteCargo,
-        remitenteEmail: body.remitenteEmail,
-        destinatarioNombre: body.destinatarioNombre,
-        destinatarioCargo: body.destinatarioCargo,
-        destinatarioEmail: body.destinatarioEmail,
-        pesoValija: body.pesoValija ? parseFloat(body.pesoValija) : undefined,
-        pesoOficial: body.pesoOficial ? parseFloat(body.pesoOficial) : undefined,
-        numeroPaquetes: body.numeroPaquetes ? parseInt(body.numeroPaquetes) : undefined,
-        descripcionContenido: body.descripcionContenido,
-        observaciones: body.observaciones,
-        preparadoPor: body.preparadoPor,
-        revisadoPor: body.revisadoPor,
-        firmaReceptor: body.firmaReceptor,
-        estado: body.estado,
-      },
-    })
-
-    // Eliminar items existentes
-    await prisma.guiaValijaItem.deleteMany({
-      where: { guiaValijaId: id },
-    })
-
-    // Agregar nuevos items si existen
-    if (body.items && Array.isArray(body.items) && body.items.length > 0) {
-      await prisma.guiaValijaItem.createMany({
-        data: body.items.map((item: any) => ({
-          guiaValijaId: id,
-          numeroItem: item.numeroItem || 0,
-          destinatario: item.destinatario || '',
-          contenido: item.contenido || '',
-          remitente: item.remitente || null,
-          cantidad: item.cantidad || null,
-          peso: item.peso || null,
-        })),
-      })
-    }
-
-    // Obtener la guía actualizada con items
-    const guiaActualizada = await prisma.guiaValija.findUnique({
-      where: { id },
-      include: {
-        items: {
-          orderBy: { numeroItem: "asc" },
-        },
-        precintos: true,
-      },
-    })
-
-    return NextResponse.json(guiaActualizada)
+    return NextResponse.json(toGuiaValijaDetailDto(result.value.guia))
   } catch (error) {
     console.error("Error updating guia:", error)
     return NextResponse.json({ error: "Error updating guia" }, { status: 500 })
@@ -156,19 +109,18 @@ export async function DELETE(
 
   try {
     const { id } = await params
+    const repository = new PrismaGuiaValijaRepository(prisma)
+    const useCase = new DeleteGuiaValijaByIdForUserUseCase(repository)
+    const result = await useCase.execute({ id, userId: session.user.id })
 
-    // Verificar que la guía pertenezca al usuario
-    const existing = await prisma.guiaValija.findFirst({
-      where: { id, userId: session.user.id },
-    })
-
-    if (!existing) {
-      return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
+    if (!result.ok) {
+      console.error("Error deleting guia:", result.error)
+      return NextResponse.json({ error: "Error deleting guia" }, { status: 500 })
     }
 
-    await prisma.guiaValija.delete({
-      where: { id },
-    })
+    if (!result.value.deleted) {
+      return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

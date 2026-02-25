@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
-import * as userService from "@/lib/services/user.service"
-import { changePasswordSchema } from "@/lib/schemas/user"
+import { prisma } from "@/lib/db"
+import { ChangePasswordUseCase } from "@/modules/usuarios/application/use-cases"
+import { parseChangePasswordCommand } from "@/modules/usuarios/application/validation"
+import { PrismaUserRepository } from "@/modules/usuarios/infrastructure"
 
 // POST mutations don't need force-dynamic (never cached anyway)
 
@@ -21,34 +23,39 @@ export async function POST(req: NextRequest) {
 
     // Parse and validate request body
     const body = await req.json()
-    const validatedData = changePasswordSchema.parse(body)
+    const parsedBody = parseChangePasswordCommand(body)
 
-    // Change password
-    await userService.changePassword(
-      session.user.id,
-      validatedData.currentPassword,
-      validatedData.newPassword
-    )
+    if (!parsedBody.ok) {
+      return NextResponse.json(
+        { error: "Validation error", details: parsedBody.error.details },
+        { status: 400 }
+      )
+    }
+
+    const repository = new PrismaUserRepository(prisma)
+    const useCase = new ChangePasswordUseCase(repository)
+    const result = await useCase.execute(session.user.id, parsedBody.value)
+
+    if (!result.ok) {
+      console.error("Error changing password:", result.error)
+      return NextResponse.json(
+        { error: "Error changing password" },
+        { status: 500 }
+      )
+    }
+
+    if (result.value.status === "invalid_current_password") {
+      return NextResponse.json(
+        { error: "Current password is incorrect" },
+        { status: 400 }
+      )
+    }
 
     return NextResponse.json(
       { message: "Password changed successfully" },
       { status: 200 }
     )
   } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Validation error", details: error.errors },
-        { status: 400 }
-      )
-    }
-
-    if (error.message === "Current password is incorrect") {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
-    }
-
     console.error("Error changing password:", error)
     return NextResponse.json(
       { error: "Error changing password" },

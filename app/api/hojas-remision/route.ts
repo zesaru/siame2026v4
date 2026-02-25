@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
+import { ListHojasRemisionUseCase } from "@/modules/hojas-remision/application/queries"
+import { CreateHojaRemisionUseCase } from "@/modules/hojas-remision/application/use-cases"
+import { toHojasRemisionListResponseDto, toHojaRemisionDto } from "@/modules/hojas-remision/application/mappers"
+import {
+  parseCreateHojaRemisionCommand,
+  parseHojasRemisionListQuery,
+} from "@/modules/hojas-remision/application/validation"
+import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
 
 // Revalidate hojas de remision list every 60 seconds
 export const revalidate = 60
@@ -16,52 +24,38 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const page = parseInt(searchParams.get("page") || "1")
-    const limit = parseInt(searchParams.get("limit") || "10")
-    const search = searchParams.get("search") || ""
-    const estado = searchParams.get("estado") || ""
-
-    const skip = (page - 1) * limit
-
-    // Build where clause
-    const where: any = {
-      userId: session.user.id,
-    }
-
-    if (search) {
-      where.OR = [
-        { numeroCompleto: { contains: search, mode: "insensitive" } },
-        { para: { contains: search, mode: "insensitive" } },
-        { remitente: { contains: search, mode: "insensitive" } },
-        { destino: { contains: search, mode: "insensitive" } },
-        { asunto: { contains: search, mode: "insensitive" } },
-      ]
-    }
-
-    if (estado) {
-      where.estado = estado
-    }
-
-    // Get total count
-    const total = await prisma.hojaRemision.count({ where })
-
-    // Get hojas de remision (sin items)
-    const hojas = await prisma.hojaRemision.findMany({
-      where,
-      skip,
-      take: limit,
-      orderBy: { createdAt: "desc" },
+    const parsedQuery = parseHojasRemisionListQuery({
+      page: searchParams.get("page") || "1",
+      limit: searchParams.get("limit") || "10",
+      search: searchParams.get("search") || "",
+      estado: searchParams.get("estado") || "",
     })
 
-    return NextResponse.json({
-      hojas,
-      pagination: {
+    if (!parsedQuery.ok) {
+      return NextResponse.json({ error: "Invalid query parameters" }, { status: 400 })
+    }
+
+    const { page, limit, search, estado } = parsedQuery.value
+    const repository = new PrismaHojaRemisionRepository(prisma)
+    const useCase = new ListHojasRemisionUseCase(repository)
+    const result = await useCase.execute({ userId: session.user.id, page, limit, search, estado })
+
+    if (!result.ok) {
+      console.error("Error fetching hojas de remision:", result.error)
+      return NextResponse.json(
+        { error: "Failed to fetch hojas de remision" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      toHojasRemisionListResponseDto({
+        hojas: result.value.hojas,
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    })
+        total: result.value.total,
+      })
+    )
   } catch (error) {
     console.error("Error fetching hojas de remision:", error)
     return NextResponse.json(
@@ -81,56 +75,38 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
+    const parsedBody = parseCreateHojaRemisionCommand(body)
 
-    // Validate required fields
-    if (!body.numeroCompleto) {
+    if (!parsedBody.ok) {
       return NextResponse.json(
-        { error: "numeroCompleto is required" },
+        { error: parsedBody.error.message },
         { status: 400 }
       )
     }
 
-    if (!body.siglaUnidad || body.siglaUnidad.length > 10) {
-      return NextResponse.json(
-        { error: "siglaUnidad is required (max 10 chars)" },
-        { status: 400 }
-      )
-    }
-
-    if (!body.para || !body.remitente) {
-      return NextResponse.json(
-        { error: "para and remitente are required" },
-        { status: 400 }
-      )
-    }
-
-    if (!body.documento || !body.asunto || !body.destino) {
-      return NextResponse.json(
-        { error: "documento, asunto, and destino are required" },
-        { status: 400 }
-      )
-    }
-
-    // Create hoja de remision (sin items)
-    const hoja = await prisma.hojaRemision.create({
-      data: {
-        userId: session.user.id,
-        numero: body.numero || 0,
-        numeroCompleto: body.numeroCompleto,
-        siglaUnidad: body.siglaUnidad,
-        fecha: body.fecha ? new Date(body.fecha) : new Date(),
-        para: body.para,
-        remitente: body.remitente,
-        referencia: body.referencia,
-        documento: body.documento,
-        asunto: body.asunto,
-        destino: body.destino,
-        peso: body.peso,
-        estado: body.estado || "borrador",
-      },
+    const repository = new PrismaHojaRemisionRepository(prisma)
+    const useCase = new CreateHojaRemisionUseCase(repository)
+    const result = await useCase.execute({
+      userId: session.user.id,
+      ...parsedBody.value,
     })
 
-    return NextResponse.json(hoja, { status: 201 })
+    if (!result.ok) {
+      console.error("Error creating hoja de remision:", result.error)
+      return NextResponse.json(
+        { error: "Failed to create hoja de remision" },
+        { status: 500 }
+      )
+    }
+
+    if (result.value.status === "duplicate_numero_completo") {
+      return NextResponse.json(
+        { error: "Ya existe una hoja de remisión con ese número completo" },
+        { status: 409 }
+      )
+    }
+
+    return NextResponse.json(toHojaRemisionDto(result.value.hoja), { status: 201 })
   } catch (error: any) {
     console.error("Error creating hoja de remision:", error)
 

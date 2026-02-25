@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
+import { GetDocumentByIdForUserUseCase } from "@/modules/documentos/application/queries"
+import {
+  DeleteDocumentByIdForUserUseCase,
+  UpdateDocumentKeyValuePairsByIdForUserUseCase,
+} from "@/modules/documentos/application/use-cases"
+import { toDocumentDetailDto } from "@/modules/documentos/application/mappers"
+import { parseUpdateDocumentKeyValuePairs } from "@/modules/documentos/application/validation"
+import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
 
 export const revalidate = 60
 
@@ -22,13 +30,19 @@ export async function GET(
     const { id } = await params
     const ipAddress = extractIpAddress(req)
     const userAgent = extractUserAgent(req)
+    const repository = new PrismaDocumentRepository(prisma)
+    const useCase = new GetDocumentByIdForUserUseCase(repository)
+    const result = await useCase.execute(id, session.user.id)
 
-    const document = await prisma.document.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    })
+    if (!result.ok) {
+      console.error("Error fetching document:", result.error)
+      return NextResponse.json(
+        { error: "Failed to fetch document" },
+        { status: 500 }
+      )
+    }
+
+    const document = result.value
 
     if (!document) {
       return NextResponse.json(
@@ -47,7 +61,7 @@ export async function GET(
       userAgent
     }).catch(err => console.error('[Audit] Failed to log view:', err))
 
-    return NextResponse.json(document)
+    return NextResponse.json(toDocumentDetailDto(document))
   } catch (error) {
     console.error("Error fetching document:", error)
     return NextResponse.json(
@@ -72,26 +86,24 @@ export async function DELETE(
 
   try {
     const { id } = await params
+    const repository = new PrismaDocumentRepository(prisma)
+    const useCase = new DeleteDocumentByIdForUserUseCase(repository)
+    const result = await useCase.execute(id, session.user.id)
 
-    // Verify user owns the document
-    const document = await prisma.document.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    })
+    if (!result.ok) {
+      console.error("Error deleting document:", result.error)
+      return NextResponse.json(
+        { error: "Failed to delete document" },
+        { status: 500 }
+      )
+    }
 
-    if (!document) {
+    if (result.value.status === "not_found") {
       return NextResponse.json(
         { error: "Document not found" },
         { status: 404 }
       )
     }
-
-    // Delete the document
-    await prisma.document.delete({
-      where: { id },
-    })
 
     console.log(`Document deleted: ${id}`)
 
@@ -121,44 +133,35 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await req.json()
-    const { keyValuePairs } = body
+    const parsedBody = parseUpdateDocumentKeyValuePairs(body)
 
-    // Validate input
-    if (!Array.isArray(keyValuePairs)) {
+    if (!parsedBody.ok) {
       return NextResponse.json(
         { error: "keyValuePairs must be an array" },
         { status: 400 }
       )
     }
+    const repository = new PrismaDocumentRepository(prisma)
+    const useCase = new UpdateDocumentKeyValuePairsByIdForUserUseCase(repository)
+    const result = await useCase.execute(id, session.user.id, parsedBody.value.keyValuePairs)
 
-    // Verify ownership
-    const document = await prisma.document.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    })
+    if (!result.ok) {
+      console.error("Error updating document:", result.error)
+      return NextResponse.json(
+        { error: "Failed to update document" },
+        { status: 500 }
+      )
+    }
 
-    if (!document) {
+    if (result.value.status === "not_found") {
       return NextResponse.json(
         { error: "Document not found" },
         { status: 404 }
       )
     }
+    console.log(`Document ${id} updated with ${parsedBody.value.keyValuePairs.length} key-value pairs`)
 
-    // Update document
-    const updated = await prisma.document.update({
-      where: { id },
-      data: {
-        keyValuePairs,
-        keyValueCount: keyValuePairs.length,
-        updatedAt: new Date(),
-      },
-    })
-
-    console.log(`Document ${id} updated with ${keyValuePairs.length} key-value pairs`)
-
-    return NextResponse.json(updated)
+    return NextResponse.json(toDocumentDetailDto(result.value.document))
   } catch (error) {
     console.error("Error updating document:", error)
     return NextResponse.json(

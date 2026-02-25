@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
-import { documentQuerySchema } from "@/lib/schemas/document"
-import { ZodError } from "zod"
 import { logger } from "@/lib/logger"
+import { ListDocumentsUseCase } from "@/modules/documentos/application/queries"
+import { toDocumentsListResponseDto } from "@/modules/documentos/application/mappers"
+import { parseDocumentQueryParams } from "@/modules/documentos/application/validation"
+import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
 
 // Revalidate documents list every 60 seconds (removed force-dynamic to enable caching)
 export const revalidate = 60
@@ -21,76 +23,56 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
 
-    // Validate query params with Zod schema
-    const queryParams = documentQuerySchema.parse({
+    const parsedQuery = parseDocumentQueryParams({
       page: searchParams.get("page"),
       limit: searchParams.get("limit"),
       search: searchParams.get("search")
     })
 
-    const { page, limit, search } = queryParams
+    if (!parsedQuery.ok) {
+      const details = Array.isArray(parsedQuery.error.details)
+        ? parsedQuery.error.details.map((issue: any) => ({
+            path: Array.isArray(issue.path) ? issue.path.join(".") : "",
+            message: issue.message,
+          }))
+        : parsedQuery.error.details
 
-    const skip = (page - 1) * limit
-
-    // Build where clause for search
-    const where: any = { userId: session.user.id }
-    if (search) {
-      where.OR = [
-        { fileName: { contains: search, mode: "insensitive" } },
-        { contentText: { contains: search, mode: "insensitive" } },
-      ]
-    }
-
-    // Get documents and total count in parallel
-    const [documents, total] = await Promise.all([
-      prisma.document.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          fileName: true,
-          fileSize: true,
-          fileType: true,
-          fileExtension: true,
-          pageCount: true,
-          language: true,
-          tableCount: true,
-          keyValueCount: true,
-          entityCount: true,
-          processingStatus: true,
-          createdAt: true,
-          analyzedAt: true,
-        },
-      }),
-      prisma.document.count({ where }),
-    ])
-
-    return NextResponse.json({
-      documents,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    })
-  } catch (error) {
-    // Handle Zod validation errors
-    if (error instanceof ZodError) {
       return NextResponse.json(
         {
           error: "Invalid query parameters",
-          details: error.issues.map((issue) => ({
-            path: issue.path.join('.'),
-            message: issue.message
-          }))
+          details,
         },
         { status: 400 }
       )
     }
 
+    const { page, limit, search } = parsedQuery.value
+    const repository = new PrismaDocumentRepository(prisma)
+    const useCase = new ListDocumentsUseCase(repository)
+    const result = await useCase.execute({
+      userId: session.user.id,
+      page,
+      limit,
+      search,
+    })
+
+    if (!result.ok) {
+      logger.error("Error fetching documents:", result.error)
+      return NextResponse.json(
+        { error: "Failed to fetch documents" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      toDocumentsListResponseDto({
+        documents: result.value.documents,
+        page,
+        limit,
+        total: result.value.total,
+      })
+    )
+  } catch (error) {
     logger.error("Error fetching documents:", error)
     return NextResponse.json(
       { error: "Failed to fetch documents" },

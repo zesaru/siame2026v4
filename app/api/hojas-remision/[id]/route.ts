@@ -3,6 +3,14 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
+import { GetHojaRemisionByIdForUserUseCase } from "@/modules/hojas-remision/application/queries"
+import {
+  DeleteHojaRemisionUseCase,
+  UpdateHojaRemisionUseCase,
+} from "@/modules/hojas-remision/application/use-cases"
+import { toHojaRemisionDto } from "@/modules/hojas-remision/application/mappers"
+import { parseUpdateHojaRemisionCommand } from "@/modules/hojas-remision/application/validation"
+import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
 
 // GET /api/hojas-remision/[id] - Obtener hoja de remisión específica
 export async function GET(
@@ -20,12 +28,19 @@ export async function GET(
     const ipAddress = extractIpAddress(req)
     const userAgent = extractUserAgent(req)
 
-    const hoja = await prisma.hojaRemision.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    })
+    const repository = new PrismaHojaRemisionRepository(prisma)
+    const useCase = new GetHojaRemisionByIdForUserUseCase(repository)
+    const result = await useCase.execute(id, session.user.id)
+
+    if (!result.ok) {
+      console.error("Error fetching hoja de remision:", result.error)
+      return NextResponse.json(
+        { error: "Failed to fetch hoja de remision" },
+        { status: 500 }
+      )
+    }
+
+    const hoja = result.value
 
     if (!hoja) {
       return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
@@ -41,7 +56,7 @@ export async function GET(
       userAgent
     }).catch(err => console.error('[Audit] Failed to log view:', err))
 
-    return NextResponse.json(hoja)
+    return NextResponse.json(toHojaRemisionDto(hoja))
   } catch (error) {
     console.error("Error fetching hoja de remision:", error)
     return NextResponse.json(
@@ -65,39 +80,39 @@ export async function PUT(
     }
 
     const body = await req.json()
+    const parsedBody = parseUpdateHojaRemisionCommand(body)
+    if (!parsedBody.ok) {
+      return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
+    }
 
-    // Verify ownership
-    const existing = await prisma.hojaRemision.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
+    const repository = new PrismaHojaRemisionRepository(prisma)
+    const useCase = new UpdateHojaRemisionUseCase(repository)
+    const result = await useCase.execute({
+      id,
+      userId: session.user.id,
+      ...parsedBody.value,
     })
 
-    if (!existing) {
+    if (!result.ok) {
+      console.error("Error updating hoja de remision:", result.error)
+      return NextResponse.json(
+        { error: "Failed to update hoja de remision" },
+        { status: 500 }
+      )
+    }
+
+    if (result.value.status === "not_found") {
       return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
     }
 
-    // Update hoja de remision (sin items)
-    const hoja = await prisma.hojaRemision.update({
-      where: { id },
-      data: {
-        ...(body.numero !== undefined && { numero: body.numero }),
-        ...(body.numeroCompleto && { numeroCompleto: body.numeroCompleto }),
-        ...(body.siglaUnidad && { siglaUnidad: body.siglaUnidad }),
-        ...(body.fecha && { fecha: new Date(body.fecha) }),
-        ...(body.para !== undefined && { para: body.para }),
-        ...(body.remitente !== undefined && { remitente: body.remitente }),
-        ...(body.referencia !== undefined && { referencia: body.referencia }),
-        ...(body.documento !== undefined && { documento: body.documento }),
-        ...(body.asunto !== undefined && { asunto: body.asunto }),
-        ...(body.destino !== undefined && { destino: body.destino }),
-        ...(body.peso !== undefined && { peso: body.peso }),
-        ...(body.estado && { estado: body.estado }),
-      },
-    })
+    if (result.value.status === "duplicate_numero_completo") {
+      return NextResponse.json(
+        { error: "Ya existe una hoja de remisión con ese número completo" },
+        { status: 409 }
+      )
+    }
 
-    return NextResponse.json(hoja)
+    return NextResponse.json(toHojaRemisionDto(result.value.hoja))
   } catch (error: any) {
     console.error("Error updating hoja de remision:", error)
 
@@ -129,28 +144,21 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Verify ownership
-    const existing = await prisma.hojaRemision.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
-    })
+    const repository = new PrismaHojaRemisionRepository(prisma)
+    const useCase = new DeleteHojaRemisionUseCase(repository)
+    const result = await useCase.execute(id, session.user.id)
 
-    if (!existing) {
-      return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
+    if (!result.ok) {
+      console.error("Error deleting hoja de remision:", result.error)
+      return NextResponse.json(
+        { error: "Failed to delete hoja de remision" },
+        { status: 500 }
+      )
     }
 
-    // Eliminar referencias en GuiaValijaItem
-    await prisma.guiaValijaItem.updateMany({
-      where: { hojaRemisionId: id },
-      data: { hojaRemisionId: null },
-    })
-
-    // Eliminar la hoja de remisión
-    await prisma.hojaRemision.delete({
-      where: { id },
-    })
+    if (result.value.status === "not_found") {
+      return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

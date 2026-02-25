@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { analyzeDocument } from "@/lib/document-intelligence"
-import { parseHojaRemisionFromAzure } from "@/lib/hojas-remision-parser"
 import { auth } from "@/lib/auth-v4"
+import { AnalyzeHojaRemisionFileUseCase } from "@/modules/hojas-remision/application/use-cases"
+import { AzureHojaRemisionAnalysisAdapter } from "@/modules/hojas-remision/infrastructure"
 
 // POST mutations don't need force-dynamic (never cached anyway)
 
@@ -19,28 +19,30 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get("file") as File
 
-    if (!file) {
+    const useCase = new AnalyzeHojaRemisionFileUseCase(new AzureHojaRemisionAnalysisAdapter())
+    const result = await useCase.execute(file)
+
+    if (!result.ok) {
+      if (result.error.code === "HOJA_REMISION_ANALYZE_FILE_REQUIRED") {
+        return NextResponse.json(
+          { error: "No file provided" },
+          { status: 400 }
+        )
+      }
+
+      console.error("❌ Hoja de Remisión analysis error:", result.error.details ?? result.error)
       return NextResponse.json(
-        { error: "No file provided" },
-        { status: 400 }
+        {
+          error: "Failed to analyze Hoja de Remisión"
+        },
+        { status: 500 }
       )
     }
 
     console.log(`\n📄 Analyzing Hoja de Remisión: ${file.name}`)
-
-    // 1. Analizar documento con Azure AI
-    const azureResult = await analyzeDocument(file)
-
-    // 2. Parsear datos específicos de Hoja de Remisión
-    const extractedData = await parseHojaRemisionFromAzure(azureResult)
-
     console.log(`✅ Hoja de Remisión analysis completed\n`)
 
-    return NextResponse.json({
-      success: true,
-      azureResult,
-      extractedData,
-    })
+    return NextResponse.json(result.value)
   } catch (error) {
     console.error("❌ Hoja de Remisión analysis error:", error)
     return NextResponse.json(
