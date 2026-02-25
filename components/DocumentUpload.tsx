@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { getSupportedFormats, type DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { logger } from "@/lib/logger"
@@ -24,32 +24,24 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0]
-    if (!file) return
-
-    const fileExtension = file.name.split('.').pop()?.toLowerCase()
-    const supportedFormats = getSupportedFormats()
-
-    if (!fileExtension || !supportedFormats.includes(fileExtension)) {
-      onError(`Unsupported file format. Supported formats: ${supportedFormats.join(", ")}`)
-      return
+  const clearProgressInterval = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current)
+      progressIntervalRef.current = null
     }
+  }, [])
 
-    setSelectedFile(file)
-    handleAnalyzeDocument(file)
-  }, [onError])
+  useEffect(() => clearProgressInterval, [clearProgressInterval])
 
-  const handleAnalyzeDocument = async (file: File) => {
+  const handleAnalyzeDocument = useCallback(async (file: File) => {
     setIsAnalyzing(true)
     setProgress(10)
 
-    let progressInterval: NodeJS.Timeout | null = null
-
     try {
       // Simulate progress updates
-      progressInterval = setInterval(() => {
+      progressIntervalRef.current = setInterval(() => {
         setProgress(prev => Math.min(prev + 10, 90))
       }, 300)
 
@@ -76,7 +68,6 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
       logger.debug("Result has tables:", result.tables?.length)
       logger.debug("Result has keyValuePairs:", result.keyValuePairs?.length)
 
-      // 🔍 MOSTRAR KEYS CAPTURADAS EN CONSOLA DEL NAVEGADOR
       logger.debug("\n════════════════════════════════════════════════════════════════")
       logger.debug("📋 JSON DE KEYS CAPTURADAS (GUÍA DE VALIJA) - CONSOLA NAVEGADOR:")
       logger.debug("════════════════════════════════════════════════════════════════")
@@ -101,23 +92,34 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
 
       logger.debug("\n════════════════════════════════════════════════════════════════\n")
 
-      if (progressInterval) {
-        clearInterval(progressInterval)
-      }
-
+      clearProgressInterval()
       setProgress(100)
       onAnalysisComplete(result, file)
       setIsAnalyzing(false)
       setProgress(0)
     } catch (error) {
-      if (progressInterval) {
-        clearInterval(progressInterval)
-      }
+      clearProgressInterval()
       setIsAnalyzing(false)
       setProgress(0)
       onError(error instanceof Error ? error.message : "Failed to analyze document")
     }
-  }
+  }, [clearProgressInterval, onAnalysisComplete, onError])
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const file = acceptedFiles[0]
+    if (!file) return
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+    const supportedFormats = getSupportedFormats()
+
+    if (!fileExtension || !supportedFormats.includes(fileExtension)) {
+      onError(`Unsupported file format. Supported formats: ${supportedFormats.join(", ")}`)
+      return
+    }
+
+    setSelectedFile(file)
+    handleAnalyzeDocument(file)
+  }, [handleAnalyzeDocument, onError])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

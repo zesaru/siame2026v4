@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,11 @@ interface TableData {
   cells: TableCell[]
 }
 
+interface IndexedTableView {
+  headerByColumn: Map<number, TableCell>
+  cellByCoordinate: Map<string, TableCell>
+}
+
 interface DocumentResultsProps {
   result: DocumentAnalysisResult
   fileName: string
@@ -50,27 +55,45 @@ export default function DocumentResults(props: DocumentResultsProps) {
   const [isTablesExpanded, setIsTablesExpanded] = useState(true)
   const [isKeyValuePairsExpanded, setIsKeyValuePairsExpanded] = useState(false)
 
-  const handleFieldChange = (index: number, field: 'key' | 'value', newValue: string) => {
+  const tableViews = useMemo<IndexedTableView[]>(
+    () =>
+      editedTables.map((table) => {
+        const headerByColumn = new Map<number, TableCell>()
+        const cellByCoordinate = new Map<string, TableCell>()
+
+        for (const cell of table.cells) {
+          cellByCoordinate.set(`${cell.rowIndex}-${cell.columnIndex}`, cell)
+          if (cell.kind === "columnHeader") {
+            headerByColumn.set(cell.columnIndex, cell)
+          }
+        }
+
+        return { headerByColumn, cellByCoordinate }
+      }),
+    [editedTables]
+  )
+
+  const handleFieldChange = useCallback((index: number, field: 'key' | 'value', newValue: string) => {
     const updated = [...editedPairs]
     updated[index] = {
       ...updated[index],
       [field]: newValue
     }
     setEditedPairs(updated)
-  }
+  }, [editedPairs])
 
-  const handleTableCellChange = (tableIdx: number, cellIdentifier: string, newValue: string) => {
+  const handleTableCellChange = useCallback((tableIdx: number, cellIdentifier: string, newValue: string) => {
     const updatedTables = [...editedTables]
     const table = updatedTables[tableIdx]
-    const cellIndex = table.cells.findIndex((c) =>
-      c.rowIndex === parseInt(cellIdentifier.split('-')[0]) &&
-      c.columnIndex === parseInt(cellIdentifier.split('-')[1])
-    )
+    const [rowToken, colToken] = cellIdentifier.split("-")
+    const rowIndex = Number.parseInt(rowToken, 10)
+    const columnIndex = Number.parseInt(colToken, 10)
+    const cellIndex = table.cells.findIndex((c) => c.rowIndex === rowIndex && c.columnIndex === columnIndex)
     if (cellIndex !== -1) {
       table.cells[cellIndex] = { ...table.cells[cellIndex], content: newValue }
       setEditedTables(updatedTables)
     }
-  }
+  }, [editedTables])
 
   const handleSaveAsGuiaValija = async () => {
     setIsSaving(true)
@@ -330,7 +353,9 @@ export default function DocumentResults(props: DocumentResultsProps) {
                     />
                   </div>
                 </div>
-                {isTablesExpanded && editedTables.map((table, tableIdx: number) => (
+                {isTablesExpanded && editedTables.map((table, tableIdx: number) => {
+                  const tableView = tableViews[tableIdx]
+                  return (
                   <div key={tableIdx} style={{ marginBottom: "16px" }}>
                     <p style={{ fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>
                       Tabla {tableIdx + 1}: {table.rowCount} filas × {table.columnCount} columnas
@@ -340,7 +365,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
                         <thead style={{ backgroundColor: "#f3f4f6" }}>
                           <tr>
                             {Array.from({ length: table.columnCount }).map((_, colIdx) => {
-                              const headerCell = table.cells.find((c) => c.kind === "columnHeader" && c.columnIndex === colIdx)
+                              const headerCell = tableView?.headerByColumn.get(colIdx)
                               const cellId = `${0}-${colIdx}`
                               const headerContent = headerCell?.content || `Col ${colIdx + 1}`
                               const isNumeroColumn = headerContent.trim() === "Nº" || headerContent.includes("Nº")
@@ -373,10 +398,10 @@ export default function DocumentResults(props: DocumentResultsProps) {
                           {Array.from({ length: table.rowCount - 1 }).map((_, rowIdx) => (
                             <tr key={rowIdx}>
                               {Array.from({ length: table.columnCount }).map((_, colIdx) => {
-                                const cell = table.cells.find((c) => c.rowIndex === rowIdx + 1 && c.columnIndex === colIdx)
+                                const cell = tableView?.cellByCoordinate.get(`${rowIdx + 1}-${colIdx}`)
                                 const cellId = `${rowIdx + 1}-${colIdx}`
                                 // Obtener el header para verificar si es la columna Nº, CAN T. o PESO
-                                const headerCell = table.cells.find((c) => c.kind === "columnHeader" && c.columnIndex === colIdx)
+                                const headerCell = tableView?.headerByColumn.get(colIdx)
                                 const headerContent = headerCell?.content || `Col ${colIdx + 1}`
                                 const isNumeroColumn = headerContent.trim() === "Nº" || headerContent.includes("Nº")
                                 const isPesoItemColumn = headerContent.includes("PESO ITEM") || headerContent.includes("PESO P/ ITEM")
@@ -413,7 +438,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
                       </table>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
 

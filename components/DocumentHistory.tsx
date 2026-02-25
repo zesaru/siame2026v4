@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useState } from "react"
 import { logger } from "@/lib/logger"
 import type { DocumentListItemDto, DocumentsListResponseDto } from "@/modules/documentos/application/dto"
 
@@ -24,31 +24,35 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [search, setSearch] = useState("")
+  const deferredSearch = useDeferredValue(search)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async (signal?: AbortSignal) => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
         page: page.toString(),
         limit: "10",
       })
-      if (search) {
-        params.append("search", search)
+      if (deferredSearch) {
+        params.append("search", deferredSearch)
       }
 
-      const response = await fetch(`/api/documents?${params}`)
+      const response = await fetch(`/api/documents?${params}`, { signal })
       if (!response.ok) throw new Error("Failed to fetch documents")
 
       const data: PaginatedResponse = await response.json()
       setDocuments(data.documents)
       setTotalPages(data.pagination.totalPages)
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return
+      }
       logger.error("Error fetching documents:", error)
     } finally {
       setLoading(false)
     }
-  }
+  }, [page, deferredSearch])
 
   const deleteDocument = async (id: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return
@@ -72,8 +76,16 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
   }
 
   useEffect(() => {
-    fetchDocuments()
-  }, [page, search])
+    const controller = new AbortController()
+    const timeoutId = window.setTimeout(() => {
+      fetchDocuments(controller.signal)
+    }, 200)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+      controller.abort()
+    }
+  }, [fetchDocuments])
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + " B"
