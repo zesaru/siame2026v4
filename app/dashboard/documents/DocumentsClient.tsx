@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import DocumentUpload from "@/components/DocumentUpload"
 import DocumentResults from "@/components/DocumentResults"
 import DocumentHistory from "@/components/DocumentHistory"
@@ -11,6 +11,33 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Icon from "@/components/ui/Icon"
 
+const FEATURES = [
+  {
+    title: "Extracción de Texto",
+    description: "Extrae todo el contenido de texto de tus documentos",
+    icon: "document",
+    color: "primary",
+  },
+  {
+    title: "Detección de Tablas",
+    description: "Identifica y extrae datos tabulares automáticamente",
+    icon: "chart",
+    color: "success",
+  },
+  {
+    title: "Pares Clave-Valor",
+    description: "Extrae información estructurada como formularios",
+    icon: "check",
+    color: "info",
+  },
+  {
+    title: "Reconocimiento de Entidades",
+    description: "Identifica personas, organizaciones, fechas y más",
+    icon: "search",
+    color: "warning",
+  },
+] as const
+
 export default function DocumentsClient() {
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null)
   const [fileName, setFileName] = useState<string>("")
@@ -19,6 +46,15 @@ export default function DocumentsClient() {
   const [error, setError] = useState<string>("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const features = useMemo(() => FEATURES, [])
+
+  useEffect(() => {
+    return () => {
+      if (fileUrl) {
+        URL.revokeObjectURL(fileUrl)
+      }
+    }
+  }, [fileUrl])
 
   const handleAnalysisComplete = (result: DocumentAnalysisResult, file: File) => {
     logger.debug("handleAnalysisComplete called with:", result)
@@ -27,6 +63,9 @@ export default function DocumentsClient() {
     setDocumentId((result as any).documentId || "")
 
     // Create object URL for the file to display it
+    if (fileUrl) {
+      URL.revokeObjectURL(fileUrl)
+    }
     const url = URL.createObjectURL(file)
     setFileUrl(url)
 
@@ -80,33 +119,6 @@ export default function DocumentsClient() {
       setIsModalOpen(true)
     }
   }
-
-  const features = [
-    {
-      title: "Extracción de Texto",
-      description: "Extrae todo el contenido de texto de tus documentos",
-      icon: "document",
-      color: "primary",
-    },
-    {
-      title: "Detección de Tablas",
-      description: "Identifica y extrae datos tabulares automáticamente",
-      icon: "chart",
-      color: "success",
-    },
-    {
-      title: "Pares Clave-Valor",
-      description: "Extrae información estructurada como formularios",
-      icon: "check",
-      color: "info",
-    },
-    {
-      title: "Reconocimiento de Entidades",
-      description: "Identifica personas, organizaciones, fechas y más",
-      icon: "search",
-      color: "warning",
-    },
-  ]
 
   return (
     <>
@@ -211,7 +223,7 @@ export default function DocumentsClient() {
                     }`}
                   >
                     <Icon
-                      name={feature.icon as any}
+                      name={feature.icon}
                       className={
                         feature.color === "primary"
                           ? "text-[var(--kt-primary)]"

@@ -18,5 +18,5 @@ export default async function GuiasValijaPage() {
   const result = await useCase.execute({ userId: session.user.id })
   const initialGuias = result.ok ? toGuiaValijaListDto(result.value) : []
 
-  return <GuiasValijaClient session={session} initialGuias={initialGuias} />
+  return <GuiasValijaClient initialGuias={initialGuias} />
 }

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 
 interface UseFetchWithAbortOptions<T> {
   fetchFn: (signal: AbortSignal) => Promise<T>
-  deps?: any[]
+  deps?: unknown[]
   onSuccess?: (data: T) => void
   onError?: (error: Error) => void
   enabled?: boolean
@@ -43,6 +43,8 @@ export function useFetchWithAbort<T>({
   const fetchFnRef = useRef(fetchFn)
   const onSuccessRef = useRef(onSuccess)
   const onErrorRef = useRef(onError)
+  const requestIdRef = useRef(0)
+  const depsKey = useMemo(() => JSON.stringify(deps), [deps])
 
   useEffect(() => {
     fetchFnRef.current = fetchFn
@@ -70,7 +72,7 @@ export function useFetchWithAbort<T>({
     // Create new abort controller
     const abortController = new AbortController()
     abortControllerRef.current = abortController
-    let mounted = true
+    const requestId = ++requestIdRef.current
 
     setLoading(true)
     setError(null)
@@ -78,28 +80,24 @@ export function useFetchWithAbort<T>({
     try {
       const result = await fetchFnRef.current(abortController.signal)
 
-      if (mounted) {
+      if (requestId === requestIdRef.current && !abortController.signal.aborted) {
         setData(result)
         onSuccessRef.current?.(result)
       }
     } catch (err) {
       if (err instanceof Error) {
-        if (err.name !== 'AbortError' && mounted) {
+        if (err.name !== 'AbortError' && requestId === requestIdRef.current) {
           const errorMsg = err.message
           setError(errorMsg)
           onErrorRef.current?.(err)
         }
       }
     } finally {
-      if (mounted) {
+      if (requestId === requestIdRef.current && !abortController.signal.aborted) {
         setLoading(false)
       }
     }
-
-    return () => {
-      mounted = false
-    }
-  }, [enabled, ...deps])
+  }, [enabled])
 
   useEffect(() => {
     fetchData()
@@ -109,7 +107,7 @@ export function useFetchWithAbort<T>({
         abortControllerRef.current.abort()
       }
     }
-  }, [fetchData])
+  }, [fetchData, depsKey])
 
   const refetch = useCallback(() => {
     fetchData()

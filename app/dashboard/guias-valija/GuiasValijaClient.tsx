@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useDeferredValue, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -68,35 +68,30 @@ const estadoLabels: Record<string, string> = {
 }
 
 interface GuiasValijaClientProps {
-  session: any
   initialGuias: any[]
 }
 
-export default function GuiasValijaClient({ session, initialGuias }: GuiasValijaClientProps) {
+export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientProps) {
   const router = useRouter()
   const [guias, setGuias] = useState<any[]>(initialGuias)
-  const [filteredGuias, setFilteredGuias] = useState<any[]>(initialGuias)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const deferredSearchTerm = useDeferredValue(searchTerm)
 
   // Form states - Removed, now using separate pages
   const [deleteConfirm, setDeleteConfirm] = useState<any>(null)
   const [isExporting, setIsExporting] = useState(false)
 
-  // Ya no necesitamos fetch inicial porque viene como prop
+  const filteredGuias = useMemo(() => {
+    const term = deferredSearchTerm.trim().toLowerCase()
+    if (!term) return guias
 
-  useEffect(() => {
-    if (searchTerm) {
-      const filtered = guias.filter((guia) =>
-        guia.numeroGuia.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guia.destinatarioNombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        guia.destinoCiudad?.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setFilteredGuias(filtered)
-    } else {
-      setFilteredGuias(guias)
-    }
-  }, [searchTerm, guias])
+    return guias.filter((guia) =>
+      guia.numeroGuia.toLowerCase().includes(term) ||
+      guia.destinatarioNombre?.toLowerCase().includes(term) ||
+      guia.destinoCiudad?.toLowerCase().includes(term)
+    )
+  }, [deferredSearchTerm, guias])
 
   // Sorting
   const { sortConfig, handleSort, sortedData, getSortIndicator, isSorted } = useTableSort(
@@ -120,7 +115,6 @@ export default function GuiasValijaClient({ session, initialGuias }: GuiasValija
       if (!response.ok) throw new Error("Error fetching guias")
       const data = await response.json()
       setGuias(data)
-      setFilteredGuias(data)
     } catch (error) {
       toast.error("Error al cargar las guías")
     } finally {
