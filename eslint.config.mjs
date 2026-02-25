@@ -25,6 +25,21 @@ const eslintConfig = [
       "react-hooks/immutability": "off",
     },
   },
+  {
+    files: [
+      "lib/shared/**/*.ts",
+      "components/DocumentUpload.tsx",
+      "components/DocumentResults.tsx",
+      "components/DocumentHistory.tsx",
+      "lib/hooks/useTableSort.ts",
+      "lib/hooks/useTablePagination.ts",
+      "app/dashboard/documents/DocumentsClient.tsx",
+      "app/dashboard/guias-valija/GuiasValijaClient.tsx",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "error",
+    },
+  },
 ];
 
 export default eslintConfig;
