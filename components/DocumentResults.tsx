@@ -15,7 +15,21 @@ interface KeyValuePair {
   key: string
   value: string
   confidence?: number
-  boundingRegions?: any[]
+  boundingRegions?: unknown[]
+}
+
+interface TableCell {
+  kind?: string
+  content: string
+  rowIndex: number
+  columnIndex: number
+  confidence?: number
+}
+
+interface TableData {
+  rowCount: number
+  columnCount: number
+  cells: TableCell[]
 }
 
 interface DocumentResultsProps {
@@ -30,9 +44,9 @@ export default function DocumentResults(props: DocumentResultsProps) {
   const { result, fileName, fileUrl, documentId } = props
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
-  const [editedPairs, setEditedPairs] = useState<KeyValuePair[]>(result.keyValuePairs)
+  const [editedPairs, setEditedPairs] = useState<KeyValuePair[]>((result.keyValuePairs as KeyValuePair[]) || [])
   const [isExtractedTextExpanded, setIsExtractedTextExpanded] = useState(false)
-  const [editedTables, setEditedTables] = useState(result.tables || [])
+  const [editedTables, setEditedTables] = useState<TableData[]>((result.tables as TableData[]) || [])
   const [isTablesExpanded, setIsTablesExpanded] = useState(true)
   const [isKeyValuePairsExpanded, setIsKeyValuePairsExpanded] = useState(false)
 
@@ -48,7 +62,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
   const handleTableCellChange = (tableIdx: number, cellIdentifier: string, newValue: string) => {
     const updatedTables = [...editedTables]
     const table = updatedTables[tableIdx]
-    const cellIndex = table.cells.findIndex((c: any) =>
+    const cellIndex = table.cells.findIndex((c) =>
       c.rowIndex === parseInt(cellIdentifier.split('-')[0]) &&
       c.columnIndex === parseInt(cellIdentifier.split('-')[1])
     )
@@ -316,7 +330,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
                     />
                   </div>
                 </div>
-                {isTablesExpanded && editedTables.map((table: any, tableIdx: number) => (
+                {isTablesExpanded && editedTables.map((table, tableIdx: number) => (
                   <div key={tableIdx} style={{ marginBottom: "16px" }}>
                     <p style={{ fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>
                       Tabla {tableIdx + 1}: {table.rowCount} filas × {table.columnCount} columnas
@@ -326,7 +340,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
                         <thead style={{ backgroundColor: "#f3f4f6" }}>
                           <tr>
                             {Array.from({ length: table.columnCount }).map((_, colIdx) => {
-                              const headerCell = table.cells.find((c: any) => c.kind === "columnHeader" && c.columnIndex === colIdx)
+                              const headerCell = table.cells.find((c) => c.kind === "columnHeader" && c.columnIndex === colIdx)
                               const cellId = `${0}-${colIdx}`
                               const headerContent = headerCell?.content || `Col ${colIdx + 1}`
                               const isNumeroColumn = headerContent.trim() === "Nº" || headerContent.includes("Nº")
@@ -359,10 +373,10 @@ export default function DocumentResults(props: DocumentResultsProps) {
                           {Array.from({ length: table.rowCount - 1 }).map((_, rowIdx) => (
                             <tr key={rowIdx}>
                               {Array.from({ length: table.columnCount }).map((_, colIdx) => {
-                                const cell = table.cells.find((c: any) => c.rowIndex === rowIdx + 1 && c.columnIndex === colIdx)
+                                const cell = table.cells.find((c) => c.rowIndex === rowIdx + 1 && c.columnIndex === colIdx)
                                 const cellId = `${rowIdx + 1}-${colIdx}`
                                 // Obtener el header para verificar si es la columna Nº, CAN T. o PESO
-                                const headerCell = table.cells.find((c: any) => c.kind === "columnHeader" && c.columnIndex === colIdx)
+                                const headerCell = table.cells.find((c) => c.kind === "columnHeader" && c.columnIndex === colIdx)
                                 const headerContent = headerCell?.content || `Col ${colIdx + 1}`
                                 const isNumeroColumn = headerContent.trim() === "Nº" || headerContent.includes("Nº")
                                 const isPesoItemColumn = headerContent.includes("PESO ITEM") || headerContent.includes("PESO P/ ITEM")

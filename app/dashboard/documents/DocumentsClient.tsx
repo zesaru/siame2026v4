@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from "react"
 import DocumentUpload from "@/components/DocumentUpload"
 import DocumentResults from "@/components/DocumentResults"
 import DocumentHistory from "@/components/DocumentHistory"
+import type { DocumentHistoryItem } from "@/components/DocumentHistory"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { logger } from "@/lib/logger"
+import type { DocumentDetailDto } from "@/modules/documentos/application/dto"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -38,6 +40,8 @@ const FEATURES = [
   },
 ] as const
 
+type AnalysisResultWithDocumentId = DocumentAnalysisResult & { documentId?: string }
+
 export default function DocumentsClient() {
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null)
   const [fileName, setFileName] = useState<string>("")
@@ -56,11 +60,11 @@ export default function DocumentsClient() {
     }
   }, [fileUrl])
 
-  const handleAnalysisComplete = (result: DocumentAnalysisResult, file: File) => {
+  const handleAnalysisComplete = (result: AnalysisResultWithDocumentId, file: File) => {
     logger.debug("handleAnalysisComplete called with:", result)
     setAnalysisResult(result)
     setFileName(result.metadata.title || "Document")
-    setDocumentId((result as any).documentId || "")
+    setDocumentId(result.documentId || "")
 
     // Create object URL for the file to display it
     if (fileUrl) {
@@ -93,12 +97,12 @@ export default function DocumentsClient() {
     }
   }
 
-  const handleSelectDocument = async (document: any) => {
+  const handleSelectDocument = async (document: Pick<DocumentHistoryItem, "id">) => {
     try {
       const response = await fetch(`/api/documents/${document.id}`)
       if (!response.ok) throw new Error("Failed to fetch document")
 
-      const fullDocument = await response.json()
+      const fullDocument: DocumentDetailDto = await response.json()
 
       // Convert database document to analysis result format
       const result: DocumentAnalysisResult = {
@@ -106,7 +110,7 @@ export default function DocumentsClient() {
         tables: fullDocument.tables || [],
         keyValuePairs: fullDocument.keyValuePairs || [],
         entities: fullDocument.entities || [],
-        metadata: fullDocument.metadata || {},
+        metadata: (fullDocument.metadata as DocumentAnalysisResult["metadata"]) || {},
       }
 
       setAnalysisResult(result)

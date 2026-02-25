@@ -42,6 +42,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useTableSort } from "@/lib/hooks/useTableSort"
 import { useTablePagination } from "@/lib/hooks/useTablePagination"
 import { exportToCSV, exportToExcel, getExportFilename } from "@/lib/utils/export"
+import type { DashboardGuiaValijaListItem } from "@/modules/guias-valija/application/dto"
 import { toast } from "sonner"
 
 // Estado colors for custom styling
@@ -68,18 +69,18 @@ const estadoLabels: Record<string, string> = {
 }
 
 interface GuiasValijaClientProps {
-  initialGuias: any[]
+  initialGuias: DashboardGuiaValijaListItem[]
 }
 
 export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientProps) {
   const router = useRouter()
-  const [guias, setGuias] = useState<any[]>(initialGuias)
+  const [guias, setGuias] = useState<DashboardGuiaValijaListItem[]>(initialGuias)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const deferredSearchTerm = useDeferredValue(searchTerm)
 
   // Form states - Removed, now using separate pages
-  const [deleteConfirm, setDeleteConfirm] = useState<any>(null)
+  const [deleteConfirm, setDeleteConfirm] = useState<DashboardGuiaValijaListItem | null>(null)
   const [isExporting, setIsExporting] = useState(false)
 
   const filteredGuias = useMemo(() => {
@@ -126,7 +127,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
     router.push("/guias-valija/create")
   }
 
-  function handleDelete(guia: any) {
+  function handleDelete(guia: DashboardGuiaValijaListItem) {
     setDeleteConfirm(guia)
   }
 

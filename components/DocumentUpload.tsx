@@ -2,11 +2,21 @@
 
 import { useCallback, useState } from "react"
 import { useDropzone } from "react-dropzone"
-import { getSupportedFormats } from "@/lib/document-intelligence"
+import { getSupportedFormats, type DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { logger } from "@/lib/logger"
 
+type AnalyzeDocumentApiResponse = DocumentAnalysisResult & {
+  documentId?: string
+  hasDocumentTypeAnalysis?: boolean
+}
+
+interface DebugKeyValuePair {
+  key: string
+  value: string
+}
+
 interface DocumentUploadProps {
-  onAnalysisComplete: (result: any, file: File) => void
+  onAnalysisComplete: (result: AnalyzeDocumentApiResponse, file: File) => void
   onError: (error: string) => void
 }
 
@@ -61,7 +71,7 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
         throw new Error(errorData.error || "Failed to analyze document")
       }
 
-      const result = await response.json()
+      const result: AnalyzeDocumentApiResponse = await response.json()
       logger.debug("Analysis completed, result:", result)
       logger.debug("Result has tables:", result.tables?.length)
       logger.debug("Result has keyValuePairs:", result.keyValuePairs?.length)
@@ -72,7 +82,7 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
       logger.debug("════════════════════════════════════════════════════════════════")
 
       if (result.keyValuePairs && result.keyValuePairs.length > 0) {
-        const keysMap = result.keyValuePairs.reduce((acc: any, pair: any) => {
+        const keysMap = (result.keyValuePairs as DebugKeyValuePair[]).reduce<Record<string, string>>((acc, pair) => {
           acc[pair.key] = pair.value
           return acc
         }, {})
@@ -82,7 +92,7 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
         logger.debug("\n──────────────────────────────────────────────────────────────")
         logger.debug("📝 LISTADO DE KEYS INDIVIDUALES:")
         logger.debug("──────────────────────────────────────────────────────────────")
-        result.keyValuePairs.forEach((pair: any, idx: number) => {
+        ;(result.keyValuePairs as DebugKeyValuePair[]).forEach((pair, idx) => {
           logger.debug(`  ${idx + 1}. "${pair.key}" = "${pair.value}"`)
         })
       } else {

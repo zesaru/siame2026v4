@@ -7,6 +7,8 @@ export interface SortConfig {
   direction: SortDirection
 }
 
+type SortablePrimitive = string | number | Date | null | undefined
+
 /**
  * Hook to handle table column sorting
  *
@@ -34,7 +36,7 @@ export interface SortConfig {
  * }
  * ```
  */
-export function useTableSort<T>(
+export function useTableSort<T extends Record<string, unknown>>(
   data: T[],
   options?: {
     defaultSort?: SortConfig
@@ -66,9 +68,9 @@ export function useTableSort<T>(
 
     const sortableData = [...data]
 
-    sortableData.sort((a: any, b: any) => {
-      const aValue = a[sortConfig.key]
-      const bValue = b[sortConfig.key]
+    sortableData.sort((a, b) => {
+      const aValue = a[sortConfig.key as keyof T] as SortablePrimitive
+      const bValue = b[sortConfig.key as keyof T] as SortablePrimitive
 
       // Handle null/undefined values
       if (aValue == null && bValue == null) return 0
@@ -90,7 +92,7 @@ export function useTableSort<T>(
       }
 
       // Handle date strings
-      if (!isNaN(Date.parse(aValue)) && !isNaN(Date.parse(bValue))) {
+      if (typeof aValue === "string" && typeof bValue === "string" && !isNaN(Date.parse(aValue)) && !isNaN(Date.parse(bValue))) {
         const aTime = new Date(aValue).getTime()
         const bTime = new Date(bValue).getTime()
         return sortConfig.direction === "asc" ? aTime - bTime : bTime - aTime

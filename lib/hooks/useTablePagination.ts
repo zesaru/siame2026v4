@@ -31,7 +31,7 @@ export interface PaginationConfig {
  * ```
  */
 export function useTablePagination<T>(
-  data: T[],
+  data: readonly T[],
   options?: {
     itemsPerPage?: number
     initialPage?: number

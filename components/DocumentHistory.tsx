@@ -2,40 +2,24 @@
 
 import { useEffect, useState } from "react"
 import { logger } from "@/lib/logger"
+import type { DocumentListItemDto, DocumentsListResponseDto } from "@/modules/documentos/application/dto"
 
-interface Document {
-  id: string
-  fileName: string
-  fileSize: number
-  fileType: string
-  fileExtension: string
-  pageCount: number | null
-  language: string | null
-  tableCount: number
-  keyValueCount: number
-  entityCount: number
-  processingStatus: string
+export type DocumentHistoryItem = Omit<DocumentListItemDto, "createdAt" | "analyzedAt"> & {
   createdAt: string
-  analyzedAt: string
+  analyzedAt: string | null
 }
 
-interface PaginatedResponse {
-  documents: Document[]
-  pagination: {
-    page: number
-    limit: number
-    total: number
-    totalPages: number
-  }
+interface PaginatedResponse extends Omit<DocumentsListResponseDto, "documents"> {
+  documents: DocumentHistoryItem[]
 }
 
 interface DocumentHistoryProps {
-  onSelectDocument: (document: Document) => void
+  onSelectDocument: (document: DocumentHistoryItem) => void
   onClose: () => void
 }
 
 export default function DocumentHistory({ onSelectDocument, onClose }: DocumentHistoryProps) {
-  const [documents, setDocuments] = useState<Document[]>([])
+  const [documents, setDocuments] = useState<DocumentHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
