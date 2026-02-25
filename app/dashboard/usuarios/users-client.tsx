@@ -82,7 +82,7 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
   const { data: session } = useSession()
 
   // Use custom hook for fetching users
-  const { data: users = [], loading, refetch } = useFetchWithAbort<User[]>({
+  const { data: usersData, loading, refetch } = useFetchWithAbort<User[]>({
     fetchFn: async (signal) => {
       const response = await fetch("/api/admin/users", { signal })
       if (!response.ok) throw new Error("Failed to fetch users")
@@ -91,6 +91,8 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
     onError: (err) => toast.error("Error al cargar usuarios"),
     deps: [],
   })
+  const users = Array.isArray(usersData) ? usersData : []
+  const fetchUsers = refetch
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)

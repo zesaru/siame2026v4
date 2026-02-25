@@ -125,18 +125,6 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
     return idx
   }
 
-  // Extraer número de guía automáticamente cuando cambian los editedPairs
-  useEffect(() => {
-    const deFieldIndex = findDeField()
-    const deField = deFieldIndex !== -1 ? editedPairs[deFieldIndex] : null
-    const extractedNumero = extractNumeroGuia(deField?.value || "")
-
-    // Solo actualizar si el estado local está vacío y se extrajo un número
-    if (extractedNumero && !numeroGuiaManual) {
-      setNumeroGuiaManual(extractedNumero)
-    }
-  }, [editedPairs]) // Solo dependemos de editedPairs, no de numeroGuiaManual
-
   // Handlers para cada campo
   const handleParaChange = (newValue: string) => {
     const idx = editedPairs.findIndex(p => p.key.includes("PARA"))
@@ -173,6 +161,8 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
   const paraValue = editedPairs.find(p => p.key.includes("PARA"))?.value || ""
   const deFieldIndex = findDeField()
   const deField = deFieldIndex !== -1 ? editedPairs[deFieldIndex] : null
+  const extractedNumero = extractNumeroGuia(deField?.value || "")
+  const numeroGuiaValue = numeroGuiaManual || extractedNumero
   const fechaEnvioValue = editedPairs.find(p => p.key.includes("ENVIO"))?.value || ""
   const fechaReciboValue = editedPairs.find(p => p.key.includes("RECIBO"))?.value || ""
   const totalItemsValue = extractNumericOnly(editedPairs.find(p => p.key.includes("Items"))?.value || "")
@@ -181,23 +171,23 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
   // Logging en desarrollo
   logger.debug('🔍 [GUIA FORM] Campo DE encontrado:', deField ? `index=${deFieldIndex}, key="${deField.key}"` : 'NO ENCONTRADO')
   logger.debug('🔍 [GUIA FORM] Valor del campo DE:', deField?.value)
-  logger.debug('🔍 [GUIA FORM] Nº de guía extraído:', extractNumeroGuia(deField?.value || ""))
+  logger.debug('🔍 [GUIA FORM] Nº de guía extraído:', extractedNumero)
   logger.debug('🔍 [GUIA FORM] Nº de guía manual:', numeroGuiaManual)
 
   // Exponer el número de guía manual para que el componente padre pueda acceder
   useEffect(() => {
     // Actualizar el campo "DE" con el número manual cuando cambia
-    if (numeroGuiaManual) {
+    if (numeroGuiaValue) {
       const idx = findDeField()
       if (idx !== -1 && deField) {
         // Actualizar el valor del campo DE con el número manual
-        const updatedValue = deField.value.replace(/N[º°]\s*\d+/gi, `Nº${numeroGuiaManual}`)
+        const updatedValue = deField.value.replace(/N[º°]\s*\d+/gi, `Nº${numeroGuiaValue}`)
         if (updatedValue !== deField.value) {
           onFieldChange(idx, 'value', updatedValue)
         }
       }
     }
-  }, [numeroGuiaManual])
+  }, [deField, numeroGuiaValue, onFieldChange])
 
   return (
     <div className="mb-6 p-5 bg-white border-2 border-blue-500 rounded-xl shadow-lg">
@@ -220,7 +210,7 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
 
         <FormField
           label="Nº DE GUÍA"
-          value={numeroGuiaManual}
+          value={numeroGuiaValue}
           onChange={handleNumeroGuiaChange}
           placeholder="Ingrese número manualmente"
           inputMode="numeric"

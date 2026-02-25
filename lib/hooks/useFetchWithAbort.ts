@@ -40,6 +40,21 @@ export function useFetchWithAbort<T>({
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const fetchFnRef = useRef(fetchFn)
+  const onSuccessRef = useRef(onSuccess)
+  const onErrorRef = useRef(onError)
+
+  useEffect(() => {
+    fetchFnRef.current = fetchFn
+  }, [fetchFn])
+
+  useEffect(() => {
+    onSuccessRef.current = onSuccess
+  }, [onSuccess])
+
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
 
   const fetchData = useCallback(async () => {
     if (!enabled) {
@@ -61,18 +76,18 @@ export function useFetchWithAbort<T>({
     setError(null)
 
     try {
-      const result = await fetchFn(abortController.signal)
+      const result = await fetchFnRef.current(abortController.signal)
 
       if (mounted) {
         setData(result)
-        onSuccess?.(result)
+        onSuccessRef.current?.(result)
       }
     } catch (err) {
       if (err instanceof Error) {
         if (err.name !== 'AbortError' && mounted) {
           const errorMsg = err.message
           setError(errorMsg)
-          onError?.(err)
+          onErrorRef.current?.(err)
         }
       }
     } finally {
@@ -84,7 +99,7 @@ export function useFetchWithAbort<T>({
     return () => {
       mounted = false
     }
-  }, [fetchFn, enabled, ...deps])
+  }, [enabled, ...deps])
 
   useEffect(() => {
     fetchData()

@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth"
+import { cookies, headers } from "next/headers"
 import { redirect } from "next/navigation"
 import GuiasValijaClient from "./GuiasValijaClient"
 
@@ -9,12 +10,19 @@ export default async function GuiasValijaPage() {
     redirect("/auth/signin")
   }
 
-  // Server-side data fetching (no waterfall)
-  const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/dashboard/guias-valija`, {
+  // Server-side data fetching against the current origin (avoids hardcoded localhost:3000)
+  const requestHeaders = await headers()
+  const cookieStore = await cookies()
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000"
+  const protocol =
+    requestHeaders.get("x-forwarded-proto") ??
+    (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https")
+
+  const response = await fetch(`${protocol}://${host}/api/dashboard/guias-valija`, {
     cache: 'no-store', // O usa revalidate si quieres caché
     headers: {
-      // Pasar cookies de sesión
-      'Cookie': (session as any)?.cookie || '',
+      // Reenviar cookies reales de la request para auth en la API route
+      Cookie: cookieStore.toString(),
     },
   })
 

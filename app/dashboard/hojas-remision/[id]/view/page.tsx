@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth"
-import { redirect, useParams } from "next/navigation"
+import { redirect } from "next/navigation"
 import type { Metadata } from "next"
 import HojaRemisionViewClient from "./HojaRemisionViewClient"
 
@@ -14,15 +14,16 @@ export async function generateMetadata(
   }
 }
 
-export default async function HojaRemisionViewPage() {
+export default async function HojaRemisionViewPage(
+  { params }: { params: Promise<{ id: string }> }
+) {
   const session = await auth()
 
   if (!session) {
     redirect("/auth/signin")
   }
 
-  const params = useParams()
-  const hojaId = params.id as string
+  const { id: hojaId } = await params
 
   // Pass session and ID to client component
   return (
