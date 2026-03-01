@@ -36,6 +36,7 @@ model User {
   documents     Document[]
   guiasValija   GuiaValija[]
   hojasRemision HojaRemision[]
+  oficios       Oficio[]
   fileAuditLogs FileAuditLog[]
 }
 
@@ -303,6 +304,28 @@ model HojaRemision {
   @@index([fecha])
   @@index([estado])
   @@index([processingStatus])
+  @@index([createdAt])
+}
+
+model Oficio {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceDocumentId String   @unique
+  numeroOficio     String   @unique
+  asunto           String?  @db.Text
+  remitente        String?  @db.Text
+  destinatario     String?  @db.Text
+  referencia       String?  @db.Text
+  contenidoTexto   String?  @db.Text
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  processedAt      DateTime?
+
+  @@index([userId])
+  @@index([sourceDocumentId])
+  @@index([numeroOficio])
   @@index([createdAt])
 }
 
