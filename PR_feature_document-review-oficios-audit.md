@@ -81,3 +81,11 @@ Este PR implementa el flujo completo de revisión manual para documentos clasifi
 ## Notas
 - Se respetó estrategia de cambios atómicos por bloques funcionales.
 - Se evitó mezclar rollback de archivos no relacionados en un worktree con cambios previos existentes.
+
+## Checklist de Publicación
+- [ ] `git push -u origin feature/document-review-oficios-audit`
+- [ ] Crear PR usando este archivo como descripción base.
+- [ ] Ejecutar migraciones en entorno destino (`prisma migrate deploy`).
+- [ ] Verificar acceso a `/dashboard/oficios`, creación automática desde `/verify` y edición/eliminación.
+- [ ] Revisar módulo de auditoría con filtros `OFICIO` + `UPDATE`.
+- [ ] Confirmar que formularios técnicos usan `trackView=0` y vistas usan `trackView=1`.
