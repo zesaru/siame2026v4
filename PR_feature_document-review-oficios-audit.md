@@ -1,5 +1,14 @@
 # PR: Flujo de Revisión Documental + Oficios + Auditoría Normalizada
 
+## Resumen Ejecutivo (Corto)
+- Se implementa flujo de revisión manual para clasificación documental (`confirm`/`reject`) con UX de cola optimista.
+- Se agrega persistencia real de `Oficio` (modelo Prisma + migración + APIs + vistas dashboard).
+- Se normaliza auditoría con nuevos valores semánticos (`OFICIO`, `UPDATE`).
+- Se incorpora control `trackView` para evitar ruido de auditoría en lecturas técnicas de formularios.
+- Se corrige bug en vista de hojas de remisión (`DELETE` usando id incorrecto).
+- Se añaden pruebas unitarias/route/UI para oficios, auditoría y comportamiento de `trackView`.
+- Validación completa ejecutada: `lint` y suite de tests en verde.
+
 ## Resumen
 Este PR implementa el flujo completo de revisión manual para documentos clasificados por Azure, con foco en:
 - Confirmación/rechazo explícito de análisis.
