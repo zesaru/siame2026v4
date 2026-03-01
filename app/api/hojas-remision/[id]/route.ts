@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
+import { shouldTrackView } from "@/lib/utils"
 import { GetHojaRemisionByIdForUserUseCase } from "@/modules/hojas-remision/application/queries"
 import {
   DeleteHojaRemisionUseCase,
@@ -17,8 +18,10 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Optional query: trackView=0 disables VIEW audit registration for technical reads.
   try {
     const { id } = await params
+    const trackView = shouldTrackView(req.url)
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
@@ -46,15 +49,17 @@ export async function GET(
       return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
     }
 
-    // Log document view (non-blocking)
-    logDocumentView({
-      userId: session.user.id,
-      documentType: 'HOJA_REMISION',
-      documentId: hoja.id,
-      documentTitle: hoja.numeroCompleto,
-      ipAddress,
-      userAgent
-    }).catch(err => console.error('[Audit] Failed to log view:', err))
+    if (trackView) {
+      // Log document view (non-blocking)
+      logDocumentView({
+        userId: session.user.id,
+        documentType: 'HOJA_REMISION',
+        documentId: hoja.id,
+        documentTitle: hoja.numeroCompleto,
+        ipAddress,
+        userAgent
+      }).catch(err => console.error('[Audit] Failed to log view:', err))
+    }
 
     return NextResponse.json(toHojaRemisionDto(hoja))
   } catch (error) {

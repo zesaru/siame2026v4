@@ -2,11 +2,13 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
+import { shouldTrackView } from "@/lib/utils"
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Optional query: trackView=0 disables VIEW audit registration for technical reads.
   const session = await auth()
 
   if (!session) {
@@ -15,6 +17,7 @@ export async function GET(
 
   try {
     const { id } = await params
+    const trackView = shouldTrackView(req.url)
     const ipAddress = extractIpAddress(req)
     const userAgent = extractUserAgent(req)
 
@@ -35,15 +38,17 @@ export async function GET(
       return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
     }
 
-    // Log document view (non-blocking)
-    logDocumentView({
-      userId: session.user.id,
-      documentType: 'GUIA_VALIJA',
-      documentId: guia.id,
-      documentTitle: guia.numeroGuia,
-      ipAddress,
-      userAgent
-    }).catch(err => console.error('[Audit] Failed to log view:', err))
+    if (trackView) {
+      // Log document view (non-blocking)
+      logDocumentView({
+        userId: session.user.id,
+        documentType: 'GUIA_VALIJA',
+        documentId: guia.id,
+        documentTitle: guia.numeroGuia,
+        ipAddress,
+        userAgent
+      }).catch(err => console.error('[Audit] Failed to log view:', err))
+    }
 
     return NextResponse.json(guia)
   } catch (error) {

@@ -46,6 +46,7 @@ interface AuditLog {
 const documentTypeColors: Record<string, string> = {
   GUIA_VALIJA: "bg-blue-100 text-blue-800",
   HOJA_REMISION: "bg-green-100 text-green-800",
+  OFICIO: "bg-orange-100 text-orange-800",
   DOCUMENT: "bg-purple-100 text-purple-800",
   FILE: "bg-gray-100 text-gray-800",
 }
@@ -53,6 +54,7 @@ const documentTypeColors: Record<string, string> = {
 const documentTypeLabels: Record<string, string> = {
   GUIA_VALIJA: "Guía de Valija",
   HOJA_REMISION: "Hoja de Remisión",
+  OFICIO: "Oficio",
   DOCUMENT: "Documento",
   FILE: "Archivo",
 }
@@ -63,6 +65,7 @@ const actionColors: Record<string, string> = {
   DOWNLOAD: "bg-blue-100 text-blue-800",
   DELETE: "bg-red-100 text-red-800",
   COPY: "bg-yellow-100 text-yellow-800",
+  UPDATE: "bg-amber-100 text-amber-800",
 }
 
 const actionLabels: Record<string, string> = {
@@ -71,6 +74,7 @@ const actionLabels: Record<string, string> = {
   DOWNLOAD: "Descargar",
   DELETE: "Eliminar",
   COPY: "Copiar",
+  UPDATE: "Actualizar",
 }
 
 export default function AuditLogsClient() {
@@ -201,6 +205,7 @@ export default function AuditLogsClient() {
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="GUIA_VALIJA">Guía de Valija</SelectItem>
                   <SelectItem value="HOJA_REMISION">Hoja de Remisión</SelectItem>
+                  <SelectItem value="OFICIO">Oficio</SelectItem>
                   <SelectItem value="DOCUMENT">Documento</SelectItem>
                   <SelectItem value="FILE">Archivo</SelectItem>
                 </SelectContent>
@@ -220,6 +225,7 @@ export default function AuditLogsClient() {
                   <SelectItem value="DOWNLOAD">Descargar</SelectItem>
                   <SelectItem value="DELETE">Eliminar</SelectItem>
                   <SelectItem value="COPY">Copiar</SelectItem>
+                  <SelectItem value="UPDATE">Actualizar</SelectItem>
                 </SelectContent>
               </Select>
             </div>

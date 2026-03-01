@@ -4,9 +4,9 @@ import { prisma } from "@/lib/db"
 // Types & Interfaces
 // ============================================
 
-export type AuditAction = 'UPLOAD' | 'DOWNLOAD' | 'DELETE' | 'VIEW' | 'COPY'
+export type AuditAction = 'UPLOAD' | 'DOWNLOAD' | 'DELETE' | 'VIEW' | 'COPY' | 'UPDATE'
 
-export type DocumentType = 'GUIA_VALIJA' | 'HOJA_REMISION' | 'DOCUMENT' | 'FILE'
+export type DocumentType = 'GUIA_VALIJA' | 'HOJA_REMISION' | 'OFICIO' | 'DOCUMENT' | 'FILE'
 
 export interface AuditLogOptions {
   userId: string
