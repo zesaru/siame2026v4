@@ -1,11 +1,23 @@
 export interface DocumentAnalysis {
   idioma: 'español' | 'ingles' | 'frances' | 'portugues'
-  tipoDocumento: 'guia_valija' | 'hoja_remision' | 'nota_diplomatica'
+  tipoDocumento: 'guia_valija' | 'hoja_remision' | 'oficio'
   direccion: 'entrada' | 'salida'
   confidence: {
     idioma: number
     tipoDocumento: number
     direccion: number
+  }
+  blocks: Array<{
+    startPage: number
+    endPage: number
+    documentType: 'guia_valija' | 'hoja_remision' | 'oficio'
+    confidence: number
+  }>
+  requiresManualReview: boolean
+  reviewReason: string | null
+  valijaClassification: {
+    tipoValija: 'ENTRADA' | 'SALIDA' | null
+    isExtraordinaria: boolean | null
   }
   extractedData: any
   keyIndicators: {
@@ -29,7 +41,7 @@ export class DocumentAnalyzer {
   private static documentTypeKeywords = {
     guia_valija: ['guía', 'valija', 'diplomática', 'pouch', 'diplomatic', 'guide', 'embajada', 'consulado'],
     hoja_remision: ['hoja', 'remisión', 'remision', 'remito', 'despacho', 'shipping', 'invoice', 'delivery'],
-    nota_diplomatica: ['nota', 'diplomática', 'comunicado', 'memorándum', ' diplomatic', 'note', 'memorandum']
+    oficio: ['oficio', 'ofc', 'carta', 'oficial', 'señor', 'senor', 'de mi consideración', 'de mi consideracion']
   }
 
   // Palabras clave para detección de dirección
@@ -49,11 +61,18 @@ export class DocumentAnalyzer {
     // Detectar idioma
     const languageAnalysis = this.detectLanguage(normalizedContent)
 
-    // Detectar tipo de documento
-    const documentTypeAnalysis = this.detectDocumentType(normalizedContent)
+    const pages = this.splitByPages(content || '')
+    const blockAnalysis = this.detectDocumentBlocks(pages)
+    const documentTypeAnalysis = this.detectDocumentTypeFromBlocks(blockAnalysis)
 
     // Detectar dirección
     const directionAnalysis = this.detectDirection(normalizedContent)
+    const valijaClassification = this.detectValijaClassification(normalizedContent, directionAnalysis.direction)
+    const reviewDecision = this.getReviewDecision(
+      documentTypeAnalysis.confidence,
+      directionAnalysis.confidence,
+      blockAnalysis
+    )
 
     // Extraer datos estructurados según el tipo detectado
     const extractedData = this.extractStructuredData(
@@ -74,6 +93,10 @@ export class DocumentAnalyzer {
         tipoDocumento: documentTypeAnalysis.confidence,
         direccion: directionAnalysis.confidence
       },
+      blocks: blockAnalysis.blocks,
+      requiresManualReview: reviewDecision.requiresManualReview,
+      reviewReason: reviewDecision.reviewReason,
+      valijaClassification,
       extractedData,
       keyIndicators: {
         languageKeywords: languageAnalysis.foundKeywords,
@@ -116,7 +139,7 @@ export class DocumentAnalyzer {
 
   private static detectDocumentType(content: string) {
     let maxScore = 0
-    let detectedType: 'guia_valija' | 'hoja_remision' | 'nota_diplomatica' = 'guia_valija'
+    let detectedType: 'guia_valija' | 'hoja_remision' | 'oficio' = 'guia_valija'
     const foundKeywords: string[] = []
 
     Object.entries(this.documentTypeKeywords).forEach(([type, keywords]) => {
@@ -142,6 +165,101 @@ export class DocumentAnalyzer {
     const confidence = Math.min(maxScore / 10, 1) // Normalizar a 10 palabras clave
 
     return { type: detectedType, confidence, foundKeywords }
+  }
+
+  private static splitByPages(content: string): string[] {
+    const chunks = content
+      .split(/\f|(?:\n\s*page\s+\d+\s*(?:of\s+\d+)?\s*\n)/gi)
+      .map((chunk) => chunk.trim())
+      .filter(Boolean)
+
+    return chunks.length > 0 ? chunks : [content]
+  }
+
+  private static scoreDocumentType(content: string) {
+    const scores: Record<'guia_valija' | 'hoja_remision' | 'oficio', number> = {
+      guia_valija: 0,
+      hoja_remision: 0,
+      oficio: 0,
+    }
+
+    Object.entries(this.documentTypeKeywords).forEach(([type, keywords]) => {
+      let score = 0
+      for (const keyword of keywords) {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'g')
+        const matches = content.match(regex)
+        if (matches) score += matches.length * 2
+      }
+      scores[type as keyof typeof scores] = score
+    })
+
+    return scores
+  }
+
+  private static detectDocumentBlocks(pages: string[]) {
+    const pageTypes: Array<{ page: number; type: 'guia_valija' | 'hoja_remision' | 'oficio'; confidence: number }> = []
+    for (let index = 0; index < pages.length; index++) {
+      const normalized = pages[index].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      const scores = this.scoreDocumentType(normalized)
+      const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1])
+      const best = sorted[0]
+      const second = sorted[1]
+      const confidence = best[1] === 0 ? 0 : Math.min(best[1] / Math.max(1, best[1] + second[1]), 1)
+      pageTypes.push({
+        page: index + 1,
+        type: best[0] as 'guia_valija' | 'hoja_remision' | 'oficio',
+        confidence
+      })
+    }
+
+    const blocks: Array<{ startPage: number; endPage: number; documentType: 'guia_valija' | 'hoja_remision' | 'oficio'; confidence: number }> = []
+    for (const pageType of pageTypes) {
+      const last = blocks[blocks.length - 1]
+      if (last && last.documentType === pageType.type && last.endPage + 1 === pageType.page) {
+        const blockSize = last.endPage - last.startPage + 1
+        last.endPage = pageType.page
+        last.confidence = ((last.confidence * blockSize) + pageType.confidence) / (blockSize + 1)
+      } else {
+        blocks.push({
+          startPage: pageType.page,
+          endPage: pageType.page,
+          documentType: pageType.type,
+          confidence: pageType.confidence
+        })
+      }
+    }
+
+    return { blocks, pageTypes }
+  }
+
+  private static detectDocumentTypeFromBlocks(blocksAnalysis: {
+    blocks: Array<{ startPage: number; endPage: number; documentType: 'guia_valija' | 'hoja_remision' | 'oficio'; confidence: number }>
+    pageTypes: Array<{ page: number; type: 'guia_valija' | 'hoja_remision' | 'oficio'; confidence: number }>
+  }) {
+    const weights: Record<'guia_valija' | 'hoja_remision' | 'oficio', number> = {
+      guia_valija: 0,
+      hoja_remision: 0,
+      oficio: 0,
+    }
+
+    for (const block of blocksAnalysis.blocks) {
+      const length = block.endPage - block.startPage + 1
+      weights[block.documentType] += length * Math.max(block.confidence, 0.1)
+    }
+
+    const sorted = Object.entries(weights).sort((a, b) => b[1] - a[1])
+    const bestType = sorted[0][0] as 'guia_valija' | 'hoja_remision' | 'oficio'
+    const bestScore = sorted[0][1]
+    const secondScore = sorted[1]?.[1] ?? 0
+    const confidence = bestScore === 0 ? 0 : Math.min(bestScore / (bestScore + secondScore), 1)
+
+    const foundKeywords = this.documentTypeKeywords[bestType]
+
+    return {
+      type: bestType,
+      confidence,
+      foundKeywords,
+    }
   }
 
   private static detectDirection(content: string) {
@@ -184,6 +302,34 @@ export class DocumentAnalyzer {
     return { direction: detectedDirection, confidence, foundKeywords }
   }
 
+  private static detectValijaClassification(content: string, direction: 'entrada' | 'salida') {
+    const isExtraordinaria = content.includes('extraordinaria')
+    return {
+      tipoValija: direction === 'salida' ? 'SALIDA' : 'ENTRADA',
+      isExtraordinaria,
+    } as const
+  }
+
+  private static getReviewDecision(
+    documentTypeConfidence: number,
+    directionConfidence: number,
+    blockAnalysis: {
+      blocks: Array<{ startPage: number; endPage: number; documentType: 'guia_valija' | 'hoja_remision' | 'oficio'; confidence: number }>
+    }
+  ) {
+    const threshold = 0.7
+    if (documentTypeConfidence < threshold) {
+      return { requiresManualReview: true, reviewReason: 'Low document type confidence' }
+    }
+    if (directionConfidence < 0.6) {
+      return { requiresManualReview: true, reviewReason: 'Low direction confidence' }
+    }
+    if (blockAnalysis.blocks.length > 1) {
+      return { requiresManualReview: true, reviewReason: 'Mixed document types across pages' }
+    }
+    return { requiresManualReview: false, reviewReason: null }
+  }
+
   private static extractStructuredData(
     content: string,
     tipoDocumento: string,
@@ -204,8 +350,8 @@ export class DocumentAnalyzer {
       Object.assign(extracted, this.extractGuiaValijaData(content, tables, keyValuePairs))
     } else if (tipoDocumento === 'hoja_remision') {
       Object.assign(extracted, this.extractHojaRemisionData(content, tables, keyValuePairs))
-    } else if (tipoDocumento === 'nota_diplomatica') {
-      Object.assign(extracted, this.extractNotaDiplomaticaData(content, tables, keyValuePairs))
+    } else if (tipoDocumento === 'oficio') {
+      Object.assign(extracted, this.extractOficioData(content, tables, keyValuePairs))
     }
 
     return extracted
@@ -286,7 +432,7 @@ export class DocumentAnalyzer {
     return extracted
   }
 
-  private static extractNotaDiplomaticaData(content: string, tables?: any[], keyValuePairs?: any[]) {
+  private static extractOficioData(content: string, tables?: any[], keyValuePairs?: any[]) {
     const extracted: any = {}
 
     // Buscar asunto o referencia

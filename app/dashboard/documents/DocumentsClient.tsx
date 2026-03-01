@@ -1,9 +1,11 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import DocumentUpload from "@/components/DocumentUpload"
 import DocumentResults from "@/components/DocumentResults"
 import DocumentHistory from "@/components/DocumentHistory"
+import { ReviewQueuePanel } from "@/components/documents/ReviewQueuePanel"
 import type { DocumentHistoryItem } from "@/components/DocumentHistory"
 import { DocumentAnalysisResult } from "@/lib/document-intelligence"
 import { logger } from "@/lib/logger"
@@ -43,6 +45,9 @@ const FEATURES = [
 type AnalysisResultWithDocumentId = DocumentAnalysisResult & { documentId?: string }
 
 export default function DocumentsClient() {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [analysisResult, setAnalysisResult] = useState<DocumentAnalysisResult | null>(null)
   const [fileName, setFileName] = useState<string>("")
   const [fileUrl, setFileUrl] = useState<string>("")
@@ -50,7 +55,58 @@ export default function DocumentsClient() {
   const [error, setError] = useState<string>("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [reviewCounts, setReviewCounts] = useState({
+    pending: 0,
+    confirmed: 0,
+    rejected: 0,
+  })
   const features = useMemo(() => FEATURES, [])
+
+  const historySearch = searchParams?.get("hSearch") || ""
+  const historyStatus = (searchParams?.get("hStatus") as "all" | "pending" | "confirmed" | "rejected" | null) || "all"
+  const historyType = (searchParams?.get("hType") as "all" | "guia_valija" | "hoja_remision" | "oficio" | null) || "all"
+  const historyPage = Number(searchParams?.get("hPage") || "1")
+  const reviewSearch = searchParams?.get("rSearch") || ""
+  const reviewStatus = (searchParams?.get("rStatus") as "all" | "pending" | "confirmed" | "rejected" | null) || "pending"
+  const reviewType = (searchParams?.get("rType") as "all" | "guia_valija" | "hoja_remision" | "oficio" | null) || "all"
+  const reviewPage = Number(searchParams?.get("rPage") || "1")
+
+  useEffect(() => {
+    setShowHistory(searchParams?.get("history") === "1")
+  }, [searchParams])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchReviewCounts = async () => {
+      try {
+        const statuses: Array<"pending" | "confirmed" | "rejected"> = ["pending", "confirmed", "rejected"]
+        const responses = await Promise.all(
+          statuses.map(async (status) => {
+            const res = await fetch(`/api/documents?page=1&limit=1&reviewStatus=${status}`, {
+              signal: controller.signal,
+            })
+            if (!res.ok) {
+              return { status, total: 0 }
+            }
+            const data = await res.json()
+            return { status, total: data?.pagination?.total || 0 }
+          })
+        )
+
+        setReviewCounts({
+          pending: responses.find((x) => x.status === "pending")?.total || 0,
+          confirmed: responses.find((x) => x.status === "confirmed")?.total || 0,
+          rejected: responses.find((x) => x.status === "rejected")?.total || 0,
+        })
+      } catch {
+        // Ignore transient dashboard count errors
+      }
+    }
+
+    fetchReviewCounts()
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     return () => {
@@ -124,6 +180,108 @@ export default function DocumentsClient() {
     }
   }
 
+  const handleReviewDocument = (document: Pick<DocumentHistoryItem, "id">) => {
+    setShowHistory(false)
+    router.push(`/verify?documentId=${document.id}`)
+  }
+
+  const updateHistoryUrl = (partial: {
+    history?: "0" | "1"
+    hSearch?: string
+    hStatus?: "all" | "pending" | "confirmed" | "rejected"
+    hType?: "all" | "guia_valija" | "hoja_remision" | "oficio"
+    hPage?: number
+  }) => {
+    const params = new URLSearchParams(searchParams?.toString() || "")
+
+    const apply = (key: string, value?: string) => {
+      if (!value || value === "all" || value === "0") {
+        params.delete(key)
+      } else {
+        params.set(key, value)
+      }
+    }
+
+    apply("history", partial.history)
+    apply("hSearch", partial.hSearch)
+    apply("hStatus", partial.hStatus)
+    apply("hType", partial.hType)
+    apply("hPage", partial.hPage ? String(partial.hPage) : undefined)
+
+    const query = params.toString()
+    const target = query ? `${pathname}?${query}` : pathname
+    const current = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`
+    if (target === current) return
+    router.replace(target, { scroll: false })
+  }
+
+  const updateReviewUrl = (partial: {
+    rSearch?: string
+    rStatus?: "all" | "pending" | "confirmed" | "rejected"
+    rType?: "all" | "guia_valija" | "hoja_remision" | "oficio"
+    rPage?: number
+  }) => {
+    const params = new URLSearchParams(searchParams?.toString() || "")
+
+    const apply = (key: string, value?: string) => {
+      if (!value || value === "all") {
+        params.delete(key)
+      } else {
+        params.set(key, value)
+      }
+    }
+
+    apply("rSearch", partial.rSearch)
+    apply("rStatus", partial.rStatus)
+    apply("rType", partial.rType)
+    if (!partial.rPage || partial.rPage <= 1) {
+      params.delete("rPage")
+    } else {
+      params.set("rPage", String(partial.rPage))
+    }
+
+    const query = params.toString()
+    const target = query ? `${pathname}?${query}` : pathname
+    const current = `${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ""}`
+    if (target === current) return
+    router.replace(target, { scroll: false })
+  }
+
+  const openHistory = () => {
+    setShowHistory(true)
+    updateHistoryUrl({
+      history: "1",
+      hSearch: historySearch,
+      hStatus: historyStatus,
+      hType: historyType,
+      hPage: historyPage,
+    })
+  }
+
+  const closeHistory = () => {
+    setShowHistory(false)
+    updateHistoryUrl({
+      history: "0",
+      hSearch: "",
+      hStatus: "all",
+      hType: "all",
+      hPage: 1,
+    })
+  }
+
+  const applyReviewStatusChange = (change: {
+    documentId: string
+    from: "pending" | "confirmed" | "rejected"
+    to: "confirmed" | "rejected"
+  }) => {
+    if (change.from === change.to) return
+    setReviewCounts((prev) => ({
+      ...prev,
+      [change.from]: Math.max(0, prev[change.from] - 1),
+      [change.to]: prev[change.to] + 1,
+    }))
+  }
+
   return (
     <>
       {/* Header */}
@@ -142,7 +300,7 @@ export default function DocumentsClient() {
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <Button
                 variant="outline"
-                onClick={() => setShowHistory(true)}
+                onClick={openHistory}
                 className="flex-shrink-0"
               >
                 <Icon name="refresh" size="sm" className="mr-2" />
@@ -159,6 +317,48 @@ export default function DocumentsClient() {
               )}
             </div>
           </div>
+          <div className="pb-4 flex flex-wrap gap-2">
+            <button
+              onClick={() => updateReviewUrl({ rStatus: "pending", rPage: 1 })}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                reviewStatus === "pending"
+                  ? "bg-yellow-200 text-yellow-900"
+                  : "bg-yellow-100 text-yellow-800"
+              }`}
+            >
+              Pendiente: {reviewCounts.pending}
+            </button>
+            <button
+              onClick={() => updateReviewUrl({ rStatus: "confirmed", rPage: 1 })}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                reviewStatus === "confirmed"
+                  ? "bg-green-200 text-green-900"
+                  : "bg-green-100 text-green-800"
+              }`}
+            >
+              Confirmado: {reviewCounts.confirmed}
+            </button>
+            <button
+              onClick={() => updateReviewUrl({ rStatus: "rejected", rPage: 1 })}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                reviewStatus === "rejected"
+                  ? "bg-red-200 text-red-900"
+                  : "bg-red-100 text-red-800"
+              }`}
+            >
+              Rechazado: {reviewCounts.rejected}
+            </button>
+            <button
+              onClick={() => updateReviewUrl({ rStatus: "all", rPage: 1 })}
+              className={`rounded-full px-3 py-1 text-xs font-medium ${
+                reviewStatus === "all"
+                  ? "bg-gray-300 text-gray-900"
+                  : "bg-gray-100 text-gray-800"
+              }`}
+            >
+              Ver todos
+            </button>
+          </div>
         </div>
       </div>
 
@@ -173,6 +373,22 @@ export default function DocumentsClient() {
           <DocumentResults result={analysisResult} fileName={fileName} fileUrl={fileUrl} documentId={documentId} />
         )}
       </div>
+
+      <ReviewQueuePanel
+        initialSearch={reviewSearch}
+        initialReviewFilter={reviewStatus}
+        initialTypeFilter={reviewType}
+        initialPage={Number.isFinite(reviewPage) && reviewPage > 0 ? reviewPage : 1}
+        onReviewStatusChange={applyReviewStatusChange}
+        onStateChange={(state) =>
+          updateReviewUrl({
+            rSearch: state.search,
+            rStatus: state.reviewFilter,
+            rType: state.typeFilter,
+            rPage: state.page,
+          })
+        }
+      />
 
       {/* Error Dialog */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -200,7 +416,21 @@ export default function DocumentsClient() {
       {showHistory && (
         <DocumentHistory
           onSelectDocument={handleSelectDocument}
-          onClose={() => setShowHistory(false)}
+          onReviewDocument={handleReviewDocument}
+          initialSearch={historySearch}
+          initialReviewFilter={historyStatus}
+          initialTypeFilter={historyType}
+          initialPage={Number.isFinite(historyPage) && historyPage > 0 ? historyPage : 1}
+          onStateChange={(state) =>
+            updateHistoryUrl({
+              history: "1",
+              hSearch: state.search,
+              hStatus: state.reviewFilter,
+              hType: state.typeFilter,
+              hPage: state.page,
+            })
+          }
+          onClose={closeHistory}
         />
       )}
 

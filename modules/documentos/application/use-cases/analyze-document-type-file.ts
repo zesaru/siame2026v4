@@ -5,17 +5,51 @@ import { err, ok, type Result } from "@/lib/shared/result"
 import type { AzureDocumentAnalysisAdapter } from "../../infrastructure/analysis/azure-document-analysis.adapter"
 import type { DocumentTypeAnalysisAdapter } from "../../infrastructure/analysis/document-type-analysis.adapter"
 
-function getRecommendation(tipoDocumento: string, direccion: string, idioma: string) {
+function getRecommendation(
+  tipoDocumento: string,
+  direccion: string,
+  idioma: string,
+  requiresManualReview: boolean
+) {
+  if (requiresManualReview) {
+    return {
+      title: 'Documento Requiere Revisión Manual',
+      description: `Se detectó baja confianza o mezcla de tipos (${idioma}).`,
+      formPath: '/dashboard/documents',
+      action: 'manual_review',
+    }
+  }
+
   const directionText = direccion === 'entrada' ? 'Entrada' : 'Salida'
   switch (tipoDocumento) {
     case 'guia_valija':
-      return { title: `Guía de Valija - ${directionText}`, description: `Verificar detalles de la guía de valija ${directionText} detectada como ${idioma}`, formPath: '/dashboard/guias-valija/new' }
+      return {
+        title: `Guía de Valija - ${directionText}`,
+        description: `Verificar detalles de la guía de valija ${directionText} detectada como ${idioma}`,
+        formPath: '/dashboard/guias-valija/new',
+        action: 'verify_and_confirm',
+      }
     case 'hoja_remision':
-      return { title: `Hoja de Remisión - ${directionText}`, description: `Verificar detalles de la hoja de remisión ${directionText} detectada como ${idioma}`, formPath: '/dashboard/hojas-remision/new' }
-    case 'nota_diplomatica':
-      return { title: `Nota Diplomática - ${directionText}`, description: `Verificar detalles de la nota diplomática ${directionText} detectada como ${idioma}`, formPath: '/documents/notes/new' }
+      return {
+        title: `Hoja de Remisión - ${directionText}`,
+        description: `Verificar detalles de la hoja de remisión ${directionText} detectada como ${idioma}`,
+        formPath: '/dashboard/hojas-remision/new',
+        action: 'verify_and_confirm',
+      }
+    case 'oficio':
+      return {
+        title: `Oficio - ${directionText}`,
+        description: `Revisar y confirmar datos del oficio detectado como ${idioma}`,
+        formPath: '/dashboard/oficios/new',
+        action: 'verify_and_confirm',
+      }
     default:
-      return { title: 'Documento Requiere Revisión Manual', description: `No se pudo determinar el tipo de documento (${idioma})`, formPath: '/documents/manual-entry' }
+      return {
+        title: 'Documento Requiere Revisión Manual',
+        description: `No se pudo determinar el tipo de documento (${idioma})`,
+        formPath: '/dashboard/documents',
+        action: 'manual_review',
+      }
   }
 }
 
@@ -37,6 +71,12 @@ export class AnalyzeDocumentTypeFileUseCase {
         azureResult.tables,
         azureResult.keyValuePairs,
       )
+      const recommendation = getRecommendation(
+        documentTypeAnalysis.tipoDocumento,
+        documentTypeAnalysis.direccion,
+        documentTypeAnalysis.idioma,
+        !!documentTypeAnalysis.requiresManualReview
+      )
 
       const document = await prisma.document.create({
         data: {
@@ -54,80 +94,39 @@ export class AnalyzeDocumentTypeFileUseCase {
           tables: azureResult.tables || null,
           keyValuePairs: azureResult.keyValuePairs || null,
           entities: azureResult.entities || null,
-          metadata: azureResult.metadata || null,
-          processingStatus: 'completed',
+          metadata: {
+            ...(azureResult.metadata || {}),
+            classificationVersion: "v1",
+            analysis: {
+              idioma: documentTypeAnalysis.idioma,
+              tipoDocumento: documentTypeAnalysis.tipoDocumento,
+              direccion: documentTypeAnalysis.direccion,
+              confidence: documentTypeAnalysis.confidence,
+              extractedData: documentTypeAnalysis.extractedData,
+              keyIndicators: documentTypeAnalysis.keyIndicators,
+              blocks: documentTypeAnalysis.blocks,
+              requiresManualReview: documentTypeAnalysis.requiresManualReview,
+              reviewReason: documentTypeAnalysis.reviewReason,
+              valijaClassification: documentTypeAnalysis.valijaClassification,
+            },
+            recommendation,
+          },
+          processingStatus: 'pending_review',
         },
       })
 
-      let specificRecord: any = null
-      const { tipoDocumento, idioma, direccion, extractedData } = documentTypeAnalysis
-
-      switch (tipoDocumento) {
-        case 'guia_valija':
-          specificRecord = await prisma.guiaValija.create({
-            data: {
-              userId,
-              numeroGuia: extractedData.numeroGuia || '',
-              tipoValija: 'ENTRADA',
-              estado: 'pendiente',
-              fechaEmision: extractedData.fechaEmision || new Date(),
-              pesoValija: extractedData.peso || 0,
-              origenCiudad: '',
-              destinoCiudad: '',
-              remitenteNombre: '',
-              destinatarioNombre: '',
-              observaciones: `Detectado automáticamente: ${idioma}, ${direccion}`,
-            },
-          })
-          break
-        case 'hoja_remision':
-          specificRecord = await prisma.hojaRemision.create({
-            data: {
-              userId,
-              numero: extractedData.numero || 0,
-              numeroCompleto: extractedData.numeroCompleto || `HR-${Date.now()}`,
-              siglaUnidad: extractedData.siglaUnidad || 'HH',
-              para: extractedData.para || 'Por Asignar',
-              remitente: extractedData.remitente || 'Por Asignar',
-              asunto: extractedData.asunto || 'Detectado automáticamente',
-              documento: azureResult.content || '',
-              destino: 'Por Asignar',
-              estado: 'borrador',
-              processingStatus: 'completed',
-            },
-          })
-          break
-        case 'nota_diplomatica':
-          specificRecord = await prisma.document.create({
-            data: {
-              userId,
-              fileName: file.name,
-              fileType: 'nota_diplomatica',
-              processingStatus: 'completed',
-              contentText: azureResult.content,
-              metadata: {
-                tipo: 'nota_diplomatica',
-                direccion,
-                idioma,
-                asunto: extractedData.asunto,
-                entidadEmisora: extractedData.entidadEmisora,
-                detectedAt: new Date().toISOString(),
-              },
-            },
-          })
-          break
-      }
+      const { tipoDocumento, idioma, direccion } = documentTypeAnalysis
 
       logger.success(`Document type analysis completed: ${file.name}`)
       logger.info(`Detected: ${tipoDocumento} - ${direccion} (${idioma})`)
       logger.info(`Confidence: ${Math.round((documentTypeAnalysis.confidence.idioma + documentTypeAnalysis.confidence.tipoDocumento + documentTypeAnalysis.confidence.direccion) / 3 * 100)}%`)
       logger.database('CREATE', `Document saved with ID: ${document.id}`)
-      if (specificRecord) logger.database('CREATE', `Specific record created: ${tipoDocumento} ID: ${specificRecord.id}`)
       logger.separator()
 
       return ok({
+        classificationVersion: "v1",
         documentId: document.id,
-        specificRecordId: specificRecord?.id,
+        specificRecordId: null,
         specificRecordType: tipoDocumento,
         analysis: {
           idioma: documentTypeAnalysis.idioma,
@@ -136,9 +135,13 @@ export class AnalyzeDocumentTypeFileUseCase {
           confidence: documentTypeAnalysis.confidence,
           extractedData: documentTypeAnalysis.extractedData,
           keyIndicators: documentTypeAnalysis.keyIndicators,
+          blocks: documentTypeAnalysis.blocks,
+          requiresManualReview: documentTypeAnalysis.requiresManualReview,
+          reviewReason: documentTypeAnalysis.reviewReason,
+          valijaClassification: documentTypeAnalysis.valijaClassification,
         },
         ...azureResult,
-        recommendation: getRecommendation(tipoDocumento, direccion, idioma),
+        recommendation,
       })
     } catch (cause) {
       return err(new ApplicationError('DOCUMENT_TYPE_ANALYZE_FAILED', 'Failed to analyze document', cause))

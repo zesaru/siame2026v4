@@ -7,6 +7,8 @@ export interface ListDocumentsQuery {
   page: number
   limit: number
   search?: string
+  reviewStatus?: "pending" | "confirmed" | "rejected"
+  documentType?: "guia_valija" | "hoja_remision" | "oficio"
 }
 
 export class ListDocumentsUseCase {

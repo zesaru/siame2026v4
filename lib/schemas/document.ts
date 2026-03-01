@@ -91,7 +91,11 @@ export const documentQuerySchema = z.object({
     z.number().int().positive().max(100)
   ),
 
-  search: z.string().max(200).optional()
+  search: z.string().max(200).optional(),
+
+  reviewStatus: z.enum(["pending", "confirmed", "rejected"]).optional(),
+
+  documentType: z.enum(["guia_valija", "hoja_remision", "oficio"]).optional()
 })
 
 /**

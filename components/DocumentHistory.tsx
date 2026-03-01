@@ -15,15 +15,37 @@ interface PaginatedResponse extends Omit<DocumentsListResponseDto, "documents"> 
 
 interface DocumentHistoryProps {
   onSelectDocument: (document: DocumentHistoryItem) => void
+  onReviewDocument?: (document: DocumentHistoryItem) => void
+  initialSearch?: string
+  initialReviewFilter?: "all" | "pending" | "confirmed" | "rejected"
+  initialTypeFilter?: "all" | "guia_valija" | "hoja_remision" | "oficio"
+  initialPage?: number
+  onStateChange?: (state: {
+    search: string
+    reviewFilter: "all" | "pending" | "confirmed" | "rejected"
+    typeFilter: "all" | "guia_valija" | "hoja_remision" | "oficio"
+    page: number
+  }) => void
   onClose: () => void
 }
 
-export default function DocumentHistory({ onSelectDocument, onClose }: DocumentHistoryProps) {
+export default function DocumentHistory({
+  onSelectDocument,
+  onReviewDocument,
+  initialSearch = "",
+  initialReviewFilter = "all",
+  initialTypeFilter = "all",
+  initialPage = 1,
+  onStateChange,
+  onClose
+}: DocumentHistoryProps) {
   const [documents, setDocuments] = useState<DocumentHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useState(initialPage)
   const [totalPages, setTotalPages] = useState(1)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(initialSearch)
+  const [reviewFilter, setReviewFilter] = useState<"all" | "pending" | "confirmed" | "rejected">(initialReviewFilter)
+  const [typeFilter, setTypeFilter] = useState<"all" | "guia_valija" | "hoja_remision" | "oficio">(initialTypeFilter)
   const deferredSearch = useDeferredValue(search)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -36,6 +58,12 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
       })
       if (deferredSearch) {
         params.append("search", deferredSearch)
+      }
+      if (reviewFilter !== "all") {
+        params.append("reviewStatus", reviewFilter)
+      }
+      if (typeFilter !== "all") {
+        params.append("documentType", typeFilter)
       }
 
       const response = await fetch(`/api/documents?${params}`, { signal })
@@ -52,7 +80,7 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
     } finally {
       setLoading(false)
     }
-  }, [page, deferredSearch])
+  }, [page, deferredSearch, reviewFilter, typeFilter])
 
   const deleteDocument = async (id: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return
@@ -87,14 +115,36 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
     }
   }, [fetchDocuments])
 
+  useEffect(() => {
+    onStateChange?.({
+      search,
+      reviewFilter,
+      typeFilter,
+      page,
+    })
+  }, [onStateChange, page, reviewFilter, search, typeFilter])
+
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + " B"
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB"
     return (bytes / (1024 * 1024)).toFixed(1) + " MB"
   }
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return "N/A"
     return new Date(dateString).toLocaleString()
+  }
+
+  const reviewStatusLabel = (status: string | null | undefined) => {
+    if (status === "confirmed") return "Confirmado"
+    if (status === "rejected") return "Rechazado"
+    return "Pendiente"
+  }
+
+  const reviewStatusClass = (status: string | null | undefined) => {
+    if (status === "confirmed") return "bg-green-100 text-green-700"
+    if (status === "rejected") return "bg-red-100 text-red-700"
+    return "bg-yellow-100 text-yellow-700"
   }
 
   return (
@@ -116,16 +166,44 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
 
           {/* Search */}
           <div className="mt-4">
-            <input
-              type="text"
-              placeholder="Search documents..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value)
-                setPage(1)
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value)
+                  setPage(1)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <select
+                value={reviewFilter}
+                onChange={(e) => {
+                  setReviewFilter(e.target.value as typeof reviewFilter)
+                  setPage(1)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
+              >
+                <option value="all">Todos los estados</option>
+                <option value="pending">Pendiente</option>
+                <option value="confirmed">Confirmado</option>
+                <option value="rejected">Rechazado</option>
+              </select>
+              <select
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value as typeof typeFilter)
+                  setPage(1)
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white"
+              >
+                <option value="all">Todos los tipos</option>
+                <option value="guia_valija">Guía Valija</option>
+                <option value="hoja_remision">Hoja Remisión</option>
+                <option value="oficio">Oficio</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -151,6 +229,9 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Date
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Review
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
@@ -182,6 +263,14 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(doc.analyzedAt)}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${reviewStatusClass(doc.reviewStatus)}`}>
+                        {reviewStatusLabel(doc.reviewStatus)}
+                      </span>
+                      {doc.detectedDocumentType && (
+                        <div className="mt-1 text-xs text-gray-500">{doc.detectedDocumentType.replace("_", " ")}</div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
                         onClick={() => onSelectDocument(doc)}
@@ -189,6 +278,14 @@ export default function DocumentHistory({ onSelectDocument, onClose }: DocumentH
                       >
                         View
                       </button>
+                      {(doc.reviewStatus !== "confirmed" || doc.processingStatus === "pending_review") && onReviewDocument && (
+                        <button
+                          onClick={() => onReviewDocument(doc)}
+                          className="text-amber-600 hover:text-amber-900 mr-4"
+                        >
+                          Verificar
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteDocument(doc.id)}
                         disabled={deletingId === doc.id}

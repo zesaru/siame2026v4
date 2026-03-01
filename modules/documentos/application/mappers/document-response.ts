@@ -1,6 +1,9 @@
 import type { DocumentDetailDto, DocumentDetailSource, DocumentListSource, DocumentsListResponseDto } from "../dto"
 
 function toDocumentListItemDto(source: DocumentListSource) {
+  const metadata = (source.metadata || {}) as Record<string, any>
+  const analysis = (metadata.analysis || {}) as Record<string, any>
+
   return {
     id: source.id,
     fileName: source.fileName,
@@ -13,6 +16,8 @@ function toDocumentListItemDto(source: DocumentListSource) {
     keyValueCount: source.keyValueCount,
     entityCount: source.entityCount,
     processingStatus: source.processingStatus,
+    reviewStatus: typeof metadata.reviewStatus === "string" ? metadata.reviewStatus : null,
+    detectedDocumentType: typeof analysis.tipoDocumento === "string" ? analysis.tipoDocumento : null,
     createdAt: source.createdAt,
     analyzedAt: source.analyzedAt,
   }

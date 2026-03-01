@@ -5,7 +5,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async listDocuments(params: ListDocumentsParams) {
-    const { userId, page, limit, search } = params
+    const { userId, page, limit, search, reviewStatus, documentType } = params
     const skip = (page - 1) * limit
 
     const where: Prisma.DocumentWhereInput = { userId }
@@ -13,6 +13,23 @@ export class PrismaDocumentRepository implements DocumentRepository {
       where.OR = [
         { fileName: { contains: search, mode: "insensitive" } },
         { contentText: { contains: search, mode: "insensitive" } },
+      ]
+    }
+    if (reviewStatus) {
+      where.metadata = {
+        path: ["reviewStatus"],
+        equals: reviewStatus,
+      }
+    }
+    if (documentType) {
+      where.AND = [
+        ...(Array.isArray(where.AND) ? where.AND : []),
+        {
+          metadata: {
+            path: ["analysis", "tipoDocumento"],
+            equals: documentType,
+          },
+        },
       ]
     }
 
@@ -34,6 +51,7 @@ export class PrismaDocumentRepository implements DocumentRepository {
           keyValueCount: true,
           entityCount: true,
           processingStatus: true,
+          metadata: true,
           createdAt: true,
           analyzedAt: true,
         },

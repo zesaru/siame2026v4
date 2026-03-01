@@ -280,10 +280,16 @@ export function findKeyValue(keyValuePairs: any[], searchKey: string): string | 
 }
 
 /**
- * Determina el tipo de valija (siempre ENTRADA)
+ * Determina el tipo de valija (ENTRADA/SALIDA)
  */
-export function determinarTipoValija(): string {
-  return 'ENTRADA'
+export function determinarTipoValija(content?: string): 'ENTRADA' | 'SALIDA' {
+  if (!content) return 'ENTRADA'
+
+  const normalized = content.toUpperCase()
+  const salidaSignals = ['SALIDA', 'EXPORT', 'OUTBOUND', 'DESPACHO', 'PARTIDA']
+  const hasSalida = salidaSignals.some((signal) => normalized.includes(signal))
+
+  return hasSalida ? 'SALIDA' : 'ENTRADA'
 }
 
 /**
@@ -633,7 +639,7 @@ export async function processGuiaValijaFromAzure(
   const numeroPaquetes = totalItemsStr ? parseInt(totalItemsStr.replace(/\D/g, '')) : null
 
   // Determinar tipo de valija (siempre ENTRADA)
-  const tipoValija = determinarTipoValija()
+  const tipoValija = determinarTipoValija(content)
 
   // Determinar si es guía extraordinaria
   const isExtraordinaria = determinarIsExtraordinaria(remitenteRaw, content)

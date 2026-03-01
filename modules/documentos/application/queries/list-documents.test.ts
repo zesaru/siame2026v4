@@ -29,9 +29,23 @@ describe("ListDocumentsUseCase", () => {
     })
     const useCase = new ListDocumentsUseCase(repo)
 
-    const result = await useCase.execute({ userId: "u1", page: 1, limit: 10, search: "abc" })
+    const result = await useCase.execute({
+      userId: "u1",
+      page: 1,
+      limit: 10,
+      search: "abc",
+      reviewStatus: "pending",
+      documentType: "guia_valija",
+    })
 
-    expect(repo.listDocuments).toHaveBeenCalledWith({ userId: "u1", page: 1, limit: 10, search: "abc" })
+    expect(repo.listDocuments).toHaveBeenCalledWith({
+      userId: "u1",
+      page: 1,
+      limit: 10,
+      search: "abc",
+      reviewStatus: "pending",
+      documentType: "guia_valija",
+    })
     expect(result.ok).toBe(true)
     if (result.ok) {
       expect(result.value.total).toBe(0)

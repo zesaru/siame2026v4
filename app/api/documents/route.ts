@@ -26,7 +26,9 @@ export async function GET(req: NextRequest) {
     const parsedQuery = parseDocumentQueryParams({
       page: searchParams.get("page"),
       limit: searchParams.get("limit"),
-      search: searchParams.get("search")
+      search: searchParams.get("search"),
+      reviewStatus: searchParams.get("reviewStatus") || undefined,
+      documentType: searchParams.get("documentType") || undefined,
     })
 
     if (!parsedQuery.ok) {
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    const { page, limit, search } = parsedQuery.value
+    const { page, limit, search, reviewStatus, documentType } = parsedQuery.value
     const repository = new PrismaDocumentRepository(prisma)
     const useCase = new ListDocumentsUseCase(repository)
     const result = await useCase.execute({
@@ -54,6 +56,8 @@ export async function GET(req: NextRequest) {
       page,
       limit,
       search,
+      reviewStatus,
+      documentType,
     })
 
     if (!result.ok) {

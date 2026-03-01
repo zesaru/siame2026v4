@@ -10,6 +10,7 @@ export interface DocumentListRow {
   keyValueCount: number | null
   entityCount: number | null
   processingStatus: string
+  metadata: unknown
   createdAt: Date
   analyzedAt: Date | null
 }
@@ -19,6 +20,8 @@ export interface ListDocumentsParams {
   page: number
   limit: number
   search?: string
+  reviewStatus?: "pending" | "confirmed" | "rejected"
+  documentType?: "guia_valija" | "hoja_remision" | "oficio"
 }
 
 export interface ListDocumentsResultRow {

@@ -12,6 +12,8 @@ export interface DocumentListItemDto {
   keyValueCount: number | null
   entityCount: number | null
   processingStatus: string
+  reviewStatus: string | null
+  detectedDocumentType: string | null
   createdAt: Date
   analyzedAt: Date | null
 }

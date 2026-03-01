@@ -53,9 +53,9 @@ export const guiaValijaSchema = z.object({
     .min(3, "El número debe tener al menos 3 caracteres")
     .max(50, "Máximo 50 caracteres"),
 
-  tipoValija: z.enum(["ENTRADA"], {
+  tipoValija: z.enum(["ENTRADA", "SALIDA"], {
     required_error: "El tipo de valija es requerido",
-    errorMap: () => ({ message: "El tipo debe ser: ENTRADA" })
+    errorMap: () => ({ message: "El tipo debe ser: ENTRADA o SALIDA" })
   }),
 
   fechaEmision: z.string({
