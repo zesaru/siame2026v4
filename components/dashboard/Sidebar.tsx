@@ -41,6 +41,11 @@ const allNavigationItems = [
     icon: "shipping",
   },
   {
+    title: "Oficios",
+    href: "/dashboard/oficios",
+    icon: "document",
+  },
+  {
     title: "Usuarios",
     href: "/dashboard/usuarios",
     icon: "users",
