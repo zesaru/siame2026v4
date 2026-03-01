@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { ArrowLeft, FileText, MapPin, User, Calendar, Weight, Trash2, Edit, Send, CheckCircle, XCircle } from "lucide-react"
 import { toast } from "sonner"
+import { withTrackView } from "@/lib/utils"
 
 interface HojaRemisionDetails {
   id: string
@@ -91,7 +92,7 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
       if (!mounted) return
 
       try {
-        const response = await fetch(`/api/hojas-remision/${hojaId}`, {
+        const response = await fetch(withTrackView(`/api/hojas-remision/${hojaId}`, true), {
           signal: abortController.signal
         })
         if (!response.ok) throw new Error("Error al cargar los detalles de la hoja de remisión")
@@ -121,7 +122,7 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
 
   const confirmDelete = async () => {
     try {
-      const response = await fetch(`/api/hojas-remision/${params.id}`, {
+      const response = await fetch(`/api/hojas-remision/${hojaId}`, {
         method: "DELETE",
       })
 

@@ -20,6 +20,7 @@ import { ArrowLeft, Package, MapPin, User, Calendar, Weight, Truck, Save, X, Tra
 import { toast } from "sonner"
 import GuiaValijaItems from "@/components/dashboard/GuiaValijaItems"
 import Icon from "@/components/ui/Icon"
+import { withTrackView } from "@/lib/utils"
 
 interface GuiaValijaItem {
   id: string
@@ -82,7 +83,7 @@ export default function GuiaValijaViewPage() {
 
   async function fetchGuiaDetails() {
     try {
-      const response = await fetch(`/api/guias-valija/${params.id}`)
+      const response = await fetch(withTrackView(`/api/guias-valija/${params.id}`, true))
       if (!response.ok) throw new Error("Error al cargar los detalles de la guía")
       const data = await response.json()
       setGuia(data)
