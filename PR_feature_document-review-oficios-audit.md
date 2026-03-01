@@ -89,3 +89,21 @@ Este PR implementa el flujo completo de revisión manual para documentos clasifi
 - [ ] Verificar acceso a `/dashboard/oficios`, creación automática desde `/verify` y edición/eliminación.
 - [ ] Revisar módulo de auditoría con filtros `OFICIO` + `UPDATE`.
 - [ ] Confirmar que formularios técnicos usan `trackView=0` y vistas usan `trackView=1`.
+
+## QA Instructions (Comentario Sugerido en PR)
+1. Ingresar a `/dashboard/documents` y subir un PDF clasificable como `oficio`.
+2. Abrir `/verify?documentId=...` y confirmar análisis.
+3. Validar redirección a `/dashboard/oficios/{id}/view`.
+4. Editar campos en `/dashboard/oficios/{id}/edit` y guardar.
+5. Eliminar oficio desde edición y confirmar retorno al listado.
+6. Ir a `/dashboard/audit-logs` y filtrar:
+: `Tipo=Oficio`, `Acción=Actualizar`.
+7. Confirmar eventos esperados:
+: `VIEW` en visualizaciones reales.
+: `UPDATE` al guardar edición.
+: `DELETE` al eliminar.
+8. Verificar que lecturas técnicas de formularios no inflen `VIEW` (uso `trackView=0`).
+9. Caso negativo:
+: rechazar análisis con motivo vacío debe bloquear acción.
+10. Caso legacy:
+: documento ya confirmado debe responder `alreadyConfirmed` sin duplicar registros.
