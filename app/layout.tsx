@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { ToasterProvider } from "@/components/providers/toaster";
@@ -26,11 +26,12 @@ export const metadata: Metadata = {
     title: "SIAME 2026 - Sistema Inteligente para Misiones diplomáticas",
     description: "Plataforma integral de gestión documental con inteligencia artificial",
   },
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({
