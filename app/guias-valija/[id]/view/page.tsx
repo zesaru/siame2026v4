@@ -16,10 +16,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Package, MapPin, User, Calendar, Weight, Truck, Save, X, Trash2, MoreVertical } from "lucide-react"
+import { ArrowLeft, Package, MapPin, User, Calendar, Weight, Truck, Save, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import GuiaValijaItems from "@/components/dashboard/GuiaValijaItems"
-import Icon from "@/components/ui/Icon"
 import { withTrackView } from "@/lib/utils"
 
 interface GuiaValijaItem {
@@ -55,9 +54,12 @@ interface GuiaValijaDetails {
   destinoPais?: string
   descripcionContenido?: string
   observaciones?: string
+  isExtraordinaria?: boolean
   items: GuiaValijaItem[]
   createdAt: string
 }
+
+type TabKey = "resumen" | "items" | "personas" | "observaciones"
 
 export default function GuiaValijaViewPage() {
   const { data: session, status } = useSession()
@@ -70,6 +72,7 @@ export default function GuiaValijaViewPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabKey>("resumen")
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
 
   useEffect(() => {
@@ -176,6 +179,16 @@ export default function GuiaValijaViewPage() {
     cancelado: "Cancelado",
   }
 
+  const tabs: Array<{ key: TabKey; label: string }> = [
+    { key: "resumen", label: "Resumen" },
+    { key: "items", label: "Items" },
+    { key: "personas", label: "Personas" },
+    { key: "observaciones", label: "Observaciones" },
+  ]
+
+  const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "—")
+  const formatWeight = (value?: number) => (typeof value === "number" ? `${value} kg` : "—")
+
   if (status === "loading" || loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -200,283 +213,169 @@ export default function GuiaValijaViewPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={() => router.back()}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
+    <div className="space-y-5 pb-6">
+      <div className="sticky top-0 z-20 rounded-xl border bg-white/95 px-4 py-3 backdrop-blur">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-3">
+            <Button variant="ghost" onClick={() => router.back()}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Volver
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">Guía {guia.numeroGuia}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <Badge variant="outline">{guia.tipoValija || "ENTRADA"}</Badge>
+                {guia.isExtraordinaria && <Badge className="bg-amber-100 text-amber-800">Extraordinaria</Badge>}
+                <Badge className={estadoColors[guia.estado]}>{estadoLabels[guia.estado] || guia.estado}</Badge>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {!isEditing ? (
+              <>
+                <Button variant="outline" onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}>
+                  Editar Guía
+                </Button>
+                <Button onClick={() => { setActiveTab("items"); setIsEditing(true) }}>
+                  <Package className="mr-2 h-4 w-4" />
+                  Editar Items
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDeleteConfirm(true)}
+                  className="text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)] hover:text-[var(--kt-danger)]"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={cancelEditing} disabled={saving}>
+                  <X className="mr-2 h-4 w-4" />
+                  Cancelar
+                </Button>
+                <Button onClick={saveItems} disabled={saving}>
+                  <Save className="mr-2 h-4 w-4" />
+                  {saving ? "Guardando..." : "Guardar"}
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Emisión</p><p className="font-semibold">{formatDate(guia.fechaEmision)}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Envío</p><p className="font-semibold">{formatDate(guia.fechaEnvio)}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Recibo</p><p className="font-semibold">{formatDate(guia.fechaRecibo)}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Peso Valija</p><p className="font-semibold">{formatWeight(guia.pesoValija)}</p></CardContent></Card>
+        <Card><CardContent className="pt-4"><p className="text-xs text-muted-foreground">Peso Oficial</p><p className="font-semibold">{formatWeight(guia.pesoOficial)}</p></CardContent></Card>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <Button
+            key={tab.key}
+            size="sm"
+            variant={activeTab === tab.key ? "default" : "outline"}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
-              Detalles de Guía de Valija
-            </h1>
-            <p className="text-[var(--kt-text-muted)]">
-              Número: {guia.numeroGuia}
-            </p>
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          {!isEditing && (
-            <>
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
-              >
-                Editar Guía
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setDeleteConfirm(true)}
-                className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)]"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </>
-          )}
-        </div>
+        ))}
       </div>
 
-      {/* Info Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-[var(--kt-primary)]" />
-              <div>
-                <p className="text-xs text-[var(--kt-text-muted)]">Tipo</p>
-                <Badge className="bg-[var(--kt-info-light)] text-[var(--kt-info)]">
-                  GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]?.replace('EXT', '')} ENTRADA{guia.isExtraordinaria && ' EXTRAORDINARIA'}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {error && (
+        <div className="rounded border border-[var(--kt-danger)] bg-[var(--kt-danger-light)] px-4 py-3 text-[var(--kt-danger)]">
+          {error}
+        </div>
+      )}
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-[var(--kt-info)]" />
-              <div>
-                <p className="text-xs text-[var(--kt-text-muted)]">Emisión</p>
-                <p className="text-sm font-medium">
-                  {new Date(guia.fechaEmision).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {activeTab === "resumen" && (
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Resumen de la guía
+              </CardTitle>
+              <CardDescription>Datos principales para lectura rápida.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div><p className="text-xs text-muted-foreground">Número de guía</p><p className="font-medium">{guia.numeroGuia || "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">Total de items</p><p className="font-medium">{guia.items.length || 0}</p></div>
+              <div><p className="text-xs text-muted-foreground">Número de paquetes</p><p className="font-medium">{guia.numeroPaquetes ?? "—"}</p></div>
+              <div><p className="text-xs text-muted-foreground">Tipo</p><p className="font-medium">{guia.tipoValija || "ENTRADA"}{guia.isExtraordinaria ? " - EXTRAORDINARIA" : ""}</p></div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Estado</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <Badge className={estadoColors[guia.estado]}>{estadoLabels[guia.estado] || guia.estado}</Badge>
+              <p className="text-sm text-muted-foreground">Creado: {formatDate(guia.createdAt)}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Truck className="h-5 w-5 text-[var(--kt-warning)]" />
-              <div>
-                <p className="text-xs text-[var(--kt-text-muted)]">Estado</p>
-                <Badge className={estadoColors[guia.estado]}>
-                  {estadoLabels[guia.estado] || guia.estado}
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2">
-              <Weight className="h-5 w-5 text-[var(--kt-success)]" />
-              <div>
-                <p className="text-xs text-[var(--kt-text-muted)]">Peso Total</p>
-                <p className="text-sm font-medium">
-                  {guia.pesoValija ? `${guia.pesoValija} kg` : "-"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Journey Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Ruta de la Valija
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="font-semibold text-[var(--kt-text-dark)] mb-3">Origen</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[var(--kt-text-muted)]" />
-                  <span className="text-sm">
-                    {guia.origenCiudad || "No especificado"}
-                  </span>
-                </div>
-                {guia.origenPais && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[var(--kt-text-muted)]" />
-                    <span className="text-sm">{guia.origenPais}</span>
-                  </div>
-                )}
-                {guia.fechaEnvio && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[var(--kt-text-muted)]" />
-                    <span className="text-sm">
-                      Enviado: {new Date(guia.fechaEnvio).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-semibold text-[var(--kt-text-dark)] mb-3">Destino</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-[var(--kt-text-muted)]" />
-                  <span className="text-sm">
-                    {guia.destinoCiudad || "No especificado"}
-                  </span>
-                </div>
-                {guia.destinoPais && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-[var(--kt-text-muted)]" />
-                    <span className="text-sm">{guia.destinoPais}</span>
-                  </div>
-                )}
-                {guia.fechaRecibo && (
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[var(--kt-text-muted)]" />
-                    <span className="text-sm">
-                      Recibido: {new Date(guia.fechaRecibo).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* People Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {activeTab === "items" && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Remitente
+              <Package className="h-5 w-5" />
+              Items de la Guía ({guia.items.length})
             </CardTitle>
+            <CardDescription>Lista completa de items contenidos en la guía.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-medium">{guia.remitenteNombre || "No especificado"}</p>
-            <p className="text-sm text-[var(--kt-text-muted)]">{guia.remitenteCargo || ""}</p>
-            <p className="text-sm text-[var(--kt-text-muted)]">{guia.remitenteEmail || ""}</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Destinatario
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="font-medium">{guia.destinatarioNombre || "No especificado"}</p>
-            <p className="text-sm text-[var(--kt-text-muted)]">{guia.destinatarioCargo || ""}</p>
-            <p className="text-sm text-[var(--kt-text-muted)]">{guia.destinatarioEmail || ""}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Items Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5" />
-            Items de la Guía ({guia.items.length})
-          </CardTitle>
-          <CardDescription>
-            Lista completa de items contenidos en la guía de valija
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <GuiaValijaItems
-          title="Items de la Guía"
-          items={items}
-          onChange={setItems}
-          validateRef={validateRef}
-          editable={isEditing}
-        />
-        </CardContent>
-      </Card>
-
-      {/* Additional Info */}
-      {(guia.descripcionContenido || guia.observaciones) && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Información Adicional</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {guia.descripcionContenido && (
-              <div>
-                <h4 className="font-medium text-[var(--kt-text-dark)] mb-2">Descripción del Contenido</h4>
-                <p className="text-sm text-[var(--kt-text-muted)]">{guia.descripcionContenido}</p>
-              </div>
-            )}
-            {guia.observaciones && (
-              <div>
-                <h4 className="font-medium text-[var(--kt-text-dark)] mb-2">Observaciones</h4>
-                <p className="text-sm text-[var(--kt-text-muted)]">{guia.observaciones}</p>
-              </div>
-            )}
+          <CardContent className="max-h-[70vh] overflow-auto pr-1">
+            <GuiaValijaItems
+              title="Items de la Guía"
+              items={items}
+              onChange={setItems}
+              validateRef={validateRef}
+              editable={isEditing}
+            />
           </CardContent>
         </Card>
       )}
 
-      {/* Actions */}
-      <Card>
-        <CardContent className="pt-6">
-          {error && (
-            <div className="mb-4">
-              <div className="bg-[var(--kt-danger-light)] border border-[var(--kt-danger)] text-[var(--kt-danger)] px-4 py-3 rounded">
-                {error}
-              </div>
+      {activeTab === "personas" && (
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Remitente</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p className="font-medium">{guia.remitenteNombre || "—"}</p>
+              <p className="text-sm text-muted-foreground">{guia.remitenteCargo || "—"}</p>
+              <p className="text-sm text-muted-foreground">{guia.remitenteEmail || "—"}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Destinatario</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              <p className="font-medium">{guia.destinatarioNombre || "—"}</p>
+              <p className="text-sm text-muted-foreground">{guia.destinatarioCargo || "—"}</p>
+              <p className="text-sm text-muted-foreground">{guia.destinatarioEmail || "—"}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {activeTab === "observaciones" && (
+        <Card>
+          <CardHeader><CardTitle>Información Adicional</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="mb-2 font-medium">Descripción del Contenido</h4>
+              <p className="text-sm text-muted-foreground">{guia.descripcionContenido || "—"}</p>
             </div>
-          )}
-          <div className="flex justify-between gap-3">
-            <div className="flex gap-3">
-              <Button variant="outline" onClick={() => router.push("/dashboard/guias-valija")}>
-                Volver al listado
-              </Button>
-              {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)}>
-                  <Package className="h-4 w-4 mr-2" />
-                  Editar Items
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" onClick={cancelEditing} disabled={saving}>
-                    <X className="h-4 w-4 mr-2" />
-                    Cancelar
-                  </Button>
-                  <Button onClick={saveItems} disabled={saving}>
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? "Guardando..." : "Guardar Cambios"}
-                  </Button>
-                </>
-              )}
+            <div>
+              <h4 className="mb-2 font-medium">Observaciones</h4>
+              <p className="text-sm text-muted-foreground">{guia.observaciones || "—"}</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>

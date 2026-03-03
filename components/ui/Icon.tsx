@@ -28,6 +28,7 @@ const iconMap: Record<string, keyof typeof LucideIcons> = {
   document: "FileText",
   suitcase: "Briefcase",
   shipping: "Package",
+  package: "Package",
   chart: "BarChart3",
   menu: "Menu",
   x: "X",

@@ -14,6 +14,7 @@ interface KeyValuePair {
 interface GuiaValijaFormProps {
   editedPairs: KeyValuePair[]
   onFieldChange: (index: number, field: 'key' | 'value', newValue: string) => void
+  rawContent?: string
 }
 
 /**
@@ -29,37 +30,34 @@ function extractNumeroGuia(text: string): string {
   logger.debug('🔍 [GUIA EXTRACTION] Raw text:', text)
   logger.debug('🔍 [GUIA EXTRACTION] Clean text:', cleanText)
 
-  // 1. Nº o N° seguido de número (1-2 dígitos)
-  let match = cleanText.match(/N[º°]\s*(\d{1,2})/i)
+  // 1. "GUÍA ... EXTRAORDINARIA N°04"
+  let match = cleanText.match(/GU[ÍI]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA(?:\s+EXTRAORDINARIA)?\s+N(?:[º°]|o\.?)?\s*(\d{1,4})/i)
   if (match) {
     logger.debug('✅ [GUIA EXTRACTION] Pattern 1 matched:', match[1])
     return match[1]
   }
 
-  // 2. "GUÍA DE VALIJA DIPLOMÁTICA" seguido de Nº y número
-  match = cleanText.match(/GUÍA\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d{1,2})/i)
+  // 2. "Nº 04" o "N°04"
+  match = cleanText.match(/N[º°]\s*(\d{1,4})/i)
   if (match) {
     logger.debug('✅ [GUIA EXTRACTION] Pattern 2 matched:', match[1])
-    return match[1]
-  }
-
-  // 3. Cualquier número de 1-2 dígitos después de "GUÍA"
-  match = cleanText.match(/GU[ÍÍ]A[^\d]*(\d{1,2})/i)
-  if (match) {
-    logger.debug('✅ [GUIA EXTRACTION] Pattern 3 matched:', match[1])
-    return match[1]
-  }
-
-  // 4. Buscar cualquier número de 1-2 dígitos
-  match = cleanText.match(/(\d{1,2})/)
-  if (match) {
-    logger.debug('✅ [GUIA EXTRACTION] Pattern 4 matched:', match[1])
     return match[1]
   }
 
   logger.debug('❌ [GUIA EXTRACTION] No pattern matched')
 
   return ""
+}
+
+function normalizePesoOficial(value: string): string {
+  if (!value) return ""
+  const withoutUnits = value
+    .replace(/kilogramos?/gi, "")
+    .replace(/\bk(?:grs?|gs?)?\.?\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  const match = withoutUnits.match(/\d+(?:[.,]\d+)*/)
+  return match ? match[0] : withoutUnits
 }
 
 /**
@@ -100,7 +98,7 @@ function FormField({ label, value, onChange, placeholder, type = "text", inputMo
   )
 }
 
-export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValijaFormProps) {
+export default function GuiaValijaForm({ editedPairs, onFieldChange, rawContent = "" }: GuiaValijaFormProps) {
   // Estado local para el número de guía (editable manualmente)
   const [numeroGuiaManual, setNumeroGuiaManual] = useState("")
 
@@ -153,26 +151,43 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
   }
 
   const handlePesoOficialChange = (newValue: string) => {
+    const normalizedPeso = normalizePesoOficial(newValue)
     const idx = editedPairs.findIndex(p => p.key.includes("Peso Oficial"))
-    if (idx !== -1) onFieldChange(idx, 'value', newValue)
+    if (idx !== -1) onFieldChange(idx, 'value', normalizedPeso)
   }
 
   // Extraer valores
   const paraValue = editedPairs.find(p => p.key.includes("PARA"))?.value || ""
   const deFieldIndex = findDeField()
   const deField = deFieldIndex !== -1 ? editedPairs[deFieldIndex] : null
-  const extractedNumero = extractNumeroGuia(deField?.value || "")
+  const numeroFromGuiaKey = editedPairs.find((p) => /n[º°]?\s*de\s*gu[ií]a|gu[ií]a\s*a[ée]rea/i.test(p.key))?.value || ""
+  const extractedNumero = extractNumeroGuia(`${rawContent} ${deField?.value || ""}`)
+  const shortNumeroFromGuiaKey = numeroFromGuiaKey.replace(/\D/g, "")
+  const numeroFromKeyCandidate =
+    shortNumeroFromGuiaKey.length > 0 && shortNumeroFromGuiaKey.length <= 4 ? shortNumeroFromGuiaKey : ""
   const numeroGuiaValue = numeroGuiaManual || extractedNumero
+    || numeroFromKeyCandidate
   const fechaEnvioValue = editedPairs.find(p => p.key.includes("ENVIO"))?.value || ""
   const fechaReciboValue = editedPairs.find(p => p.key.includes("RECIBO"))?.value || ""
   const totalItemsValue = extractNumericOnly(editedPairs.find(p => p.key.includes("Items"))?.value || "")
-  const pesoOficialValue = editedPairs.find(p => p.key.includes("Peso Oficial"))?.value || ""
+  const pesoOficialRaw = editedPairs.find(p => p.key.includes("Peso Oficial"))?.value || ""
+  const pesoOficialValue = normalizePesoOficial(pesoOficialRaw)
 
   // Logging en desarrollo
   logger.debug('🔍 [GUIA FORM] Campo DE encontrado:', deField ? `index=${deFieldIndex}, key="${deField.key}"` : 'NO ENCONTRADO')
   logger.debug('🔍 [GUIA FORM] Valor del campo DE:', deField?.value)
   logger.debug('🔍 [GUIA FORM] Nº de guía extraído:', extractedNumero)
   logger.debug('🔍 [GUIA FORM] Nº de guía manual:', numeroGuiaManual)
+
+  useEffect(() => {
+    const idx = editedPairs.findIndex((p) => p.key.includes("Peso Oficial"))
+    if (idx === -1) return
+    const current = editedPairs[idx]?.value || ""
+    const normalized = normalizePesoOficial(current)
+    if (normalized && normalized !== current) {
+      onFieldChange(idx, "value", normalized)
+    }
+  }, [editedPairs, onFieldChange])
 
   // Exponer el número de guía manual para que el componente padre pueda acceder
   useEffect(() => {
@@ -243,7 +258,7 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange }: GuiaValij
           label="PESO OFICIAL"
           value={pesoOficialValue}
           onChange={handlePesoOficialChange}
-          placeholder="Ej: 12.660 Kgrs."
+          placeholder="Ej: 12.660"
         />
       </div>
     </div>

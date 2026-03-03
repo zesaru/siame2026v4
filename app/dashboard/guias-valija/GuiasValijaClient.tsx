@@ -1,9 +1,9 @@
 "use client"
 
-import { useDeferredValue, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useDeferredValue, useEffect, useMemo, useState } from "react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 // Dialog component removed - now using separate pages
 import {
   AlertDialog,
@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import Icon from "@/components/ui/Icon"
-import GuiaValijaForm from "@/components/dashboard/GuiaValijaForm"
 import { TableSkeleton, StatCardsSkeleton } from "@/components/dashboard/SkeletonLoaders"
 import {
   Breadcrumb,
@@ -44,14 +43,6 @@ import { useTablePagination } from "@/lib/hooks/useTablePagination"
 import { exportToCSV, exportToExcel, getExportFilename } from "@/lib/utils/export"
 import type { DashboardGuiaValijaListItem } from "@/modules/guias-valija/application/dto"
 import { toast } from "sonner"
-
-// Estado colors for custom styling
-const estadoColors: Record<string, string> = {
-  pendiente: "bg-gray-100 text-gray-700",
-  en_transito: "bg-blue-100 text-blue-700",
-  entregado: "bg-green-100 text-green-700",
-  cancelado: "bg-red-100 text-red-700",
-}
 
 // Estado mapping for better badge styling
 const estadoVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -74,9 +65,15 @@ interface GuiasValijaClientProps {
 
 export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientProps) {
   const router = useRouter()
+  const pathname = usePathname()
+  const urlSearchParams = useSearchParams()
+  const initialSearch = urlSearchParams?.get("q") || ""
+  const initialStatus = (urlSearchParams?.get("s") as "all" | "recibido" | "en_transito" | "entregado" | "cancelado" | null) || "all"
+  const initialPage = Number(urlSearchParams?.get("p") || "1")
   const [guias, setGuias] = useState<DashboardGuiaValijaListItem[]>(initialGuias)
   const [loading, setLoading] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [searchTerm, setSearchTerm] = useState(initialSearch)
+  const [statusFilter, setStatusFilter] = useState<"all" | "recibido" | "en_transito" | "entregado" | "cancelado">(initialStatus)
   const deferredSearchTerm = useDeferredValue(searchTerm)
 
   // Form states - Removed, now using separate pages
@@ -85,14 +82,39 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
 
   const filteredGuias = useMemo(() => {
     const term = deferredSearchTerm.trim().toLowerCase()
-    if (!term) return guias
+    return guias.filter((guia) => {
+      const matchesStatus = statusFilter === "all" ? true : guia.estado === statusFilter
+      const matchesSearch = !term
+        ? true
+        : guia.numeroGuia.toLowerCase().includes(term) ||
+          guia.destinatarioNombre?.toLowerCase().includes(term) ||
+          guia.destinoCiudad?.toLowerCase().includes(term)
+      return matchesStatus && matchesSearch
+    })
+  }, [deferredSearchTerm, guias, statusFilter])
 
-    return guias.filter((guia) =>
-      guia.numeroGuia.toLowerCase().includes(term) ||
-      guia.destinatarioNombre?.toLowerCase().includes(term) ||
-      guia.destinoCiudad?.toLowerCase().includes(term)
-    )
-  }, [deferredSearchTerm, guias])
+  const formatShortDate = (value?: string | null) => {
+    if (!value) return "-"
+    return new Date(value).toLocaleDateString()
+  }
+
+  const summary = useMemo(() => {
+    const total = guias.length
+    const extraordinarias = guias.filter((g) => g.isExtraordinaria).length
+    const entregadas = guias.filter((g) => g.estado === "entregado").length
+    const enTransito = guias.filter((g) => g.estado === "en_transito").length
+    return { total, extraordinarias, entregadas, enTransito }
+  }, [guias])
+
+  const statusCounts = useMemo(() => {
+    return {
+      all: guias.length,
+      recibido: guias.filter((g) => g.estado === "recibido").length,
+      en_transito: guias.filter((g) => g.estado === "en_transito").length,
+      entregado: guias.filter((g) => g.estado === "entregado").length,
+      cancelado: guias.filter((g) => g.estado === "cancelado").length,
+    }
+  }, [guias])
 
   // Sorting
   const { sortConfig, handleSort, sortedData, getSortIndicator, isSorted } = useTableSort(
@@ -108,7 +130,27 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
     paginatedData,
     goToPage,
     setItemsPerPage,
-  } = useTablePagination(sortedData, { itemsPerPage: 10 })
+  } = useTablePagination(sortedData, { itemsPerPage: 10, initialPage: Number.isFinite(initialPage) && initialPage > 0 ? initialPage : 1 })
+
+  useEffect(() => {
+    const params = new URLSearchParams(urlSearchParams?.toString() || "")
+
+    if (searchTerm.trim()) params.set("q", searchTerm.trim())
+    else params.delete("q")
+
+    if (statusFilter !== "all") params.set("s", statusFilter)
+    else params.delete("s")
+
+    if (currentPage > 1) params.set("p", String(currentPage))
+    else params.delete("p")
+
+    const query = params.toString()
+    const target = query ? `${pathname}?${query}` : pathname
+    const current = `${pathname}${urlSearchParams?.toString() ? `?${urlSearchParams.toString()}` : ""}`
+    if (target !== current) {
+      router.replace(target, { scroll: false })
+    }
+  }, [currentPage, pathname, router, searchTerm, statusFilter, urlSearchParams])
 
   async function fetchGuias() {
     try {
@@ -158,10 +200,6 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
         description: "No se pudo eliminar la guía. Inténtalo nuevamente."
       })
     }
-  }
-
-  function handleFormSuccess() {
-    fetchGuias()
   }
 
   const handleExportCSV = async () => {
@@ -285,26 +323,142 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
       </Breadcrumb>
 
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--kt-text-dark)]">
-          Guías de Valija
-        </h1>
-        <p className="text-[var(--kt-text-muted)]">
-          Gestiona tus documentos diplomáticos y de valija
-        </p>
+      <div className="rounded-xl border border-[var(--kt-gray-200)] bg-gradient-to-r from-white via-[var(--kt-primary-light)]/30 to-white p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--kt-text-dark)]">
+              Guías de Valija
+            </h1>
+            <p className="text-[var(--kt-text-muted)]">
+              Gestiona, filtra y exporta guías diplomáticas de entrada y salida desde un solo panel.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={handleCreate}>
+              <Icon name="plus" size="sm" className="mr-2" />
+              Nueva Guía
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportCSV}
+              disabled={sortedData.length === 0 || isExporting}
+            >
+              <Icon name="download" size="sm" className="mr-2" />
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportExcel}
+              disabled={sortedData.length === 0 || isExporting}
+            >
+              <Icon name="table" size="sm" className="mr-2" />
+              Excel
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total</CardDescription>
+            <CardTitle className="text-2xl">{summary.total}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Extraordinarias</CardDescription>
+            <CardTitle className="text-2xl">{summary.extraordinarias}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>En Tránsito</CardDescription>
+            <CardTitle className="text-2xl">{summary.enTransito}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Entregadas</CardDescription>
+            <CardTitle className="text-2xl">{summary.entregadas}</CardTitle>
+          </CardHeader>
+        </Card>
       </div>
 
       {/* Search */}
       <Card>
         <CardContent className="pt-6">
-          <div className="relative">
+          <div className="relative flex items-center gap-2">
             <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--kt-text-muted)] h-4 w-4" />
             <Input
               placeholder="Buscar por número, destinatario o ciudad..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value)
+                goToPage(1)
+              }}
               className="pl-10 text-base"
             />
+            {searchTerm && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm("")
+                  goToPage(1)
+                }}
+              >
+                Limpiar
+              </Button>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={statusFilter === "all" ? "default" : "outline"}
+              className={statusFilter === "all" ? "shadow-sm" : ""}
+              onClick={() => { setStatusFilter("all"); goToPage(1) }}
+            >
+              {statusFilter === "all" && <Icon name="check" size="xs" className="mr-1" />}
+              Todos ({statusCounts.all})
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "recibido" ? "default" : "outline"}
+              className={statusFilter === "recibido" ? "shadow-sm" : ""}
+              onClick={() => { setStatusFilter("recibido"); goToPage(1) }}
+            >
+              {statusFilter === "recibido" && <Icon name="check" size="xs" className="mr-1" />}
+              Recibido ({statusCounts.recibido})
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "en_transito" ? "default" : "outline"}
+              className={statusFilter === "en_transito" ? "shadow-sm" : ""}
+              onClick={() => { setStatusFilter("en_transito"); goToPage(1) }}
+            >
+              {statusFilter === "en_transito" && <Icon name="check" size="xs" className="mr-1" />}
+              En Tránsito ({statusCounts.en_transito})
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "entregado" ? "default" : "outline"}
+              className={statusFilter === "entregado" ? "shadow-sm" : ""}
+              onClick={() => { setStatusFilter("entregado"); goToPage(1) }}
+            >
+              {statusFilter === "entregado" && <Icon name="check" size="xs" className="mr-1" />}
+              Entregado ({statusCounts.entregado})
+            </Button>
+            <Button
+              size="sm"
+              variant={statusFilter === "cancelado" ? "destructive" : "outline"}
+              className={statusFilter === "cancelado" ? "shadow-sm" : ""}
+              onClick={() => { setStatusFilter("cancelado"); goToPage(1) }}
+            >
+              {statusFilter === "cancelado" && <Icon name="check" size="xs" className="mr-1" />}
+              Cancelado ({statusCounts.cancelado})
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -313,13 +467,13 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
       <Card>
         <TooltipProvider>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl">Guías Registradas</CardTitle>
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-xl">Guías Registradas</CardTitle>
               <div className="flex items-center gap-4">
                 <div className="text-sm text-muted-foreground">
                   {sortedData.length} de {guias.length} guías
                 </div>
-                <div className="flex gap-2">
+                <div className="hidden gap-2 md:flex">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -391,14 +545,80 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
               </p>
             </div>
           ) : (
-              <div className="rounded-md border">
-                <Table>
+              <div className="space-y-4">
+                <div className="grid gap-3 md:hidden">
+                  {paginatedData.map((guia) => (
+                    <div key={guia.id} className="rounded-lg border p-4 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Número</p>
+                          <p className="font-semibold">{guia.numeroGuia}</p>
+                        </div>
+                        <Badge variant={estadoVariants[guia.estado]}>
+                          {estadoLabels[guia.estado] || guia.estado}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge className={guia.tipoValija === "SALIDA" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}>
+                          {guia.tipoValija === "SALIDA" ? "Salida" : "Entrada"}
+                        </Badge>
+                        {guia.isExtraordinaria && <Badge variant="outline">Extraordinaria</Badge>}
+                        <Badge variant="outline">{guia.items?.length || 0} items</Badge>
+                      </div>
+                      <div className="text-sm space-y-1">
+                        <p><span className="text-muted-foreground">Destinatario:</span> {guia.destinatarioNombre || "-"}</p>
+                        <p><span className="text-muted-foreground">Ciudad:</span> {guia.destinoCiudad || "-"}</p>
+                        <p><span className="text-muted-foreground">Fecha envío:</span> {formatShortDate(guia.fechaEnvio)}</p>
+                      </div>
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Ver guía ${guia.numeroGuia}`}
+                          onClick={() => router.push(`/guias-valija/${guia.id}/view`)}
+                        >
+                          <Icon name="eye" size="sm" />
+                        </Button>
+                        {guia.filePath && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Ver archivo de ${guia.numeroGuia}`}
+                            onClick={() => window.open(`/api/files/${guia.filePath}?inline=true`, "_blank")}
+                          >
+                            <Icon name="document" size="sm" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Editar guía ${guia.numeroGuia}`}
+                          onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
+                        >
+                          <Icon name="refresh" size="sm" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Eliminar guía ${guia.numeroGuia}`}
+                          onClick={() => handleDelete(guia)}
+                          className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                        >
+                          <Icon name="trash" size="sm" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden rounded-md border md:block max-h-[65vh] overflow-auto">
+                  <Table>
                   <TableCaption>
                     Lista de guías de valija registradas ({sortedData.length} registros)
                   </TableCaption>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">
+                    <TableHead className="sticky top-0 left-0 z-30 w-[120px] bg-white shadow-[2px_0_0_0_var(--kt-gray-200)]">
                       <SortableHeader
                         isSorted={isSorted("numeroGuia")}
                         sortDirection={sortConfig.key === "numeroGuia" ? sortConfig.direction : null}
@@ -407,8 +627,8 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                         Número
                       </SortableHeader>
                     </TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>
+                    <TableHead className="sticky top-0 z-20 bg-white">Tipo</TableHead>
+                    <TableHead className="sticky top-0 z-20 bg-white">
                       <SortableHeader
                         isSorted={isSorted("destinoCiudad")}
                         sortDirection={sortConfig.key === "destinoCiudad" ? sortConfig.direction : null}
@@ -417,7 +637,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                         Destino
                       </SortableHeader>
                     </TableHead>
-                    <TableHead>
+                    <TableHead className="sticky top-0 z-20 bg-white">
                       <SortableHeader
                         isSorted={isSorted("fechaEnvio")}
                         sortDirection={sortConfig.key === "fechaEnvio" ? sortConfig.direction : null}
@@ -426,8 +646,8 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                         Fecha Envío
                       </SortableHeader>
                     </TableHead>
-                    <TableHead className="text-center">Items</TableHead>
-                    <TableHead>
+                    <TableHead className="sticky top-0 z-20 bg-white text-center">Items</TableHead>
+                    <TableHead className="sticky top-0 z-20 bg-white">
                       <SortableHeader
                         isSorted={isSorted("estado")}
                         sortDirection={sortConfig.key === "estado" ? sortConfig.direction : null}
@@ -436,19 +656,24 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                         Estado
                       </SortableHeader>
                     </TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead className="sticky top-0 right-0 z-30 bg-white text-right shadow-[-2px_0_0_0_var(--kt-gray-200)]">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {paginatedData.map((guia) => (
-                    <TableRow key={guia.id}>
-                      <TableCell className="font-medium">
+                    <TableRow key={guia.id} className="group hover:bg-[var(--kt-gray-50)]">
+                      <TableCell className="sticky left-0 z-10 bg-white font-medium shadow-[2px_0_0_0_var(--kt-gray-100)] group-hover:bg-[var(--kt-gray-50)]">
                         {guia.numeroGuia}
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-blue-100 text-blue-700">
-                          GUÍA DE VALIJA {guia.numeroGuia?.split('-')[0]?.replace('EXT', '')} ENTRADA{guia.isExtraordinaria && ' EXTRAORDINARIA'}
-                        </Badge>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge className={guia.tipoValija === "SALIDA" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}>
+                            {guia.tipoValija === "SALIDA" ? "Salida" : "Entrada"}
+                          </Badge>
+                          {guia.isExtraordinaria && (
+                            <Badge variant="outline">Extraordinaria</Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="space-y-1">
@@ -461,9 +686,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                         </div>
                       </TableCell>
                       <TableCell>
-                        {guia.fechaEnvio
-                          ? new Date(guia.fechaEnvio).toLocaleDateString()
-                          : "-"}
+                        {formatShortDate(guia.fechaEnvio)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">
@@ -475,14 +698,15 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                           {estadoLabels[guia.estado] || guia.estado}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="sticky right-0 z-10 bg-white text-right shadow-[-2px_0_0_0_var(--kt-gray-100)] group-hover:bg-[var(--kt-gray-50)]">
                         <div className="flex items-center justify-end gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => window.open(`/guias-valija/${guia.id}/view`, '_blank')}
+                                aria-label={`Ver guía ${guia.numeroGuia}`}
+                                onClick={() => router.push(`/guias-valija/${guia.id}/view`)}
                               >
                                 <Icon name="eye" size="sm" />
                               </Button>
@@ -498,6 +722,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                 <Button
                                   variant="ghost"
                                   size="sm"
+                                  aria-label={`Ver archivo de ${guia.numeroGuia}`}
                                   onClick={() => window.open(`/api/files/${guia.filePath}?inline=true`, '_blank')}
                                 >
                                   <Icon name="document" size="sm" />
@@ -514,6 +739,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label={`Editar guía ${guia.numeroGuia}`}
                                 onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
                               >
                                 <Icon name="refresh" size="sm" />
@@ -529,6 +755,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label={`Eliminar guía ${guia.numeroGuia}`}
                                 onClick={() => handleDelete(guia)}
                                 className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
                               >
@@ -544,17 +771,18 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+                  </Table>
+                </div>
 
-              {/* Pagination */}
-              <DataTablePagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                totalItems={sortedData.length}
-                itemsPerPage={itemsPerPage}
-                onPageChange={goToPage}
-                onItemsPerPageChange={(size) => setItemsPerPage(size)}
-              />
+                {/* Pagination */}
+                <DataTablePagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={sortedData.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={goToPage}
+                  onItemsPerPageChange={(size) => setItemsPerPage(size)}
+                />
             </div>
           )}
         </CardContent>

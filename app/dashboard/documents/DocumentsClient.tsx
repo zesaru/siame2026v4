@@ -292,10 +292,6 @@ export default function DocumentsClient() {
               <h1 className="text-2xl sm:text-3xl font-bold text-[var(--kt-text-dark)]">
                 Document Intelligence
               </h1>
-              <span className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-[var(--kt-primary)] bg-[var(--kt-primary-light)] rounded-full">
-                <Icon name="check" size="sm" />
-                Powered by Azure AI
-              </span>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <Button

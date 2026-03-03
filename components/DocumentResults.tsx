@@ -221,6 +221,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
             <GuiaValijaForm
               editedPairs={editedPairs}
               onFieldChange={handleFieldChange}
+              rawContent={result.content || ""}
             />
 
             {/* Key-Value Pairs Editables - OCULTO: Usar Tables en su lugar */}
@@ -355,13 +356,22 @@ export default function DocumentResults(props: DocumentResultsProps) {
                 </div>
                 {isTablesExpanded && editedTables.map((table, tableIdx: number) => {
                   const tableView = tableViews[tableIdx]
+                  const isPrecintosTable = tableIdx === 0
                   return (
                   <div key={tableIdx} style={{ marginBottom: "16px" }}>
                     <p style={{ fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "8px" }}>
                       Tabla {tableIdx + 1}: {table.rowCount} filas × {table.columnCount} columnas
                     </p>
                     <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: "6px" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+                      <table
+                        style={{
+                          width: isPrecintosTable ? "max-content" : "100%",
+                          minWidth: "100%",
+                          tableLayout: "auto",
+                          borderCollapse: "collapse",
+                          fontSize: "12px"
+                        }}
+                      >
                         <thead style={{ backgroundColor: "#f3f4f6" }}>
                           <tr>
                             {Array.from({ length: table.columnCount }).map((_, colIdx) => {
@@ -380,7 +390,15 @@ export default function DocumentResults(props: DocumentResultsProps) {
                                     padding: "4px",
                                     fontWeight: "600",
                                     textAlign: "left",
-                                    width: isNumeroColumn ? "60px" : isCantidadColumn ? "80px" : isPesoItemColumn ? "120px" : "auto"
+                                    width: isPrecintosTable
+                                      ? "auto"
+                                      : isNumeroColumn
+                                        ? "60px"
+                                        : isCantidadColumn
+                                          ? "80px"
+                                          : isPesoItemColumn
+                                            ? "120px"
+                                            : "auto"
                                   }}
                                 >
                                   <Input
@@ -413,7 +431,15 @@ export default function DocumentResults(props: DocumentResultsProps) {
                                       border: "1px solid #e5e7eb",
                                       padding: "4px",
                                       textAlign: "left",
-                                      width: isNumeroColumn ? "60px" : isCantidadColumn ? "80px" : isPesoItemColumn ? "120px" : "auto"
+                                      width: isPrecintosTable
+                                        ? "auto"
+                                        : isNumeroColumn
+                                          ? "60px"
+                                          : isCantidadColumn
+                                            ? "80px"
+                                            : isPesoItemColumn
+                                              ? "120px"
+                                              : "auto"
                                     }}
                                   >
                                     <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>

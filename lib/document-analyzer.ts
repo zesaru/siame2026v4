@@ -28,6 +28,24 @@ export interface DocumentAnalysis {
 }
 
 export class DocumentAnalyzer {
+  private static extraordinaryMarkers = [
+    /\bextraordinari[ao]s?\b/g,
+    /\bservicio\s+extraordinari[ao]\b/g,
+    /\bvalija\s+extraordinari[ao]\b/g,
+    /\bgu[ií]a\s+extraordinari[ao]\b/g,
+  ]
+
+  private static ordinaryMarkers = [
+    /\bordinari[ao]s?\b/g,
+    /\bservicio\s+ordinari[ao]\b/g,
+    /\bvalija\s+ordinari[ao]\b/g,
+    /\bgu[ií]a\s+ordinari[ao]\b/g,
+  ]
+
+  private static extraordinaryNegations = [
+    /\bno\s+extraordinari[ao]s?\b/g,
+    /\bsin\s+(?:car[aá]cter\s+)?extraordinari[ao]s?\b/g,
+  ]
 
   // Palabras clave para detección de idioma
   private static languageKeywords = {
@@ -71,7 +89,9 @@ export class DocumentAnalyzer {
     const reviewDecision = this.getReviewDecision(
       documentTypeAnalysis.confidence,
       directionAnalysis.confidence,
-      blockAnalysis
+      blockAnalysis,
+      documentTypeAnalysis.type,
+      valijaClassification
     )
 
     // Extraer datos estructurados según el tipo detectado
@@ -303,7 +323,26 @@ export class DocumentAnalyzer {
   }
 
   private static detectValijaClassification(content: string, direction: 'entrada' | 'salida') {
-    const isExtraordinaria = content.includes('extraordinaria')
+    const extraordinaryHits = this.extraordinaryMarkers.reduce((total, pattern) => {
+      const matches = content.match(pattern)
+      return total + (matches?.length || 0)
+    }, 0)
+    const ordinaryHits = this.ordinaryMarkers.reduce((total, pattern) => {
+      const matches = content.match(pattern)
+      return total + (matches?.length || 0)
+    }, 0)
+    const negatedExtraordinaryHits = this.extraordinaryNegations.reduce((total, pattern) => {
+      const matches = content.match(pattern)
+      return total + (matches?.length || 0)
+    }, 0)
+
+    let isExtraordinaria: boolean | null = false
+    if (extraordinaryHits > 0 && ordinaryHits === 0 && negatedExtraordinaryHits === 0) {
+      isExtraordinaria = true
+    } else if (extraordinaryHits > 0 && (ordinaryHits > 0 || negatedExtraordinaryHits > 0)) {
+      isExtraordinaria = null
+    }
+
     return {
       tipoValija: direction === 'salida' ? 'SALIDA' : 'ENTRADA',
       isExtraordinaria,
@@ -315,11 +354,16 @@ export class DocumentAnalyzer {
     directionConfidence: number,
     blockAnalysis: {
       blocks: Array<{ startPage: number; endPage: number; documentType: 'guia_valija' | 'hoja_remision' | 'oficio'; confidence: number }>
-    }
+    },
+    detectedType: 'guia_valija' | 'hoja_remision' | 'oficio',
+    valijaClassification: { tipoValija: 'ENTRADA' | 'SALIDA' | null; isExtraordinaria: boolean | null }
   ) {
     const threshold = 0.7
     if (documentTypeConfidence < threshold) {
       return { requiresManualReview: true, reviewReason: 'Low document type confidence' }
+    }
+    if (detectedType === 'guia_valija' && valijaClassification.isExtraordinaria === null) {
+      return { requiresManualReview: true, reviewReason: 'Ambiguous valija extraordinary classification' }
     }
     if (directionConfidence < 0.6) {
       return { requiresManualReview: true, reviewReason: 'Low direction confidence' }

@@ -11,7 +11,7 @@ import { toDocumentDetailDto } from "@/modules/documentos/application/mappers"
 import { parseUpdateDocumentKeyValuePairs } from "@/modules/documentos/application/validation"
 import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
 
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 // GET /api/documents/[id] - Get a specific document
 export async function GET(

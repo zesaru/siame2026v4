@@ -3,6 +3,12 @@ import { extractNumeroGuia, parseFecha } from './guias-valija-parser'
 
 describe('guias-valija-parser', () => {
   describe('extractNumeroGuia', () => {
+    it('debería extraer número después de EXTRAORDINARIA N°', () => {
+      const text = 'GUÍA DE VALIJA DIPLOMÁTICA EXTRAORDINARIA N°04.'
+      const result = extractNumeroGuia(text)
+      expect(result).toBe('04')
+    })
+
     it('debería extraer número de guía con formato Nº XX', () => {
       const text = 'GUÍA DE VALIJA DIPLOMÁTICA Nº 24 ENTRADA'
       const result = extractNumeroGuia(text)

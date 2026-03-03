@@ -67,11 +67,17 @@ export function ReviewQueuePanel({
   const router = useRouter()
   const [documents, setDocuments] = useState<ReviewQueueItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [collapsed, setCollapsed] = useState(true)
   const [page, setPage] = useState(initialPage)
   const [totalPages, setTotalPages] = useState(1)
   const [search, setSearch] = useState(initialSearch)
   const [reviewFilter, setReviewFilter] = useState<"all" | "pending" | "confirmed" | "rejected">(initialReviewFilter)
   const [typeFilter, setTypeFilter] = useState<"all" | "guia_valija" | "hoja_remision" | "oficio">(initialTypeFilter)
+  const [reviewCounts, setReviewCounts] = useState({
+    pending: 0,
+    confirmed: 0,
+    rejected: 0,
+  })
   const [actionLoadingById, setActionLoadingById] = useState<Record<string, "confirm" | "reject" | null>>({})
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null)
   const [rejectReason, setRejectReason] = useState("Rechazado desde cola de revisión")
@@ -88,14 +94,28 @@ export function ReviewQueuePanel({
       if (reviewFilter !== "all") params.append("reviewStatus", reviewFilter)
       if (typeFilter !== "all") params.append("documentType", typeFilter)
 
-      const response = await fetch(`/api/documents?${params}`, { signal })
-      if (!response.ok) throw new Error("Failed to fetch review queue")
+      const response = await fetch(`/api/documents?${params}`, { signal, cache: "no-store" })
+      if (response.status === 401) {
+        throw new Error("Tu sesión expiró. Inicia sesión nuevamente.")
+      }
+      if (!response.ok) {
+        let message = "No se pudo cargar la cola de revisión"
+        try {
+          const data = await response.json()
+          if (typeof data?.error === "string" && data.error.trim()) {
+            message = data.error
+          }
+        } catch {
+          // Ignore parse errors from non-JSON responses
+        }
+        throw new Error(message)
+      }
       const data: PaginatedResponse = await response.json()
       setDocuments(data.documents)
       setTotalPages(data.pagination.totalPages)
     } catch (error) {
       if (error instanceof Error && error.name === "AbortError") return
-      toast.error("No se pudo cargar la cola de revisión")
+      toast.error(error instanceof Error ? error.message : "No se pudo cargar la cola de revisión")
     } finally {
       setLoading(false)
     }
@@ -109,6 +129,44 @@ export function ReviewQueuePanel({
       controller.abort()
     }
   }, [fetchDocuments])
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const fetchCounts = async () => {
+      try {
+        const statuses: Array<"pending" | "confirmed" | "rejected"> = ["pending", "confirmed", "rejected"]
+        const responses = await Promise.all(
+          statuses.map(async (status) => {
+            const res = await fetch(`/api/documents?page=1&limit=1&reviewStatus=${status}`, {
+              signal: controller.signal,
+              cache: "no-store",
+            })
+            if (!res.ok) return { status, total: 0 }
+            const data = await res.json()
+            return { status, total: data?.pagination?.total || 0 }
+          })
+        )
+
+        setReviewCounts({
+          pending: responses.find((x) => x.status === "pending")?.total || 0,
+          confirmed: responses.find((x) => x.status === "confirmed")?.total || 0,
+          rejected: responses.find((x) => x.status === "rejected")?.total || 0,
+        })
+      } catch {
+        // Silently ignore temporary count failures
+      }
+    }
+
+    fetchCounts()
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!loading && documents.length > 0) {
+      setCollapsed(false)
+    }
+  }, [documents.length, loading])
 
   useEffect(() => {
     onStateChange?.({
@@ -214,7 +272,28 @@ export function ReviewQueuePanel({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
       <div className="rounded-xl border border-[var(--kt-gray-200)] bg-white p-6">
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-lg font-semibold text-[var(--kt-text-dark)]">Cola de Revisión</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-[var(--kt-text-dark)]">Cola de Revisión</h2>
+            <button
+              type="button"
+              onClick={() => setCollapsed((prev) => !prev)}
+              className="rounded-md border px-2 py-1 text-xs text-[var(--kt-text-muted)] hover:bg-[var(--kt-gray-50)]"
+            >
+              {collapsed ? "Expandir" : "Colapsar"}
+            </button>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="rounded-full bg-yellow-100 px-3 py-1 font-medium text-yellow-900">Pendiente: {reviewCounts.pending}</span>
+            <span className="rounded-full bg-green-100 px-3 py-1 font-medium text-green-900">Confirmado: {reviewCounts.confirmed}</span>
+            <span className="rounded-full bg-red-100 px-3 py-1 font-medium text-red-900">Rechazado: {reviewCounts.rejected}</span>
+            <span className="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-900">
+              Total: {reviewCounts.pending + reviewCounts.confirmed + reviewCounts.rejected}
+            </span>
+          </div>
+        </div>
+
+        {!collapsed && (
+          <>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <input
               type="text"
@@ -253,12 +332,28 @@ export function ReviewQueuePanel({
               <option value="oficio">Oficio</option>
             </select>
           </div>
-        </div>
+        </>
+        )}
 
-        {loading ? (
+        {!collapsed && (loading ? (
           <div className="py-8 text-center text-sm text-[var(--kt-text-muted)]">Cargando...</div>
         ) : documents.length === 0 ? (
-          <div className="py-8 text-center text-sm text-[var(--kt-text-muted)]">No hay documentos para los filtros seleccionados.</div>
+          <div className="py-8 text-center text-sm text-[var(--kt-text-muted)]">
+            <p>No hay documentos para los filtros seleccionados.</p>
+            {reviewFilter !== "all" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3"
+                onClick={() => {
+                  setReviewFilter("all")
+                  setPage(1)
+                }}
+              >
+                Ver todos los estados
+              </Button>
+            )}
+          </div>
         ) : (
           <div className="overflow-auto">
             <table className="min-w-full text-sm">
@@ -314,9 +409,9 @@ export function ReviewQueuePanel({
               </tbody>
             </table>
           </div>
-        )}
+        ))}
 
-        {totalPages > 1 && (
+        {!collapsed && totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between text-sm">
             <span>
               Página {page} de {totalPages}

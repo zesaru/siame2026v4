@@ -7,8 +7,7 @@ import { toDocumentsListResponseDto } from "@/modules/documentos/application/map
 import { parseDocumentQueryParams } from "@/modules/documentos/application/validation"
 import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
 
-// Revalidate documents list every 60 seconds (removed force-dynamic to enable caching)
-export const revalidate = 60
+export const dynamic = "force-dynamic"
 
 // GET /api/documents - List user's documents with pagination
 export async function GET(req: NextRequest) {
@@ -24,9 +23,9 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
 
     const parsedQuery = parseDocumentQueryParams({
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
-      search: searchParams.get("search"),
+      page: searchParams.get("page") ?? undefined,
+      limit: searchParams.get("limit") ?? undefined,
+      search: searchParams.get("search") ?? undefined,
       reviewStatus: searchParams.get("reviewStatus") || undefined,
       documentType: searchParams.get("documentType") || undefined,
     })

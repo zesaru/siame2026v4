@@ -36,8 +36,16 @@ export function extractNumeroGuia(text: string): string {
   // - "GUÍA AÉREA Nº 0003014"
   // - "N°07" o "Nº 07"
 
-  // Primero buscar "GUÍA DE VALIJA DIPLOMÁTICA N°" o similar
-  const guiaDiplomaticaMatch = cleanText.match(/GU[ÍÍ]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N[º°]\s*(\d+)/i)
+  // Primero buscar "GUÍA DE VALIJA DIPLOMÁTICA EXTRAORDINARIA N°04" (o variantes)
+  const guiaExtraordinariaMatch = cleanText.match(
+    /GU[ÍI]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA(?:\s+EXTRAORDINARIA)?\s+N(?:[º°]|o\.?)?\s*(\d{1,4})/i
+  )
+  if (guiaExtraordinariaMatch && guiaExtraordinariaMatch[1]) {
+    return guiaExtraordinariaMatch[1]
+  }
+
+  // Buscar "GUÍA DE VALIJA DIPLOMÁTICA N°" o similar
+  const guiaDiplomaticaMatch = cleanText.match(/GU[ÍI]A\s+DE\s+VALIJA\s+DIPLOM[ÁA]TICA\s+N(?:[º°]|o\.?)?\s*(\d{1,4})/i)
   if (guiaDiplomaticaMatch && guiaDiplomaticaMatch[1]) {
     return guiaDiplomaticaMatch[1]
   }
@@ -50,8 +58,8 @@ export function extractNumeroGuia(text: string): string {
 
   // Buscar patrones generales: Nº02, No 02, #02, etc.
   const match = cleanText.match(/N[º°]\s*(\d+)|NO\s*[:.]?\s*(\d+)|#\s*(\d+)/i)
-  if (match && match[1]) {
-    return match[1]
+  if (match) {
+    return match[1] || match[2] || match[3] || ""
   }
 
   // Si no encuentra nada, retornar string vacío

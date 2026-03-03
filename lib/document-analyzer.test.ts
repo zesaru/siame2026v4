@@ -24,4 +24,22 @@ describe("document-analyzer", () => {
     expect(result.valijaClassification.tipoValija).toBe("SALIDA")
     expect(result.valijaClassification.isExtraordinaria).toBe(true)
   })
+
+  it("detects ordinaria when ordinary markers are present", async () => {
+    const content = "GUIA DE VALIJA ENTRADA ORDINARIA RECIBIDO LLEGADA INBOUND IMPORT"
+    const result = await DocumentAnalyzer.analyze(content, [], [])
+
+    expect(result.valijaClassification.tipoValija).toBe("ENTRADA")
+    expect(result.valijaClassification.isExtraordinaria).toBe(false)
+    expect(result.requiresManualReview).toBe(false)
+  })
+
+  it("requests manual review when extraordinary and ordinary signals conflict", async () => {
+    const content = "GUIA DE VALIJA EXTRAORDINARIA NO EXTRAORDINARIA ENTRADA RECIBIDO LLEGADA INBOUND"
+    const result = await DocumentAnalyzer.analyze(content, [], [])
+
+    expect(result.valijaClassification.isExtraordinaria).toBeNull()
+    expect(result.requiresManualReview).toBe(true)
+    expect(result.reviewReason).toBe("Ambiguous valija extraordinary classification")
+  })
 })
