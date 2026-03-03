@@ -1,0 +1,7 @@
+interface:
+  display_name: "Frontend Design"
+  short_description: "Build bold, polished, production-ready frontend UI."
+  default_prompt: "Use $frontend-design to redesign this page with a strong visual direction and production-ready code."
+
+policy:
+  allow_implicit_invocation: true

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Find Skills"
+  short_description: "Search and install relevant agent skills quickly."
+  default_prompt: "Use $find-skills to discover the best skill for my task and suggest install commands."
+
+policy:
+  allow_implicit_invocation: true

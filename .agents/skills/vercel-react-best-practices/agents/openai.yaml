@@ -1,0 +1,7 @@
+interface:
+  display_name: "Vercel React Best Practices"
+  short_description: "Apply high-impact React and Next.js performance rules."
+  default_prompt: "Use $vercel-react-best-practices to review this Next.js code and apply the highest-impact optimizations first."
+
+policy:
+  allow_implicit_invocation: true
