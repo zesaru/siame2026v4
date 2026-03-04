@@ -6,7 +6,20 @@ type Bucket = {
 
 const RATE_WINDOW_MS = 15 * 60 * 1000
 const MAX_AUTH_REQUESTS_PER_IP = 40
+const MAX_AUTH_BUCKETS_DEFAULT = 5000
 const buckets = new Map<string, Bucket>()
+
+export function __resetProxyRateLimitState() {
+  buckets.clear()
+}
+
+function getMaxAuthBuckets(): number {
+  const parsed = Number(process.env.AUTH_RATE_LIMIT_MAX_BUCKETS || "")
+  if (Number.isFinite(parsed) && parsed >= 1) {
+    return Math.floor(parsed)
+  }
+  return MAX_AUTH_BUCKETS_DEFAULT
+}
 
 function buildCspReportOnly() {
   const azureEndpoint = process.env.AZURE_FORM_RECOGNIZER_ENDPOINT
@@ -61,8 +74,26 @@ function shouldRateLimit(req: NextRequest): { limited: boolean; retryAfterSec?: 
   const now = Date.now()
   const ip = getClientIp(req)
   const key = `auth:${ip}`
+  const maxBuckets = getMaxAuthBuckets()
+
+  if (!buckets.has(key) && buckets.size >= maxBuckets) {
+    for (const [bucketKey, bucket] of buckets.entries()) {
+      const latestAttempt = bucket.attempts[bucket.attempts.length - 1]
+      if (!latestAttempt || now - latestAttempt > RATE_WINDOW_MS) {
+        buckets.delete(bucketKey)
+      }
+    }
+  }
+
+  if (!buckets.has(key) && buckets.size >= maxBuckets) {
+    return { limited: true, retryAfterSec: 1 }
+  }
+
   const bucket = buckets.get(key) || { attempts: [] }
   bucket.attempts = bucket.attempts.filter((t) => now - t <= RATE_WINDOW_MS)
+  if (bucket.attempts.length === 0) {
+    buckets.delete(key)
+  }
 
   if (bucket.attempts.length >= MAX_AUTH_REQUESTS_PER_IP) {
     const oldest = bucket.attempts[0]
