@@ -444,6 +444,8 @@ npm run security:prune-sessions
 - [ ] Verificar ejecución del workflow `Security Operations` por `workflow_dispatch`.
 - [ ] Confirmar recepción de webhook de prueba (`Notificar SLA` desde dashboard).
 
+> Nota de ejecución local (WSL/sandbox sin salida a internet): `gh workflow run ...` y `security:webhook:probe` pueden fallar por conectividad/token inválido aunque la configuración esté correcta.
+
 ### Evidencia operativa sugerida
 
 ```bash
