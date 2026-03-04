@@ -21,6 +21,7 @@
     "security:sbom": "node scripts/security-sbom.mjs",
     "security:ops:preflight": "node scripts/security-ops-preflight.mjs --strict",
     "security:webhook:probe": "node scripts/security-webhook-probe.mjs",
+    "security:gh-check": "node scripts/security-gh-dispatch-check.mjs",
     "security:notify-sla": "npx tsx scripts/security-notify-sla.ts",
     "security:ops": "npx tsx scripts/security-ops.ts",
     "test": "vitest",

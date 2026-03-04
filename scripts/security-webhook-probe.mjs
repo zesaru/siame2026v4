@@ -2,13 +2,9 @@
 
 const args = process.argv.slice(2)
 const force = args.includes("--force")
+const dryRun = args.includes("--dry-run")
 const urlArg = args.find((arg) => arg.startsWith("--url="))
 const webhookUrl = (urlArg ? urlArg.slice("--url=".length) : process.env.SECURITY_INCIDENT_NOTIFY_WEBHOOK_URL || "").trim()
-
-if (!webhookUrl) {
-  console.error("[security:webhook:probe] Missing SECURITY_INCIDENT_NOTIFY_WEBHOOK_URL (or --url=...)")
-  process.exit(1)
-}
 
 const payload = {
   event: "security_incident_sla_breach_probe",
@@ -20,6 +16,18 @@ const payload = {
     breachedCount: 0,
     note: "probe-only",
   },
+}
+
+if (dryRun) {
+  console.log("[security:webhook:probe] dry-run payload")
+  console.log(JSON.stringify(payload, null, 2))
+  console.log(`[security:webhook:probe] target=${webhookUrl || "(none)"}`)
+  process.exit(0)
+}
+
+if (!webhookUrl) {
+  console.error("[security:webhook:probe] Missing SECURITY_INCIDENT_NOTIFY_WEBHOOK_URL (or --url=...)")
+  process.exit(1)
 }
 
 const controller = new AbortController()

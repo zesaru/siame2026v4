@@ -452,9 +452,13 @@ npm run security:prune-sessions
 # 1) Preflight estricto de secretos/env requeridos por operaciones
 npm run security:ops:preflight
 
-# 2) Disparar workflow manualmente (requiere gh auth válido)
-gh workflow run security-operations.yml
+# 2) Verificar GitHub auth y (opcional) dispatch del workflow
+npm run security:gh-check
+npm run security:gh-check -- --dispatch
 
-# 3) Confirmar webhook (sin depender de incidentes/DB)
+# 3) Confirmar payload de webhook en offline (sin red)
+npm run security:webhook:probe -- --dry-run
+
+# 4) Confirmar recepción real de webhook (requiere red)
 npm run security:webhook:probe
 ```
