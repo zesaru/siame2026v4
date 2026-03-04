@@ -72,7 +72,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 })
     }
 
-    const body = await req.json().catch(() => null)
+    const rawBody = await req.text().catch(() => "")
+    const rawSize = new TextEncoder().encode(rawBody).length
+    if (rawSize > CSP_REPORT_MAX_CONTENT_LENGTH) {
+      return NextResponse.json({ ok: false, error: "payload_too_large" }, { status: 413 })
+    }
+
+    const body =
+      rawBody.length === 0 ? null : (() => {
+        try {
+          return JSON.parse(rawBody)
+        } catch {
+          return null
+        }
+      })()
     const report = body?.["csp-report"] || body || {}
 
     // Keep logs small and avoid accidental sensitive data leakage.

@@ -62,6 +62,24 @@ describe("POST /api/security/csp-report", () => {
     await expect(res.json()).resolves.toEqual({ ok: false, error: "payload_too_large" })
   })
 
+  it("rejects oversized payload even without content-length header", async () => {
+    const { POST } = await import("./route")
+    const req = new Request("http://localhost/api/security/csp-report", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-forwarded-for": "10.1.2.44",
+      },
+      body: JSON.stringify({ data: "x".repeat(70 * 1024) }),
+    }) as unknown as NextRequest
+
+    const res = await POST(req)
+
+    expect(res.status).toBe(413)
+    expect(persistCspReportMock).not.toHaveBeenCalled()
+    await expect(res.json()).resolves.toEqual({ ok: false, error: "payload_too_large" })
+  })
+
   it("rate limits excessive reports from same IP", async () => {
     const { POST } = await import("./route")
 
