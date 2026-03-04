@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDashboardMetrics } from '@/lib/dashboard'
 
-// Revalidate dashboard metrics every 5 minutes (data doesn't change frequently)
+export const dynamic = "force-dynamic"
 export const revalidate = 300
 
 export async function GET(request: NextRequest) {

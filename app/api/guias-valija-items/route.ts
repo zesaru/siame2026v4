@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db"
 
-// Revalidate items list every 60 seconds (removed force-dynamic to enable caching)
+export const dynamic = "force-dynamic"
 export const revalidate = 60
 
 export async function GET(req: NextRequest) {
