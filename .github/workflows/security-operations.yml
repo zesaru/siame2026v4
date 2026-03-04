@@ -1,0 +1,47 @@
+name: Security Operations
+
+on:
+  schedule:
+    - cron: "0 * * * *" # hourly
+  workflow_dispatch:
+
+jobs:
+  run-security-ops:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SECURITY_DATABASE_URL != '' }}
+    env:
+      DATABASE_URL: ${{ secrets.SECURITY_DATABASE_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.SECURITY_NEXTAUTH_SECRET }}
+      SECURITY_INCIDENT_NOTIFY_WEBHOOK_URL: ${{ secrets.SECURITY_INCIDENT_NOTIFY_WEBHOOK_URL }}
+      SECURITY_INCIDENT_NOTIFY_MIN_BREACH_COUNT: ${{ vars.SECURITY_INCIDENT_NOTIFY_MIN_BREACH_COUNT || '1' }}
+      SECURITY_INCIDENT_NOTIFY_COOLDOWN_MINUTES: ${{ vars.SECURITY_INCIDENT_NOTIFY_COOLDOWN_MINUTES || '30' }}
+      SECURITY_INCIDENT_NOTIFY_MAX_RETRIES: ${{ vars.SECURITY_INCIDENT_NOTIFY_MAX_RETRIES || '3' }}
+      SECURITY_INCIDENT_NOTIFY_TIMEOUT_MS: ${{ vars.SECURITY_INCIDENT_NOTIFY_TIMEOUT_MS || '5000' }}
+      AUTH_SESSION_RETENTION_DAYS: ${{ vars.AUTH_SESSION_RETENTION_DAYS || '30' }}
+      SECURITY_INCIDENT_SLA_HIGH_MINUTES: ${{ vars.SECURITY_INCIDENT_SLA_HIGH_MINUTES || '30' }}
+      SECURITY_INCIDENT_SLA_MEDIUM_MINUTES: ${{ vars.SECURITY_INCIDENT_SLA_MEDIUM_MINUTES || '120' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Preflight required security env
+        run: npm run security:ops:preflight
+
+      - name: Run security operations
+        run: npm run security:ops
+
+  skipped-no-db:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SECURITY_DATABASE_URL == '' }}
+    steps:
+      - name: Skip reason
+        run: echo "SECURITY_DATABASE_URL secret missing, security operations skipped."
