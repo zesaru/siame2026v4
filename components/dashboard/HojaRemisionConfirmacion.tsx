@@ -137,23 +137,10 @@ export function HojaRemisionConfirmacion({
         </Card>
       )}
 
-      {/* Grid Layout: PDF (40%) + Campos (60%) */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        {/* Izquierda: PDF Viewer (40% = 2/5 columnas) */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg">PDF Original</CardTitle>
-            <CardDescription>{fileName}</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="h-[calc(100vh-400px)] min-h-[500px]">
-              {file ? <PDFViewer file={file} /> : <p className="text-center text-[var(--kt-text-muted)]">No hay archivo PDF</p>}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Derecha: Campos Extraídos (60% = 3/5 columnas) */}
-        <Card className="lg:col-span-3">
+      {/* Grid Layout: Campos (45%) + PDF (55%) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[45fr_55fr] gap-6">
+        {/* Izquierda: Campos Extraídos (45%) */}
+        <Card>
           <CardHeader>
             <CardTitle>Campos Extraídos</CardTitle>
             <CardDescription>
@@ -286,6 +273,19 @@ export function HojaRemisionConfirmacion({
                 />
                 {getConfidenceBar(extractedData.confidence.destino)}
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Derecha: PDF Viewer (55%) */}
+        <Card className="lg:sticky lg:top-24 lg:h-fit">
+          <CardHeader>
+            <CardTitle className="text-lg">PDF Original</CardTitle>
+            <CardDescription>{fileName}</CardDescription>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="h-[calc(100vh-400px)] min-h-[500px]">
+              {file ? <PDFViewer file={file} /> : <p className="text-center text-[var(--kt-text-muted)]">No hay archivo PDF</p>}
             </div>
           </CardContent>
         </Card>

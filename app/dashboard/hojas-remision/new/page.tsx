@@ -154,7 +154,7 @@ export default function NewHojaRemisionPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${file ? "lg:pr-[56%]" : ""}`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -224,6 +224,34 @@ export default function NewHojaRemisionPage() {
         <ErrorState error={error} onRetry={handleRetry} />
       )}
 
+      {file && ((wizardStep === "form" && uploadState === "ready") || wizardStep === "edit") && (
+        <Card className="bg-white lg:fixed lg:right-0 lg:top-24 lg:w-[55%] lg:shadow-xl">
+          <button
+            onClick={() => setShowPDF(!showPDF)}
+            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
+          >
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Vista previa PDF
+              </CardTitle>
+              <CardDescription>{file.name}</CardDescription>
+            </div>
+            {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+          </button>
+
+          {showPDF && (
+            <CardContent className="border-t border-[var(--kt-gray-200)]">
+              <div className="h-[62vh] min-h-[420px]">
+                <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
+                  <PDFViewer file={file} />
+                </Suspense>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {/* PASO 1: Formulario inicial (sin PDF subido o después de rechazar) */}
       {wizardStep === "form" && (
         <>
@@ -252,41 +280,8 @@ export default function NewHojaRemisionPage() {
             </Card>
           )}
 
-          {/* Main Grid: PDF (collapsible) + Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left: PDF Viewer (Collapsible) */}
-            {file && uploadState === "ready" && (
-              <Card>
-                <button
-                  onClick={() => setShowPDF(!showPDF)}
-                  className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
-                >
-                  <div>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="h-5 w-5" />
-                      PDF Original
-                    </CardTitle>
-                    <CardDescription>
-                      {file.name}
-                    </CardDescription>
-                  </div>
-                  {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                </button>
-
-                {showPDF && (
-                  <CardContent className="border-t border-[var(--kt-gray-200)]">
-                    <div className="h-[500px]">
-                      <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
-                        <PDFViewer file={file} />
-                      </Suspense>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-            )}
-
-            {/* Right: Form (Always Visible) */}
-            <Card className={file && uploadState === "ready" ? "" : "lg:col-span-2"}>
+          {/* Form (Always Visible) */}
+          <Card>
               <CardHeader>
                 <CardTitle>
                   {uploadState === "ready" && extractedData ? "Datos Extraídos" : "Ingresar Datos"}
@@ -304,8 +299,7 @@ export default function NewHojaRemisionPage() {
                   onCancel={() => router.push("/dashboard/hojas-remision")}
                 />
               </CardContent>
-            </Card>
-          </div>
+          </Card>
 
           {/* Azure JSON & KeyValuePairs Section (Only when ready) */}
           {uploadState === "ready" && azureResult && (
@@ -429,19 +423,7 @@ export default function NewHojaRemisionPage() {
             </CardContent>
           </Card>
 
-          {/* PDF Viewer + Form */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardContent className="p-4">
-                <div className="h-[500px]">
-                  <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
-                    <PDFViewer file={file} />
-                  </Suspense>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
+          <Card>
               <CardHeader>
                 <CardTitle>Editar Datos Extraídos</CardTitle>
                 <CardDescription>
@@ -455,8 +437,7 @@ export default function NewHojaRemisionPage() {
                   onCancel={() => router.push("/dashboard/hojas-remision")}
                 />
               </CardContent>
-            </Card>
-          </div>
+          </Card>
         </>
       )}
     </div>

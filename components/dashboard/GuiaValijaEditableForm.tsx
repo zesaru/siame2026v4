@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,8 +16,8 @@ import { Separator } from "@/components/ui/separator"
 import Icon from "@/components/ui/Icon"
 import GuiaValijaItems from "./GuiaValijaItems"
 import { toast } from "sonner"
-import { ArrowLeft, Save, X, AlertCircle } from "lucide-react"
-import { guiaValijaSchema, GuiaValijaFormData, fieldErrorMessages } from "@/lib/schemas/guia-valija"
+import { ArrowLeft, Save, X, AlertCircle, Upload, FileText, Eye, ChevronDown, ChevronUp } from "lucide-react"
+import { guiaValijaSchema, GuiaValijaFormData } from "@/lib/schemas/guia-valija"
 import { cn } from "@/lib/utils"
 import { useUnsavedChanges } from "@/lib/hooks/useUnsavedChanges"
 
@@ -48,7 +47,12 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
   const router = useRouter()
   const [items, setItems] = useState<GuiaValijaItem[]>([])
   const [serverError, setServerError] = useState("")
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null)
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false)
+  const [currentFilePath, setCurrentFilePath] = useState<string | null>(guia?.filePath || null)
+  const [showPdfPreview, setShowPdfPreview] = useState(true)
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
+  const pdfInputRef = useRef<HTMLInputElement | null>(null)
 
   // Cargar items si se está editando una guía existente
   useEffect(() => {
@@ -65,8 +69,6 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
     setValue,
     watch,
     trigger,
-    setError,
-    clearErrors
   } = useForm<GuiaValijaFormData>({
     resolver: zodResolver(guiaValijaSchema),
     mode: "onChange", // Validación en tiempo real
@@ -76,7 +78,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
       fechaEmision: guia?.fechaEmision ? new Date(guia.fechaEmision).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       fechaEnvio: guia?.fechaEnvio ? new Date(guia.fechaEnvio).toISOString().split('T')[0] : "",
       fechaRecibo: guia?.fechaRecibo ? new Date(guia.fechaRecibo).toISOString().split('T')[0] : "",
-      origenCiudad: guia?.origenCiudad || "",
+      origenCiudad: guia?.origenCiudad || "No especificado",
       origenPais: guia?.origenPais || "Perú",
       destinoCiudad: guia?.destinoCiudad || "",
       destinoPais: guia?.destinoPais || "",
@@ -101,6 +103,10 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
       trigger("items")
     }
   }, [items, setValue, trigger])
+
+  useEffect(() => {
+    setCurrentFilePath(guia?.filePath || null)
+  }, [guia?.filePath])
 
   // Confirmación de cambios no guardados
   useUnsavedChanges({
@@ -161,8 +167,48 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
     handleSubmit(onSubmit)()
   }
 
+  const uploadPdf = async () => {
+    if (!selectedPdf || !guia?.id) {
+      toast.error("Selecciona un archivo PDF antes de subir")
+      return
+    }
+
+    setIsUploadingPdf(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", selectedPdf)
+
+      const response = await fetch(`/api/dashboard/guias-valija/${guia.id}/file`, {
+        method: "POST",
+        body: formData,
+      })
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "No se pudo subir el PDF")
+      }
+
+      setCurrentFilePath(result.filePath || null)
+      setSelectedPdf(null)
+      if (pdfInputRef.current) {
+        pdfInputRef.current.value = ""
+      }
+
+      toast.success("PDF actualizado correctamente")
+    } catch (error: any) {
+      toast.error("Error al subir PDF", {
+        description: error?.message || "No se pudo actualizar el archivo",
+      })
+    } finally {
+      setIsUploadingPdf(false)
+    }
+  }
+
   return (
-    <form onSubmit={onFormSubmit} className="space-y-8 p-6 bg-[var(--kt-bg-light)] min-h-screen">
+    <form
+      onSubmit={onFormSubmit}
+      className="space-y-8 bg-[var(--kt-bg-light)] p-6 min-h-screen lg:pr-[56%]"
+    >
       {/* Server Errors */}
       {serverError && (
         <Alert variant="destructive" className="bg-[var(--kt-danger-light)] border-[var(--kt-danger)] text-[var(--kt-danger)]">
@@ -235,6 +281,112 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
           </Button>
         </div>
       </div>
+
+      <Card className="border-[var(--kt-primary)]/30 bg-gradient-to-r from-white to-blue-50/70">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FileText className="h-4 w-4 text-[var(--kt-primary)]" />
+            Documento PDF de la guía
+          </CardTitle>
+          <CardDescription>
+            Adjunta o reemplaza el PDF fuente. Se guarda al instante, sin esperar “Guardar Cambios”.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {currentFilePath ? (
+            <div className="flex flex-col gap-2 rounded-md border bg-white p-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm">
+                <p className="font-medium text-[var(--kt-text-dark)]">Archivo actual adjunto</p>
+                <p className="text-[var(--kt-text-muted)] break-all">{currentFilePath}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => window.open(`/api/files/${currentFilePath}?inline=true`, "_blank")}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                Ver PDF
+              </Button>
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed bg-white p-3 text-sm text-[var(--kt-text-muted)]">
+              Esta guía todavía no tiene PDF adjunto.
+            </div>
+          )}
+
+          <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+            <Input
+              ref={pdfInputRef}
+              type="file"
+              accept=".pdf,application/pdf"
+              disabled={isSubmitting || isUploadingPdf}
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null
+                if (file && file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+                  toast.error("Solo se permiten archivos PDF")
+                  e.target.value = ""
+                  return
+                }
+                setSelectedPdf(file)
+              }}
+            />
+            <Button
+              type="button"
+              onClick={uploadPdf}
+              disabled={!selectedPdf || isUploadingPdf || isSubmitting}
+              className="min-w-40"
+            >
+              {isUploadingPdf ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Subir PDF
+                </>
+              )}
+            </Button>
+          </div>
+
+          {selectedPdf && (
+            <p className="text-xs text-[var(--kt-text-muted)]">
+              Seleccionado: <span className="font-medium">{selectedPdf.name}</span> (
+              {(selectedPdf.size / 1024).toFixed(1)} KB)
+            </p>
+          )}
+
+        </CardContent>
+      </Card>
+
+      {currentFilePath && (
+        <Card className="border-[var(--kt-primary)]/30 bg-white lg:fixed lg:right-0 lg:top-24 lg:w-[55%] lg:shadow-xl">
+          <CardHeader className="pb-2">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between text-left text-sm font-medium text-[var(--kt-text-dark)]"
+              onClick={() => setShowPdfPreview((prev) => !prev)}
+            >
+              <span>Vista previa del PDF</span>
+              {showPdfPreview ? (
+                <ChevronUp className="h-4 w-4 text-[var(--kt-text-muted)]" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-[var(--kt-text-muted)]" />
+              )}
+            </button>
+          </CardHeader>
+          {showPdfPreview && (
+            <CardContent className="pt-0">
+              <iframe
+                src={`/api/files/${currentFilePath}?inline=true`}
+                title="Vista previa del PDF de la guía"
+                className="h-[62vh] w-full rounded-md border"
+              />
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -364,27 +516,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
             <div>
               <h3 className="font-semibold text-[var(--kt-text-dark)] mb-4">Origen</h3>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="origenCiudad">
-                    Ciudad Origen <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="origenCiudad"
-                    {...register("origenCiudad")}
-                    disabled={isSubmitting}
-                    placeholder="Lima"
-                    className={cn(
-                      errors.origenCiudad && "border-red-500 focus-visible:ring-red-500"
-                    )}
-                    aria-invalid={errors.origenCiudad ? "true" : "false"}
-                    aria-describedby={errors.origenCiudad ? "origenCiudad-error" : undefined}
-                  />
-                  {errors.origenCiudad && (
-                    <p id="origenCiudad-error" className="text-xs text-red-600 mt-1">
-                      {errors.origenCiudad.message}
-                    </p>
-                  )}
-                </div>
+                <input type="hidden" {...register("origenCiudad")} />
                 <div>
                   <Label htmlFor="origenPais">
                     País Origen <span className="text-red-500">*</span>

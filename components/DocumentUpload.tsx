@@ -113,7 +113,7 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
     const supportedFormats = getSupportedFormats()
 
     if (!fileExtension || !supportedFormats.includes(fileExtension)) {
-      onError(`Unsupported file format. Supported formats: ${supportedFormats.join(", ")}`)
+      onError(`Formato de archivo no soportado. Formatos permitidos: ${supportedFormats.join(", ")}`)
       return
     }
 
@@ -137,10 +137,10 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
     <div className="w-full max-w-4xl mx-auto p-6">
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Document Intelligence
+          Inteligencia Documental
         </h2>
         <p className="text-gray-600">
-          Upload a document to extract text, tables, key-value pairs, and entities using AI-powered analysis.
+          Sube un documento para extraer texto, tablas, pares clave-valor y entidades mediante análisis con IA.
         </p>
       </div>
 
@@ -161,14 +161,14 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
             <>
               <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
               <div className="space-y-2">
-                <p className="text-lg font-medium text-gray-900">Analyzing document...</p>
+                <p className="text-lg font-medium text-gray-900">Analizando documento...</p>
                 <div className="w-64 bg-gray-200 rounded-full h-2">
                   <div
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
-                <p className="text-sm text-gray-600">{progress}% complete</p>
+                <p className="text-sm text-gray-600">{progress}% completado</p>
               </div>
             </>
           ) : (
@@ -188,14 +188,14 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
               </svg>
               <div className="space-y-2">
                 <p className="text-lg font-medium text-gray-900">
-                  {isDragActive ? "Drop the document here" : "Drag & drop a document here"}
+                  {isDragActive ? "Suelta el documento aquí" : "Arrastra y suelta un documento aquí"}
                 </p>
                 <p className="text-sm text-gray-600">
-                  or click to select a file
+                  o haz clic para seleccionar un archivo
                 </p>
               </div>
               <div className="text-xs text-gray-500">
-                Supported formats: PDF, Images, Word, Excel, PowerPoint, Text
+                Formatos permitidos: PDF, Imágenes, Word, Excel, PowerPoint, Texto
               </div>
             </>
           )}
@@ -205,7 +205,7 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
       {selectedFile && !isAnalyzing && (
         <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
           <p className="text-sm text-green-800">
-            ✅ Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+            ✅ Seleccionado: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
           </p>
         </div>
       )}

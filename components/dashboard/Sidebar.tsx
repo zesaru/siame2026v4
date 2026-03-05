@@ -16,7 +16,7 @@ interface SidebarProps {
 
 const allNavigationItems = [
   {
-    title: "Dashboard",
+    title: "Panel",
     href: "/dashboard",
     icon: "home",
   },
@@ -52,7 +52,7 @@ const allNavigationItems = [
     requiredRole: ["SUPER_ADMIN", "ADMIN"] as Role[],
   },
   {
-    title: "Audit Logs",
+    title: "Registros de Auditoría",
     href: "/dashboard/audit-logs",
     icon: "shield",
     requiredRole: ["SUPER_ADMIN"] as Role[],

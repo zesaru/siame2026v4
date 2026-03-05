@@ -67,7 +67,7 @@ export default function PDFViewer({ file }: PDFViewerProps) {
         <iframe
           src={objectUrl}
           className="w-full h-full"
-          title="PDF Preview"
+          title="Vista previa PDF"
         />
       ) : (
         <div className="h-full flex items-center justify-center">

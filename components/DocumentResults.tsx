@@ -152,14 +152,14 @@ export default function DocumentResults(props: DocumentResultsProps) {
       <div style={{ width: "50%", borderRight: "1px solid #e5e7eb", backgroundColor: "#111827", overflow: "hidden" }}>
         <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
           <div style={{ backgroundColor: "#1f2937", padding: "16px", borderBottom: "1px solid #374151" }}>
-            <h3 style={{ fontSize: "14px", fontWeight: "500", color: "#fff" }}>Original Document</h3>
+            <h3 style={{ fontSize: "14px", fontWeight: "500", color: "#fff" }}>Documento Original</h3>
             <p style={{ fontSize: "12px", color: "#9ca3af" }}>{fileName}</p>
           </div>
           <div style={{ flex: 1, overflow: "auto" }}>
             <iframe
               src={fileUrl}
               style={{ width: "100%", height: "100%", border: "none" }}
-              title="PDF Preview"
+              title="Vista Previa PDF"
             />
           </div>
         </div>
@@ -170,7 +170,7 @@ export default function DocumentResults(props: DocumentResultsProps) {
           <div style={{ backgroundColor: "#fff", borderRadius: "8px", boxShadow: "0 1px 3px 0 rgba(0,0,0,0.1)", border: "1px solid #e5e7eb", padding: "24px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
               <h3 style={{ fontSize: "20px", fontWeight: "600", color: "#111827" }}>
-                Analysis Results: {fileName}
+                Resultados del Análisis: {fileName}
               </h3>
               <button
                 onClick={handleSaveAsGuiaValija}
@@ -210,10 +210,10 @@ export default function DocumentResults(props: DocumentResultsProps) {
 
             <div style={{ marginBottom: "24px", padding: "16px", backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px" }}>
               <p style={{ fontSize: "14px", fontWeight: "500", color: "#1e40af" }}>
-                Document analyzed successfully!
+                Documento analizado correctamente.
               </p>
               <p style={{ fontSize: "12px", color: "#1e3a8a", marginTop: "4px" }}>
-                Found: {result.tables?.length || 0} tables, {editedPairs.length || 0} key-value pairs
+                Se detectaron {result.tables?.length || 0} tablas y {editedPairs.length || 0} pares clave-valor
               </p>
             </div>
 

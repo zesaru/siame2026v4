@@ -28,8 +28,9 @@ export default function SignUp() {
       return
     }
 
-    if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres.")
+    const passwordPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$/
+    if (!passwordPolicy.test(password)) {
+      setError("La contraseña debe tener al menos 12 caracteres, incluyendo mayúscula, minúscula y número.")
       return
     }
 
@@ -117,7 +118,7 @@ export default function SignUp() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 12, con mayúscula, minúscula y número"
                   autoComplete="new-password"
                   required
                   value={password}

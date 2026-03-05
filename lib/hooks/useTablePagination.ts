@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 export interface PaginationConfig {
   currentPage: number
@@ -40,7 +40,17 @@ export function useTablePagination<T>(
   const itemsPerPage = options?.itemsPerPage || 10
   const [currentPage, setCurrentPage] = useState(options?.initialPage || 1)
 
-  const totalPages = Math.ceil(data.length / itemsPerPage)
+  const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+      return
+    }
+    if (currentPage < 1) {
+      setCurrentPage(1)
+    }
+  }, [currentPage, totalPages])
 
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage

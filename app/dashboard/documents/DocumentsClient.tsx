@@ -119,7 +119,7 @@ export default function DocumentsClient() {
   const handleAnalysisComplete = (result: AnalysisResultWithDocumentId, file: File) => {
     logger.debug("handleAnalysisComplete called with:", result)
     setAnalysisResult(result)
-    setFileName(result.metadata.title || "Document")
+    setFileName(result.metadata.title || "Documento")
     setDocumentId(result.documentId || "")
 
     // Create object URL for the file to display it
@@ -290,7 +290,7 @@ export default function DocumentsClient() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-6 gap-4">
             <div className="flex items-center space-x-4">
               <h1 className="text-2xl sm:text-3xl font-bold text-[var(--kt-text-dark)]">
-                Document Intelligence
+                Inteligencia Documental
               </h1>
             </div>
             <div className="flex items-center space-x-3 w-full sm:w-auto">
@@ -435,9 +435,6 @@ export default function DocumentsClient() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
           <div className="bg-white rounded-xl shadow-[var(--kt-shadow-card)] border border-[var(--kt-gray-200)] p-8">
             <h2 className="text-xl font-semibold text-[var(--kt-text-dark)] mb-2">Características</h2>
-            <p className="text-[var(--kt-text-muted)] mb-6">
-              Potenciado por Azure AI Form Recognizer para extracción inteligente de datos
-            </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {features.map((feature, index) => (
                 <div key={index} className="text-center">

@@ -1,12 +1,35 @@
 import { prisma } from "@/lib/db"
+import {
+  buildAuthAuditTitle,
+  sanitizeAuditDetail,
+  sanitizeAuditPathSegment,
+} from "@/lib/security/audit-log-sanitize"
 
 // ============================================
 // Types & Interfaces
 // ============================================
 
-export type AuditAction = 'UPLOAD' | 'DOWNLOAD' | 'DELETE' | 'VIEW' | 'COPY' | 'UPDATE'
+export type AuditAction =
+  | 'UPLOAD'
+  | 'DOWNLOAD'
+  | 'DELETE'
+  | 'VIEW'
+  | 'COPY'
+  | 'UPDATE'
+  | 'LOGIN_SUCCESS'
+  | 'LOGIN_FAILED'
+  | 'LOGIN_BLOCKED'
+  | 'SIGNUP_SUCCESS'
+  | 'SIGNUP_BLOCKED'
+  | 'PASSWORD_CHANGE_FAILED'
+  | 'PASSWORD_CHANGE_BLOCKED'
+  | 'SESSION_REVOKED_SELF'
+  | 'SESSION_REVOKED_ADMIN'
+  | 'SESSION_REVOKED_POLICY'
+  | 'IP_OVERRIDE_ALLOW_ADDED'
+  | 'IP_OVERRIDE_ALLOW_REVOKED'
 
-export type DocumentType = 'GUIA_VALIJA' | 'HOJA_REMISION' | 'OFICIO' | 'DOCUMENT' | 'FILE'
+export type DocumentType = 'GUIA_VALIJA' | 'HOJA_REMISION' | 'OFICIO' | 'DOCUMENT' | 'FILE' | 'AUTH'
 
 export interface AuditLogOptions {
   userId: string
@@ -25,6 +48,29 @@ export interface DocumentViewAuditOptions {
   documentTitle: string
   ipAddress?: string
   userAgent?: string
+}
+
+export interface AuthAuditOptions {
+  userId?: string
+  email?: string
+  action: Extract<
+    AuditAction,
+    | 'LOGIN_SUCCESS'
+    | 'LOGIN_FAILED'
+    | 'LOGIN_BLOCKED'
+    | 'SIGNUP_SUCCESS'
+    | 'SIGNUP_BLOCKED'
+    | 'PASSWORD_CHANGE_FAILED'
+    | 'PASSWORD_CHANGE_BLOCKED'
+    | 'SESSION_REVOKED_SELF'
+    | 'SESSION_REVOKED_ADMIN'
+    | 'SESSION_REVOKED_POLICY'
+    | 'IP_OVERRIDE_ALLOW_ADDED'
+    | 'IP_OVERRIDE_ALLOW_REVOKED'
+  >
+  ipAddress?: string
+  userAgent?: string
+  details?: string
 }
 
 // ============================================
@@ -213,6 +259,49 @@ export async function logDocumentView(options: DocumentViewAuditOptions): Promis
   } catch (error) {
     console.error('[FileAudit] Failed to log document view:', error)
     // Don't throw - audit logging failures shouldn't break the main operation
+  }
+}
+
+/**
+ * Logs authentication security events (login/signup controls)
+ */
+export async function logAuthSecurityEvent(options: AuthAuditOptions): Promise<void> {
+  try {
+    let userId = options.userId
+
+    if (!userId && options.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: options.email },
+        select: { id: true },
+      })
+      userId = user?.id
+    }
+
+    // FileAuditLog requires a valid user relation. If we cannot resolve user, skip DB write.
+    if (!userId) {
+      console.warn(`[FileAudit] AUTH ${options.action}: user not found for email=${options.email || "unknown"}`)
+      return
+    }
+
+    const identity = options.email || options.userId || "unknown"
+    const safeIdentityForPath = sanitizeAuditPathSegment(identity)
+    const safeDetails = sanitizeAuditDetail(options.details)
+
+    await prisma.fileAuditLog.create({
+      data: {
+        userId,
+        filePath: `AUTH/${safeIdentityForPath}`,
+        action: options.action,
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+        documentType: "AUTH",
+        documentId: options.userId || null,
+        documentTitle: buildAuthAuditTitle(identity, safeDetails),
+        timestamp: new Date(),
+      },
+    })
+  } catch (error) {
+    console.error("[FileAudit] Failed to log auth security event:", error)
   }
 }
 

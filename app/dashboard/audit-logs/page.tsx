@@ -6,7 +6,7 @@ import AuditLogsClient from "./audit-logs-client"
 export const revalidate = 60
 
 export const metadata = {
-  title: "Audit Logs - SIAME 2026",
+  title: "Registros de Auditoría - SIAME 2026",
   description: "Registro de auditoría de acceso a documentos",
 }
 

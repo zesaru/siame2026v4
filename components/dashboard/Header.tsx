@@ -32,7 +32,7 @@ export default function Header({ toggleSidebar, toggleMobileMenu }: HeaderProps)
 
           <div className="hidden sm:block">
             <h1 className="text-lg font-semibold text-[var(--kt-text-dark)]">
-              Dashboard
+              Panel
             </h1>
           </div>
         </div>

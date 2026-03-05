@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useSession, update } from "next-auth/react"
+import { signOut, useSession, update } from "next-auth/react"
 import { useFetchWithAbort } from "@/lib/hooks/useFetchWithAbort"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -66,6 +66,15 @@ interface UsersClientProps {
   currentUserRole: Role
 }
 
+interface ActiveSession {
+  id: string
+  ipAddress: string | null
+  userAgent: string | null
+  createdAt: string
+  lastSeenAt: string
+  expiresAt: string
+}
+
 const roleColors: Record<Role, string> = {
   SUPER_ADMIN: "bg-purple-100 text-purple-800",
   ADMIN: "bg-blue-100 text-blue-800",
@@ -101,6 +110,10 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
   const [saving, setSaving] = useState(false)
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false)
   const [isEditingSelf, setIsEditingSelf] = useState(false)
+  const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false)
+  const [sessionsTarget, setSessionsTarget] = useState<User | null>(null)
+  const [activeSessions, setActiveSessions] = useState<ActiveSession[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -246,6 +259,17 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
       return
     }
 
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      toast.error("La nueva contraseña debe ser diferente a la actual.")
+      return
+    }
+
+    const passwordPolicy = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{12,}$/
+    if (!passwordPolicy.test(passwordData.newPassword)) {
+      toast.error("La nueva contraseña debe tener al menos 12 caracteres, incluyendo mayúscula, minúscula y número.")
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -264,6 +288,12 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
         throw new Error(data.error || "Error al cambiar contraseña")
       }
 
+      if (data.requireReauth) {
+        toast.success("Contraseña cambiada. Debes iniciar sesión nuevamente.")
+        await signOut({ callbackUrl: "/auth/signin?message=password-updated" })
+        return
+      }
+
       toast.success("Contraseña cambiada correctamente")
       setPasswordDialogOpen(false)
       setPasswordData({
@@ -275,6 +305,85 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
       toast.error(error.message || "Error al cambiar contraseña")
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function handleRevokeSessions(user: User) {
+    try {
+      const endpoint =
+        user.id === currentUserId
+          ? "/api/user/sessions/revoke"
+          : `/api/admin/users/${user.id}/sessions/revoke`
+
+      const response = await fetch(endpoint, { method: "POST" })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo revocar las sesiones")
+      }
+
+      if (user.id === currentUserId) {
+        toast.success("Sesiones revocadas. Debes volver a iniciar sesión.")
+        await signOut({ callbackUrl: "/auth/signin" })
+        return
+      }
+
+      toast.success("Sesiones del usuario revocadas")
+    } catch (error: any) {
+      toast.error(error.message || "No se pudo revocar las sesiones")
+    }
+  }
+
+  async function openSessionsDialog(user: User) {
+    setSessionsTarget(user)
+    setSessionsDialogOpen(true)
+    setSessionsLoading(true)
+    try {
+      const endpoint =
+        user.id === currentUserId
+          ? "/api/user/sessions"
+          : `/api/admin/users/${user.id}/sessions`
+
+      const response = await fetch(endpoint)
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo cargar sesiones activas")
+      }
+
+      setActiveSessions(Array.isArray(data.sessions) ? data.sessions : [])
+    } catch (error: any) {
+      toast.error(error.message || "No se pudo cargar sesiones activas")
+      setActiveSessions([])
+    } finally {
+      setSessionsLoading(false)
+    }
+  }
+
+  async function handleRevokeSingleSession(sessionId: string) {
+    if (!sessionsTarget) return
+
+    try {
+      const endpoint =
+        sessionsTarget.id === currentUserId
+          ? `/api/user/sessions/${sessionId}/revoke`
+          : `/api/admin/users/${sessionsTarget.id}/sessions/${sessionId}/revoke`
+
+      const response = await fetch(endpoint, { method: "POST" })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "No se pudo cerrar la sesión")
+      }
+
+      setActiveSessions((prev) => prev.filter((s) => s.id !== sessionId))
+      toast.success("Sesión cerrada correctamente")
+
+      if (sessionsTarget.id === currentUserId && session?.user?.sessionId === sessionId) {
+        await signOut({ callbackUrl: "/auth/signin" })
+      }
+    } catch (error: any) {
+      toast.error(error.message || "No se pudo cerrar la sesión")
     }
   }
 
@@ -402,6 +511,22 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                               <Icon name="lock" size="sm" className="mr-2" />
                               Contraseña
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRevokeSessions(user)}
+                            >
+                              <Icon name="refresh" size="sm" className="mr-2" />
+                              Cerrar sesiones
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openSessionsDialog(user)}
+                            >
+                              <Icon name="users" size="sm" className="mr-2" />
+                              Sesiones activas
+                            </Button>
                           </>
                         )}
 
@@ -414,6 +539,20 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                               onClick={() => openEditDialog(user)}
                             >
                               <Icon name="refresh" size="sm" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRevokeSessions(user)}
+                            >
+                              <Icon name="lock" size="sm" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openSessionsDialog(user)}
+                            >
+                              <Icon name="users" size="sm" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -435,13 +574,80 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
         </CardContent>
       </Card>
 
+      <Dialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen}>
+        <DialogContent className="sm:max-w-[900px]">
+          <DialogHeader>
+            <DialogTitle>
+              Sesiones activas {sessionsTarget ? `de ${sessionsTarget.email}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              Puedes cerrar sesiones específicas sin forzar cierre global.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>IP</TableHead>
+                  <TableHead>Dispositivo / Navegador</TableHead>
+                  <TableHead>Inicio</TableHead>
+                  <TableHead>Última actividad</TableHead>
+                  <TableHead>Expira</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sessionsLoading && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                      Cargando sesiones...
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!sessionsLoading && activeSessions.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-6">
+                      No hay sesiones activas registradas
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!sessionsLoading &&
+                  activeSessions.map((s) => (
+                    <TableRow key={s.id}>
+                      <TableCell>{s.ipAddress || "-"}</TableCell>
+                      <TableCell className="max-w-[280px] truncate" title={s.userAgent || "-"}>
+                        {s.userAgent || "-"}
+                        {session?.user?.sessionId === s.id && sessionsTarget?.id === currentUserId && (
+                          <Badge className="ml-2 bg-emerald-100 text-emerald-800">Actual</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{new Date(s.createdAt).toLocaleString("es-PE")}</TableCell>
+                      <TableCell>{new Date(s.lastSeenAt).toLocaleString("es-PE")}</TableCell>
+                      <TableCell>{new Date(s.expiresAt).toLocaleString("es-PE")}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRevokeSingleSession(s.id)}
+                        >
+                          Cerrar sesión
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Create User Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Crear Nuevo Usuario</DialogTitle>
             <DialogDescription>
-              Crea un nuevo usuario en el sistema. La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.
+              Crea un nuevo usuario en el sistema. La contraseña debe tener al menos 12 caracteres, una mayúscula, una minúscula y un número.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateUser}>
@@ -474,7 +680,7 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={12}
                 />
               </div>
               <div className="grid gap-2">
@@ -640,10 +846,10 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                   value={passwordData.newPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={12}
                 />
                 <p className="text-xs text-[var(--kt-text-muted)]">
-                  Mínimo 8 caracteres, una mayúscula, una minúscula y un número.
+                  Mínimo 12 caracteres, una mayúscula, una minúscula y un número.
                 </p>
               </div>
               <div className="grid gap-2">
@@ -654,7 +860,7 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
                   value={passwordData.confirmPassword}
                   onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
                   required
-                  minLength={8}
+                  minLength={12}
                 />
               </div>
             </div>

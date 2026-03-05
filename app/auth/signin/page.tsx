@@ -31,7 +31,14 @@ export default function SignIn() {
       })
 
       if (result?.error) {
-        setError("Credenciales inválidas. Por favor verifica tu email y contraseña.")
+        const decodedError = decodeURIComponent(result.error)
+        if (decodedError.startsWith("RATE_LIMITED:")) {
+          const seconds = Number(decodedError.split(":")[1] || "0")
+          const minutes = Math.max(1, Math.ceil(seconds / 60))
+          setError(`Demasiados intentos. Espera ${minutes} minuto(s) e intenta nuevamente.`)
+        } else {
+          setError("Credenciales inválidas. Por favor verifica tu email y contraseña.")
+        }
       } else {
         router.push("/dashboard")
       }
@@ -127,11 +134,10 @@ export default function SignIn() {
               </Link>
             </div>
 
-            {/* Demo Notice */}
             <Alert className="bg-[var(--kt-info-light)] border-[var(--kt-info)] text-[var(--kt-info)]">
               <Icon name="alert" size="sm" className="mr-2" />
               <AlertDescription className="text-sm">
-                <strong>Demo:</strong> Usa cualquier email con la contraseña <code>temp123</code>
+                Si no tienes acceso, solicita credenciales al administrador del sistema.
               </AlertDescription>
             </Alert>
           </CardFooter>
