@@ -29,6 +29,9 @@ model User {
   image         String?
   password      String?   // Hashed password for credentials provider
   role          Role      @default(USER)
+  sessionVersion Int      @default(0)
+  failedLoginCount Int    @default(0)
+  lockedUntil    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   accounts      Account[]
@@ -65,6 +68,67 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuthSession {
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId])
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+  @@index([lastSeenAt])
+}
+
+model AuthIpOverride {
+  id              String   @id
+  ipAddress       String
+  mode            String   @default("ALLOW") // ALLOW temporal override for quarantine
+  reason          String?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime
+  revokedAt       DateTime?
+
+  @@index([ipAddress])
+  @@index([ipAddress, mode, revokedAt, expiresAt])
+  @@index([expiresAt])
+}
+
+model SecurityIncidentState {
+  id             String   @id
+  status         String   @default("open") // open | ack | resolved
+  note           String?
+  updatedByUserId String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([updatedAt])
+}
+
+model SecurityNotificationDelivery {
+  id             String   @id
+  channel        String
+  eventKey       String
+  status         String // sent | skipped | failed
+  source         String // manual | scheduled
+  attemptCount   Int      @default(1)
+  breachCount    Int      @default(0)
+  httpStatusCode Int?
+  errorMessage   String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([eventKey, status, createdAt])
+  @@index([createdAt])
 }
 
 model VerificationToken {

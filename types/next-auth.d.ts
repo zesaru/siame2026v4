@@ -6,7 +6,10 @@ declare module "next-auth" {
     user: {
       id: string
       role: Role
+      sessionVersion?: number
+      sessionId?: string
     } & DefaultSession["user"]
+    revoked?: boolean
   }
 
   interface User extends DefaultUser {
@@ -18,5 +21,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     role: Role
+    sessionVersion?: number
+    revoked?: boolean
+    sid?: string
   }
 }

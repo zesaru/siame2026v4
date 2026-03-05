@@ -50,8 +50,9 @@ export async function createUser(data: {
  * Validate user credentials for login
  */
 export async function validateCredentials(email: string, password: string) {
+  const normalizedEmail = email.trim().toLowerCase()
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   })
 
   if (!user || !user.password) {
@@ -76,8 +77,9 @@ export async function validateCredentials(email: string, password: string) {
  * Check if an email already exists
  */
 export async function emailExists(email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase()
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
     select: { id: true },
   })
 
@@ -92,6 +94,13 @@ export async function updatePassword(userId: string, newPassword: string) {
 
   await prisma.user.update({
     where: { id: userId },
-    data: { password: hashedPassword },
+    data: {
+      password: hashedPassword,
+      failedLoginCount: 0,
+      lockedUntil: null,
+      sessionVersion: {
+        increment: 1,
+      },
+    },
   })
 }

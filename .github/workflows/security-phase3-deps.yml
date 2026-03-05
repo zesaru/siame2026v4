@@ -1,0 +1,40 @@
+name: Security Phase 3 Dependencies
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+  schedule:
+    - cron: "30 2 * * *" # daily 02:30 UTC
+  workflow_dispatch:
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    env:
+      SECURITY_MAX_CRITICAL_VULNS: "0"
+      SECURITY_MAX_HIGH_VULNS: "999"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run dependency security audit
+        run: npm run security:deps
+
+      - name: Generate SBOM artifact
+        run: npm run security:sbom
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: storage/security/sbom.json
