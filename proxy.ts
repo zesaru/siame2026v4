@@ -22,6 +22,7 @@ function getMaxAuthBuckets(): number {
 }
 
 function buildCspReportOnly() {
+  const isProduction = process.env.NODE_ENV === "production"
   const azureEndpoint = process.env.AZURE_FORM_RECOGNIZER_ENDPOINT
   let azureOrigin = ""
 
@@ -46,7 +47,7 @@ function buildCspReportOnly() {
     "default-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
-    "frame-ancestors 'none'",
+    isProduction ? "frame-ancestors 'none'" : "frame-ancestors 'self'",
     "object-src 'none'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
@@ -108,13 +109,16 @@ function shouldRateLimit(req: NextRequest): { limited: boolean; retryAfterSec?: 
 }
 
 function applySecurityHeaders(response: NextResponse, req: NextRequest) {
-  response.headers.set("X-Frame-Options", "DENY")
+  const isProduction = process.env.NODE_ENV === "production"
+  response.headers.set("X-Frame-Options", isProduction ? "DENY" : "SAMEORIGIN")
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-DNS-Prefetch-Control", "off")
   response.headers.set("X-Permitted-Cross-Domain-Policies", "none")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-  response.headers.set("Cross-Origin-Opener-Policy", "same-origin")
+  if (isProduction) {
+    response.headers.set("Cross-Origin-Opener-Policy", "same-origin")
+  }
   response.headers.set("Cross-Origin-Resource-Policy", "same-origin")
   const cspValue = buildCspReportOnly()
   const cspMode = (process.env.SECURITY_CSP_MODE || "report-only").toLowerCase()
