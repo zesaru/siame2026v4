@@ -29,6 +29,7 @@ const iconMap: Record<string, keyof typeof LucideIcons> = {
   suitcase: "Briefcase",
   shipping: "Package",
   package: "Package",
+  download: "Download",
   chart: "BarChart3",
   menu: "Menu",
   x: "X",
@@ -49,6 +50,16 @@ const iconMap: Record<string, keyof typeof LucideIcons> = {
   users: "Users",
   shield: "Shield",
   table: "Table",
+  "chevron-up": "ChevronUp",
+  "chevron-down": "ChevronDown",
+  "chevron-left": "ChevronLeft",
+  "chevron-right": "ChevronRight",
+  "double-chevrons-left": "ChevronsLeft",
+  "double-chevrons-right": "ChevronsRight",
+  chevronUp: "ChevronUp",
+  chevronDown: "ChevronDown",
+  chevronsLeft: "ChevronsLeft",
+  chevronsRight: "ChevronsRight",
 }
 
 export const Icon = forwardRef<HTMLSpanElement, IconProps>(
