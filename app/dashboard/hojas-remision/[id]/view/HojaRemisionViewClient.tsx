@@ -46,6 +46,27 @@ interface HojaRemisionDetails {
   updatedAt: string
 }
 
+function formatRichTextAsPlainText(value: string) {
+  if (!value || !value.includes("<")) return value
+
+  return value
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<p[^>]*>/gi, "")
+    .replace(/<li[^>]*>/gi, "- ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<\/?ul[^>]*>/gi, "\n")
+    .replace(/<\/?ol[^>]*>/gi, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/<[^>]+>/g, "")
+    .replace(/(^|\n)\s*(\d+)\s*-\s+/g, "$1$2. ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+}
+
 function getEstadoConfig(estado: string) {
   const config = {
     borrador: {
@@ -398,7 +419,7 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
                 Asunto
               </label>
               <p className="text-sm text-[var(--kt-text-dark)] whitespace-pre-wrap leading-relaxed">
-                {hoja.asunto}
+                {formatRichTextAsPlainText(hoja.asunto)}
               </p>
             </div>
 
