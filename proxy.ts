@@ -23,6 +23,8 @@ function getMaxAuthBuckets(): number {
 
 function buildCspReportOnly() {
   const isProduction = process.env.NODE_ENV === "production"
+  const allowEmbedInDev =
+    !isProduction && (process.env.SECURITY_DEV_ALLOW_EMBED || "true").toLowerCase() !== "false"
   const azureEndpoint = process.env.AZURE_FORM_RECOGNIZER_ENDPOINT
   let azureOrigin = ""
 
@@ -47,7 +49,7 @@ function buildCspReportOnly() {
     "default-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
-    isProduction ? "frame-ancestors 'none'" : "frame-ancestors 'self'",
+    isProduction ? "frame-ancestors 'none'" : allowEmbedInDev ? "frame-ancestors *" : "frame-ancestors 'self'",
     "object-src 'none'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
@@ -110,7 +112,9 @@ function shouldRateLimit(req: NextRequest): { limited: boolean; retryAfterSec?: 
 
 function applySecurityHeaders(response: NextResponse, req: NextRequest) {
   const isProduction = process.env.NODE_ENV === "production"
-  response.headers.set("X-Frame-Options", isProduction ? "DENY" : "SAMEORIGIN")
+  if (isProduction) {
+    response.headers.set("X-Frame-Options", "DENY")
+  }
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-DNS-Prefetch-Control", "off")
   response.headers.set("X-Permitted-Cross-Domain-Policies", "none")
