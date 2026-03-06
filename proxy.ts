@@ -49,7 +49,7 @@ function buildCspReportOnly() {
     "default-src 'self'",
     "base-uri 'self'",
     "form-action 'self'",
-    isProduction ? "frame-ancestors 'none'" : allowEmbedInDev ? "frame-ancestors *" : "frame-ancestors 'self'",
+    isProduction ? "frame-ancestors 'self'" : allowEmbedInDev ? "frame-ancestors *" : "frame-ancestors 'self'",
     "object-src 'none'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https:",
@@ -112,17 +112,23 @@ function shouldRateLimit(req: NextRequest): { limited: boolean; retryAfterSec?: 
 
 function applySecurityHeaders(response: NextResponse, req: NextRequest) {
   const isProduction = process.env.NODE_ENV === "production"
-  if (isProduction) {
-    response.headers.set("X-Frame-Options", "DENY")
-  }
+
+  // Allow same-origin framing for PDF previews in iframes
+  // Using SAMEORIGIN instead of DENY to allow embedding from same domain
+  response.headers.set("X-Frame-Options", "SAMEORIGIN")
+
   response.headers.set("X-Content-Type-Options", "nosniff")
   response.headers.set("X-DNS-Prefetch-Control", "off")
   response.headers.set("X-Permitted-Cross-Domain-Policies", "none")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-  if (isProduction) {
+
+  // Only set COOP for HTTPS (it's ignored for HTTP anyway)
+  const proto = req.headers.get("x-forwarded-proto")
+  if (proto === "https") {
     response.headers.set("Cross-Origin-Opener-Policy", "same-origin")
   }
+
   response.headers.set("Cross-Origin-Resource-Policy", "same-origin")
   const cspValue = buildCspReportOnly()
   const cspMode = (process.env.SECURITY_CSP_MODE || "report-only").toLowerCase()
@@ -132,7 +138,6 @@ function applySecurityHeaders(response: NextResponse, req: NextRequest) {
     response.headers.set("Content-Security-Policy-Report-Only", cspValue)
   }
 
-  const proto = req.headers.get("x-forwarded-proto")
   if (proto === "https") {
     response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
   }
