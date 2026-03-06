@@ -28,10 +28,14 @@ import {
   Search,
   Filter,
   Download,
+  Pencil,
   ChevronLeft,
   ChevronRight,
   X,
   SlidersHorizontal,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react"
 import { toast } from "sonner"
 import { logger } from "@/lib/logger"
@@ -58,6 +62,9 @@ interface PaginationData {
   total: number
   totalPages: number
 }
+
+type SortBy = "fechaEnvio" | "numeroItem" | "destinatario" | "estado"
+type SortOrder = "asc" | "desc"
 
 function getEstadoColor(estado: string) {
   switch (estado.toLowerCase()) {
@@ -101,6 +108,8 @@ export default function GuiaValijaItemsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [showFilters, setShowFilters] = useState(false)
   const [jumpToPage, setJumpToPage] = useState("1")
+  const [sortBy, setSortBy] = useState<SortBy>("fechaEnvio")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
   const [filters, setFilters] = useState({
     fechaDesde: "",
     fechaHasta: "",
@@ -194,6 +203,8 @@ export default function GuiaValijaItemsPage() {
           search: searchTerm,
           page: pagination.page.toString(),
           limit: pagination.limit.toString(),
+          sortBy,
+          sortOrder,
           ...Object.entries(filters).reduce((acc, [key, value]) => {
             if (value && value !== "all") acc[key] = value
             return acc
@@ -230,7 +241,7 @@ export default function GuiaValijaItemsPage() {
       mounted = false
       abortController.abort()
     }
-  }, [searchTerm, filters, pagination.page, pagination.limit])
+  }, [searchTerm, filters, pagination.page, pagination.limit, sortBy, sortOrder])
 
   function clearFilters() {
     setSearchTerm("")
@@ -263,6 +274,26 @@ export default function GuiaValijaItemsPage() {
 
   function exportToExcel() {
     toast.info("Exportación en construcción")
+  }
+
+  function toggleSort(column: SortBy) {
+    setPagination((prev) => ({ ...prev, page: 1 }))
+    if (sortBy === column) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"))
+      return
+    }
+    setSortBy(column)
+    setSortOrder(column === "fechaEnvio" ? "desc" : "asc")
+  }
+
+  function renderSortIcon(column: SortBy) {
+    if (sortBy !== column) {
+      return <ArrowUpDown className="h-3.5 w-3.5 opacity-60" />
+    }
+    if (sortOrder === "asc") {
+      return <ArrowUp className="h-3.5 w-3.5" />
+    }
+    return <ArrowDown className="h-3.5 w-3.5" />
   }
 
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
@@ -504,6 +535,14 @@ export default function GuiaValijaItemsPage() {
                       <Icon name="eye" size="sm" className="mr-2" />
                       Ver guía
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => router.push(`/dashboard/guias-valija-items/${item.id}/edit`)}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Editar item
+                    </Button>
                   </div>
                 )})}
               </div>
@@ -513,15 +552,35 @@ export default function GuiaValijaItemsPage() {
                   <thead className="sticky top-0 z-10 bg-[var(--kt-gray-50)]">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">N°</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">N° VAL-ITEM</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Destinatario</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">
+                        <button type="button" onClick={() => toggleSort("destinatario")} className="inline-flex items-center gap-1.5 hover:text-[var(--kt-text-dark)]">
+                          Destinatario
+                          {renderSortIcon("destinatario")}
+                        </button>
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Contenido</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Remitente</th>
                       <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Cantidad</th>
                       <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Peso</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Guía</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Fecha Envío</th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Estado</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">
+                        <button type="button" onClick={() => toggleSort("numeroItem")} className="inline-flex items-center gap-1.5 hover:text-[var(--kt-text-dark)]">
+                          N° VAL-ITEM
+                          {renderSortIcon("numeroItem")}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">
+                        <button type="button" onClick={() => toggleSort("fechaEnvio")} className="inline-flex items-center gap-1.5 hover:text-[var(--kt-text-dark)]">
+                          Fecha Envío
+                          {renderSortIcon("fechaEnvio")}
+                        </button>
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">
+                        <button type="button" onClick={() => toggleSort("estado")} className="inline-flex items-center gap-1.5 hover:text-[var(--kt-text-dark)]">
+                          Estado
+                          {renderSortIcon("estado")}
+                        </button>
+                      </th>
                       <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Acciones</th>
                     </tr>
                   </thead>
@@ -532,9 +591,6 @@ export default function GuiaValijaItemsPage() {
                       <tr key={item.id} className={index % 2 === 0 ? "bg-white hover:bg-[var(--kt-gray-50)]" : "bg-[var(--kt-gray-50)]/40 hover:bg-[var(--kt-gray-50)]"}>
                         <td className="whitespace-nowrap px-6 py-4">
                           <span className="text-sm font-semibold text-[var(--kt-text-dark)]">{rowNumber}</span>
-                        </td>
-                        <td className="whitespace-nowrap px-6 py-4">
-                          <span className="text-sm font-semibold text-[var(--kt-text-dark)]">{item.numeroItem}</span>
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-sm font-medium text-[var(--kt-text-dark)]">{item.destinatario}</span>
@@ -557,6 +613,9 @@ export default function GuiaValijaItemsPage() {
                             {item.guiaValija.numeroGuia}
                           </button>
                         </td>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className="text-sm font-semibold text-[var(--kt-text-dark)]">{item.numeroItem}</span>
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4 text-sm text-[var(--kt-text-muted)]">{formatDate(item.guiaValija.fechaEnvio)}</td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <Badge className={getEstadoColor(item.guiaValija.estado)}>
@@ -564,16 +623,28 @@ export default function GuiaValijaItemsPage() {
                           </Badge>
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/guias-valija/${item.guiaValija.id}/view`)}
-                            title="Ver guía"
-                            className="gap-2"
-                          >
-                            <Icon name="eye" size="sm" />
-                            <span className="hidden lg:inline">Ver guía</span>
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/guias-valija/${item.guiaValija.id}/view`)}
+                              title="Ver guía"
+                              className="gap-2"
+                            >
+                              <Icon name="eye" size="sm" />
+                              <span className="hidden lg:inline">Ver</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/dashboard/guias-valija-items/${item.id}/edit`)}
+                              title="Editar item"
+                              className="gap-2"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              <span className="hidden lg:inline">Editar</span>
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     )})}

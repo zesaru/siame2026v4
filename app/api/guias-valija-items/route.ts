@@ -23,6 +23,12 @@ export async function GET(req: NextRequest) {
     const pesoMax = searchParams.get("pesoMax")
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "50")
+    const sortByRaw = searchParams.get("sortBy") || "fechaEnvio"
+    const sortOrderRaw = searchParams.get("sortOrder") || "desc"
+    const sortBy = ["fechaEnvio", "numeroItem", "destinatario", "estado"].includes(sortByRaw)
+      ? sortByRaw
+      : "fechaEnvio"
+    const sortOrder = sortOrderRaw === "asc" ? "asc" : "desc"
 
     // Construir filtros de Prisma
     const where: any = {}
@@ -69,6 +75,18 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    let orderBy: any[] = [{ guiaValija: { fechaEnvio: "desc" } }, { numeroItem: "asc" }]
+
+    if (sortBy === "numeroItem") {
+      orderBy = [{ numeroItem: sortOrder }]
+    } else if (sortBy === "destinatario") {
+      orderBy = [{ destinatario: sortOrder }]
+    } else if (sortBy === "estado") {
+      orderBy = [{ guiaValija: { estado: sortOrder } }, { guiaValija: { fechaEnvio: "desc" } }]
+    } else if (sortBy === "fechaEnvio") {
+      orderBy = [{ guiaValija: { fechaEnvio: sortOrder } }, { numeroItem: "asc" }]
+    }
+
     // Obtener items con filtros
     const [items, total] = await Promise.all([
       prisma.guiaValijaItem.findMany({
@@ -83,7 +101,7 @@ export async function GET(req: NextRequest) {
             },
           },
         },
-        orderBy: { numeroItem: "asc" },
+        orderBy,
         skip: (page - 1) * limit,
         take: limit,
       }),
