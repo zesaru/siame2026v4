@@ -207,7 +207,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
   return (
     <form
       onSubmit={onFormSubmit}
-      className="space-y-8 bg-[var(--kt-bg-light)] p-6 min-h-screen lg:pr-[56%]"
+      className="min-h-screen bg-[var(--kt-bg-light)] p-4 lg:p-6"
     >
       {/* Server Errors */}
       {serverError && (
@@ -241,48 +241,9 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
         </Alert>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button type="button" variant="ghost" onClick={onCancel}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Volver
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
-              Editar Guía de Valija
-            </h1>
-            <p className="text-[var(--kt-text-muted)]">
-              Número: {watch("numeroGuia")}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            <X className="h-4 w-4 mr-2" />
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)] shadow-sm"
-          >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                Guardando...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Guardar Cambios
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-
-      <Card className="border-[var(--kt-primary)]/30 bg-gradient-to-r from-white to-blue-50/70">
+      <div className="mx-auto grid w-full max-w-[1800px] grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(560px,0.95fr)_minmax(720px,1.05fr)]">
+        <aside className="space-y-4 xl:sticky xl:top-4">
+          <Card className="border-[var(--kt-primary)]/30 bg-gradient-to-r from-white to-blue-50/70">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <FileText className="h-4 w-4 text-[var(--kt-primary)]" />
@@ -358,10 +319,10 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
           )}
 
         </CardContent>
-      </Card>
+          </Card>
 
-      {currentFilePath && (
-        <Card className="border-[var(--kt-primary)]/30 bg-white lg:fixed lg:right-0 lg:top-24 lg:w-[55%] lg:shadow-xl">
+          {currentFilePath && (
+            <Card className="border-[var(--kt-primary)]/30 bg-white shadow-lg">
           <CardHeader className="pb-2">
             <button
               type="button"
@@ -385,8 +346,51 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
               />
             </CardContent>
           )}
-        </Card>
-      )}
+            </Card>
+          )}
+        </aside>
+
+        <section className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex items-center gap-4">
+              <Button type="button" variant="ghost" onClick={onCancel}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Volver
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
+                  Editar Guía de Valija
+                </h1>
+                <p className="text-[var(--kt-text-muted)]">
+                  Número: {watch("numeroGuia")}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button type="button" variant="outline" onClick={onCancel}>
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)] shadow-sm"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Guardar Cambios
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -796,6 +800,8 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
           />
         </CardContent>
       </Card>
+        </section>
+      </div>
     </form>
   )
 }
