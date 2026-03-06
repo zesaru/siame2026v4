@@ -1,26 +1,21 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-
-  /* ===== Metronic Primary Colors ===== */
+  /* ===== Metronic Core Palette ===== */
   --kt-primary: #009ef7;
   --kt-primary-light: #f1faff;
   --kt-primary-dark: #007bb5;
   --kt-primary-active: #006a9d;
 
-  /* ===== Metronic Semantic Colors (WCAG AA Compliant) ===== */
-  --kt-success: #0dae86;        /* Oscurecido para mejor contraste */
+  --kt-success: #0dae86;
   --kt-success-light: #d1f2e6;
-  --kt-info: #7239ea;           /* Ya cumple WCAG AA */
+  --kt-info: #7239ea;
   --kt-info-light: #f8f5ff;
-  --kt-warning: #c4390d;        /* Oscurecido de #ffc700 para contraste */
+  --kt-warning: #c4390d;
   --kt-warning-light: #fff4e6;
-  --kt-danger: #d9214e;         /* Oscurecido para mejor contraste */
+  --kt-danger: #d9214e;
   --kt-danger-light: #ffe3e6;
 
-  /* ===== Metronic Neutral Grays ===== */
   --kt-gray-50: #f5f8fa;
   --kt-gray-100: #f5f8fa;
   --kt-gray-200: #eff2f5;
@@ -32,93 +27,69 @@
   --kt-gray-800: #3f4254;
   --kt-gray-900: #181c32;
 
-  /* ===== Metronic Text Colors (WCAG AA Compliant) ===== */
-  --kt-text-dark: #141426;      /* Más oscuro para mejor contraste */
-  --kt-text-muted: #5e6278;     /* Oscurecido de #7e8299 para lograr ratio 4.5:1 */
-  --kt-text-light: #7e8299;     /* Gris medio actualizado */
+  --kt-text-dark: #141426;
+  --kt-text-muted: #5e6278;
+  --kt-text-light: #7e8299;
 
-  /* ===== Metronic Typography Scale ===== */
-  --kt-font-size-xs: 0.75rem;    /* 12px */
-  --kt-font-size-sm: 0.875rem;   /* 14px */
-  --kt-font-size-base: 1rem;     /* 16px */
-  --kt-font-size-lg: 1.125rem;   /* 18px */
-  --kt-font-size-xl: 1.25rem;    /* 20px */
-  --kt-font-size-2xl: 1.5rem;    /* 24px */
-  --kt-font-size-3xl: 1.875rem;  /* 30px */
-  --kt-font-size-4xl: 2.25rem;   /* 36px */
+  --kt-font-size-xs: 0.75rem;
+  --kt-font-size-sm: 0.875rem;
+  --kt-font-size-base: 1rem;
+  --kt-font-size-lg: 1.125rem;
+  --kt-font-size-xl: 1.25rem;
+  --kt-font-size-2xl: 1.5rem;
+  --kt-font-size-3xl: 1.875rem;
+  --kt-font-size-4xl: 2.25rem;
 
-  /* ===== Metronic Font Weights ===== */
   --kt-font-weight-light: 300;
   --kt-font-weight-normal: 400;
   --kt-font-weight-medium: 500;
   --kt-font-weight-semibold: 600;
   --kt-font-weight-bold: 700;
 
-  /* ===== Metronic Spacing Scale ===== */
-  --kt-spacing-xs: 0.25rem;   /* 4px */
-  --kt-spacing-sm: 0.5rem;    /* 8px */
-  --kt-spacing-md: 1rem;      /* 16px */
-  --kt-spacing-lg: 1.5rem;    /* 24px */
-  --kt-spacing-xl: 2rem;      /* 32px */
-  --kt-spacing-2xl: 2.5rem;   /* 40px */
-  --kt-spacing-3xl: 3rem;     /* 48px */
+  --kt-spacing-xs: 0.25rem;
+  --kt-spacing-sm: 0.5rem;
+  --kt-spacing-md: 1rem;
+  --kt-spacing-lg: 1.5rem;
+  --kt-spacing-xl: 2rem;
+  --kt-spacing-2xl: 2.5rem;
+  --kt-spacing-3xl: 3rem;
 
-  /* ===== Metronic Border Radius ===== */
-  --kt-radius-sm: 0.25rem;    /* 4px */
-  --kt-radius-md: 0.375rem;   /* 6px - default for cards */
-  --kt-radius-lg: 0.5rem;     /* 8px */
-  --kt-radius-xl: 0.75rem;    /* 12px */
+  --kt-radius-sm: 0.25rem;
+  --kt-radius-md: 0.375rem;
+  --kt-radius-lg: 0.5rem;
+  --kt-radius-xl: 0.75rem;
 
-  /* ===== Metronic Box Shadows ===== */
   --kt-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
   --kt-shadow-md: 0 0.375rem 0.75rem rgba(0, 0, 0, 0.075);
   --kt-shadow-lg: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
   --kt-shadow-card: 0px 0px 20px 0px rgba(76, 87, 125, 0.02);
 
-  /* ===== shadcn/ui CSS Variables (Metronic-adapted) ===== */
-  /* HSL format for shadcn/ui components */
-
-  --background: 0 0% 100%; /* blanco */
-  --foreground: 222 84% 5%; /* texto oscuro */
-
+  /* ===== shadcn/ui Tokens mapped to Metronic ===== */
+  --background: 210 29% 97%;
+  --foreground: 231 24% 13%;
   --card: 0 0% 100%;
-  --card-foreground: 222 2% 10%;
-
+  --card-foreground: 231 24% 13%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222 2% 10%;
-
-  /* Primary - Metronic #009ef7 in HSL */
-  --primary: 199 91% 47%;
+  --popover-foreground: 231 24% 13%;
+  --primary: 201 100% 48%;
   --primary-foreground: 0 0% 100%;
-
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222 47% 11%;
-
-  /* Muted - Metronic gray-100 */
-  --muted: 210 40% 96%;
-  --muted-foreground: 215 20% 35%;  /* Oscurecido de 47% para cumplir WCAG AA */
-
-  /* Accent - Metronic info */
-  --accent: 255 77% 65%;
-  --accent-foreground: 0 0% 100%;
-
-  /* Destructive - Metronic danger */
+  --secondary: 210 23% 94%;
+  --secondary-foreground: 231 24% 13%;
+  --muted: 210 23% 95%;
+  --muted-foreground: 228 13% 42%;
+  --accent: 204 100% 97%;
+  --accent-foreground: 201 100% 36%;
   --destructive: 347 75% 59%;
   --destructive-foreground: 0 0% 100%;
-
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
-  --ring: 199 91% 47%;
-
-  --radius: 0.375rem; /* Metronic --kt-radius-md */
+  --border: 214 26% 88%;
+  --input: 214 26% 88%;
+  --ring: 201 100% 48%;
+  --radius: 0.375rem;
 }
 
 @theme inline {
-  /* Base colors */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
-  /* shadcn/ui color theme */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
   --color-card-foreground: hsl(var(--card-foreground));
   --color-popover: hsl(var(--popover));
@@ -137,25 +108,42 @@
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
-  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 
-  /* Border radius */
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+.dark {
+  --background: 231 24% 10%;
+  --foreground: 210 20% 96%;
+  --card: 231 23% 12%;
+  --card-foreground: 210 20% 96%;
+  --popover: 231 23% 12%;
+  --popover-foreground: 210 20% 96%;
+  --primary: 201 100% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 231 17% 20%;
+  --secondary-foreground: 210 20% 96%;
+  --muted: 231 17% 18%;
+  --muted-foreground: 220 14% 73%;
+  --accent: 231 17% 20%;
+  --accent-foreground: 210 20% 96%;
+  --destructive: 347 75% 59%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 231 15% 24%;
+  --input: 231 15% 24%;
+  --ring: 201 100% 48%;
 }
