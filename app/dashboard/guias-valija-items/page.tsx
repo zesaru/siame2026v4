@@ -444,8 +444,8 @@ export default function GuiaValijaItemsPage() {
           {loading ? (
             <div className="p-4">
               <div className="overflow-hidden rounded-md border border-[var(--kt-gray-200)]">
-                <div className="hidden bg-[var(--kt-gray-50)] px-4 py-3 md:grid md:grid-cols-10 md:gap-4">
-                  {Array.from({ length: 10 }).map((_, idx) => (
+                <div className="hidden bg-[var(--kt-gray-50)] px-4 py-3 md:grid md:grid-cols-11 md:gap-4">
+                  {Array.from({ length: 11 }).map((_, idx) => (
                     <div key={idx} className="h-4 animate-pulse rounded bg-[var(--kt-gray-200)]" />
                   ))}
                 </div>
@@ -474,11 +474,13 @@ export default function GuiaValijaItemsPage() {
           ) : (
             <>
               <div className="md:hidden divide-y divide-[var(--kt-gray-200)]">
-                {items.map((item) => (
+                {items.map((item, index) => {
+                  const rowNumber = (pagination.page - 1) * pagination.limit + index + 1
+                  return (
                   <div key={item.id} className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-[var(--kt-text-dark)]">Item #{item.numeroItem}</p>
+                        <p className="text-sm font-semibold text-[var(--kt-text-dark)]">N° {rowNumber} · VAL-ITEM #{item.numeroItem}</p>
                         <p className="text-sm text-[var(--kt-text-muted)]">{item.destinatario}</p>
                       </div>
                       <Badge className={getEstadoColor(item.guiaValija.estado)}>
@@ -503,7 +505,7 @@ export default function GuiaValijaItemsPage() {
                       Ver guía
                     </Button>
                   </div>
-                ))}
+                )})}
               </div>
 
               <div className="hidden overflow-x-auto md:block">
@@ -511,6 +513,7 @@ export default function GuiaValijaItemsPage() {
                   <thead className="sticky top-0 z-10 bg-[var(--kt-gray-50)]">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">N°</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">N° VAL-ITEM</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Destinatario</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Contenido</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">Remitente</th>
@@ -523,8 +526,13 @@ export default function GuiaValijaItemsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--kt-gray-200)] bg-white">
-                    {items.map((item, index) => (
+                    {items.map((item, index) => {
+                      const rowNumber = (pagination.page - 1) * pagination.limit + index + 1
+                      return (
                       <tr key={item.id} className={index % 2 === 0 ? "bg-white hover:bg-[var(--kt-gray-50)]" : "bg-[var(--kt-gray-50)]/40 hover:bg-[var(--kt-gray-50)]"}>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <span className="text-sm font-semibold text-[var(--kt-text-dark)]">{rowNumber}</span>
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <span className="text-sm font-semibold text-[var(--kt-text-dark)]">{item.numeroItem}</span>
                         </td>
@@ -568,7 +576,7 @@ export default function GuiaValijaItemsPage() {
                           </Button>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
