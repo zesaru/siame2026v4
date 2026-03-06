@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -127,13 +126,6 @@ export default function SignIn() {
             </form>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <div className="text-sm text-center text-[var(--kt-text-muted)]">
-              ¿No tienes una cuenta?{" "}
-              <Link href="/auth/signup" prefetch={true} className="font-medium text-[var(--kt-primary)] hover:underline">
-                Regístrate aquí
-              </Link>
-            </div>
-
             <Alert className="bg-[var(--kt-info-light)] border-[var(--kt-info)] text-[var(--kt-info)]">
               <Icon name="alert" size="sm" className="mr-2" />
               <AlertDescription className="text-sm">
@@ -142,17 +134,6 @@ export default function SignIn() {
             </Alert>
           </CardFooter>
         </Card>
-
-        {/* Back to Home */}
-        <div className="mt-6 text-center">
-          <Link
-            href="/"
-            className="inline-flex items-center text-sm text-[var(--kt-text-muted)] hover:text-[var(--kt-primary)] transition-colors"
-          >
-            <Icon name="chevronLeft" size="sm" />
-            Volver al inicio
-          </Link>
-        </div>
       </div>
     </div>
   )
