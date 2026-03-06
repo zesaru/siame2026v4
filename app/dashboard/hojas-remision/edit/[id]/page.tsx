@@ -210,6 +210,9 @@ export default function EditHojaRemisionPage() {
     estado: hoja.estado,
   } : undefined
 
+  const showPdfPanel =
+    file && ((wizardStep === "form" && uploadState === "ready") || wizardStep === "edit")
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -233,7 +236,7 @@ export default function EditHojaRemisionPage() {
   }
 
   return (
-    <div className={`space-y-6 ${file ? "lg:pr-[56%]" : ""}`}>
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -286,80 +289,84 @@ export default function EditHojaRemisionPage() {
         <ErrorState error={error} onRetry={handleRetry} />
       )}
 
-      {file && ((wizardStep === "form" && uploadState === "ready") || wizardStep === "edit") && (
-        <Card className="bg-white lg:fixed lg:right-0 lg:top-24 lg:w-[55%] lg:shadow-xl">
-          <button
-            onClick={() => setShowPDF(!showPDF)}
-            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
-          >
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Vista previa PDF
-              </CardTitle>
-              <CardDescription>{file.name}</CardDescription>
-            </div>
-            {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-          </button>
-
-          {showPDF && (
-            <CardContent className="border-t border-[var(--kt-gray-200)]">
-              <div className="h-[62vh] min-h-[420px]">
-                <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
-                  <PDFViewer file={file} />
-                </Suspense>
-              </div>
-            </CardContent>
-          )}
-        </Card>
-      )}
-
-      {(uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving") && (
-        <Card>
-          <CardContent className="py-8">
-            <LoadingSpinner
-              message={
-                uploadState === "uploading"
-                  ? "Subiendo archivo..."
-                  : uploadState === "analyzing"
-                  ? "Analizando documento con Azure AI..."
-                  : "Guardando en base de datos..."
-              }
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* PASO 1: Formulario inicial (sin PDF subido o después de rechazar) */}
-      {wizardStep === "form" && (
-        <>
-          {/* File Info Bar */}
-          {file && uploadState === "ready" && (
-            <Card className="border-l-4 border-l-[var(--kt-primary)]">
-              <CardContent className="py-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-[var(--kt-primary)]" />
-                    <span className="text-sm font-medium">{file.name}</span>
-                    <span className="text-xs text-[var(--kt-text-muted)]">
-                      ({(file.size / 1024).toFixed(1)} KB)
-                    </span>
-                    <span className="text-xs text-[var(--kt-warning)] ml-2">
-                      Los datos extraídos reemplazarán los actuales
-                    </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleClearFile}
-                    className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+      <div className={showPdfPanel ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(540px,0.95fr)_minmax(680px,1.05fr)]" : "space-y-6"}>
+        {showPdfPanel && file && (
+          <aside className="xl:sticky xl:top-4">
+            <Card className="bg-white shadow-lg">
+              <button
+                onClick={() => setShowPDF(!showPDF)}
+                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
+              >
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Vista previa PDF
+                  </CardTitle>
+                  <CardDescription>{file.name}</CardDescription>
                 </div>
+                {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
+
+              {showPDF && (
+                <CardContent className="border-t border-[var(--kt-gray-200)]">
+                  <div className="h-[72vh] min-h-[460px]">
+                    <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
+                      <PDFViewer file={file} />
+                    </Suspense>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </aside>
+        )}
+
+        <div className="space-y-6">
+          {(uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving") && (
+            <Card>
+              <CardContent className="py-8">
+                <LoadingSpinner
+                  message={
+                    uploadState === "uploading"
+                      ? "Subiendo archivo..."
+                      : uploadState === "analyzing"
+                      ? "Analizando documento con Azure AI..."
+                      : "Guardando en base de datos..."
+                  }
+                />
               </CardContent>
             </Card>
           )}
+
+          {/* PASO 1: Formulario inicial (sin PDF subido o después de rechazar) */}
+          {wizardStep === "form" && (
+            <>
+              {/* File Info Bar */}
+              {file && uploadState === "ready" && (
+                <Card className="border-l-4 border-l-[var(--kt-primary)]">
+                  <CardContent className="py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-[var(--kt-primary)]" />
+                        <span className="text-sm font-medium">{file.name}</span>
+                        <span className="text-xs text-[var(--kt-text-muted)]">
+                          ({(file.size / 1024).toFixed(1)} KB)
+                        </span>
+                        <span className="text-xs text-[var(--kt-warning)] ml-2">
+                          Los datos extraídos reemplazarán los actuales
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleClearFile}
+                        className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
           {/* Form (Always Visible) */}
           <Card>
@@ -382,9 +389,9 @@ export default function EditHojaRemisionPage() {
               </CardContent>
           </Card>
 
-          {/* Azure JSON & KeyValuePairs Section (Only when ready) */}
-          {uploadState === "ready" && azureResult && (
-            <div className="space-y-4">
+              {/* Azure JSON & KeyValuePairs Section (Only when ready) */}
+              {uploadState === "ready" && azureResult && (
+                <div className="space-y-4">
               {/* KeyValuePairs Toggle */}
               <Card>
                 <button
@@ -456,70 +463,72 @@ export default function EditHojaRemisionPage() {
                   </CardContent>
                 )}
               </Card>
-            </div>
-          )}
-        </>
-      )}
-
-      {/* PASO 2: Confirmación de datos extraídos */}
-      {wizardStep === "confirmation" && extractedData && file && (
-        <Suspense fallback={<Card><CardContent className="py-8 text-center">Cargando confirmación...</CardContent></Card>}>
-          <HojaRemisionConfirmacion
-            extractedData={extractedData}
-            azureResult={azureResult}
-            fileName={file.name}
-            fileSize={file.size}
-            file={file}
-            onConfirm={handleConfirmData}
-            onReject={handleRejectData}
-            onRetry={handleRetryUpload}
-            onDataChanged={handleDataChanged}
-          />
-        </Suspense>
-      )}
-
-      {/* PASO 3: Edición final con datos extraídos confirmados */}
-      {wizardStep === "edit" && extractedData && file && (
-        <>
-          {/* File Info Bar - Confirmed */}
-          <Card className="border-l-4 border-l-[var(--kt-success)]">
-            <CardContent className="py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-[var(--kt-success)]" />
-                  <span className="text-sm font-medium">{file.name}</span>
-                  <span className="text-xs text-[var(--kt-success)]">
-                    ✓ Datos confirmados
-                  </span>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setWizardStep("confirmation")}
-                >
-                  Volver a confirmación
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+              )}
+            </>
+          )}
 
-          <Card>
-              <CardHeader>
-                <CardTitle>Editar Datos Extraídos</CardTitle>
-                <CardDescription>
-                  Verifica y edita los datos extraídos antes de guardar
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <HojaRemisionForm
-                  initialData={extractedData}
-                  onSave={handleSave}
-                  onCancel={() => router.push("/dashboard/hojas-remision")}
-                />
-              </CardContent>
-          </Card>
-        </>
-      )}
+          {/* PASO 2: Confirmación de datos extraídos */}
+          {wizardStep === "confirmation" && extractedData && file && (
+            <Suspense fallback={<Card><CardContent className="py-8 text-center">Cargando confirmación...</CardContent></Card>}>
+              <HojaRemisionConfirmacion
+                extractedData={extractedData}
+                azureResult={azureResult}
+                fileName={file.name}
+                fileSize={file.size}
+                file={file}
+                onConfirm={handleConfirmData}
+                onReject={handleRejectData}
+                onRetry={handleRetryUpload}
+                onDataChanged={handleDataChanged}
+              />
+            </Suspense>
+          )}
+
+          {/* PASO 3: Edición final con datos extraídos confirmados */}
+          {wizardStep === "edit" && extractedData && file && (
+            <>
+              {/* File Info Bar - Confirmed */}
+              <Card className="border-l-4 border-l-[var(--kt-success)]">
+                <CardContent className="py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-[var(--kt-success)]" />
+                      <span className="text-sm font-medium">{file.name}</span>
+                      <span className="text-xs text-[var(--kt-success)]">
+                        ✓ Datos confirmados
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setWizardStep("confirmation")}
+                    >
+                      Volver a confirmación
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                  <CardHeader>
+                    <CardTitle>Editar Datos Extraídos</CardTitle>
+                    <CardDescription>
+                      Verifica y edita los datos extraídos antes de guardar
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <HojaRemisionForm
+                      initialData={extractedData}
+                      onSave={handleSave}
+                      onCancel={() => router.push("/dashboard/hojas-remision")}
+                    />
+                  </CardContent>
+              </Card>
+            </>
+          )}
+                </div>
+      </div>
     </div>
   )
 }
