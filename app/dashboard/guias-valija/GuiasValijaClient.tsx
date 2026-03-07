@@ -749,8 +749,10 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                 size="sm"
                                 aria-label={`Ver guía ${guia.numeroGuia}`}
                                 onClick={() => router.push(`/guias-valija/${guia.id}/view`)}
+                                className="gap-2"
                               >
                                 <Icon name="eye" size="sm" />
+                                <span className="hidden xl:inline">Ver</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -766,8 +768,10 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                   size="sm"
                                   aria-label={`Ver archivo de ${guia.numeroGuia}`}
                                   onClick={() => window.open(`/api/files/${guia.filePath}?inline=true`, '_blank')}
+                                  className="gap-2"
                                 >
                                   <Icon name="document" size="sm" />
+                                  <span className="hidden xl:inline">Archivo</span>
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
@@ -783,8 +787,10 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                 size="sm"
                                 aria-label={`Editar guía ${guia.numeroGuia}`}
                                 onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
+                                className="gap-2"
                               >
                                 <Icon name="refresh" size="sm" />
+                                <span className="hidden xl:inline">Editar</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
@@ -799,9 +805,10 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                 size="sm"
                                 aria-label={`Eliminar guía ${guia.numeroGuia}`}
                                 onClick={() => handleDelete(guia)}
-                                className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                                className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
                               >
                                 <Icon name="trash" size="sm" />
+                                <span className="hidden xl:inline">Eliminar</span>
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
