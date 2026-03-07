@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { withTrackView } from "@/lib/utils"
 import {
   AlertDialog,
@@ -114,7 +115,13 @@ export default function EditOficioPage() {
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-[var(--kt-text-muted)]">Cargando oficio...</div>
+    return (
+      <Card className="mx-auto mt-6 max-w-3xl">
+        <CardContent className="py-10">
+          <LoadingSpinner message="Cargando oficio..." />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
