@@ -32,6 +32,7 @@
 - [ ] Ensure errors use one visual pattern (`ErrorState` or alert card)
 - [ ] Ensure no raw HTML appears in detail views
 - [x] Standardized loading wrappers in `hojas-remision` (`view`, `edit`, `new` confirmation fallback)
+- [x] Standardized loading wrappers in `usuarios` and key `audit-logs` sections
 
 ## Sprint 3 (Next)
 

@@ -44,6 +44,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import Icon from "@/components/ui/Icon"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { toast } from "sonner"
 import type { Role } from "@prisma/client"
 
@@ -430,11 +431,8 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
     return (
       <Card>
         <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-[var(--kt-text-muted)]">Cargando usuarios...</p>
-            </div>
+          <div className="flex min-h-[16rem] items-center justify-center">
+            <LoadingSpinner message="Cargando usuarios..." />
           </div>
         </CardContent>
       </Card>

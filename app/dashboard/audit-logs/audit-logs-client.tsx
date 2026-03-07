@@ -848,7 +848,9 @@ export default function AuditLogsClient() {
           </div>
 
           {incidentsLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando incidentes...</p>
+            <div className="py-6">
+              <LoadingSpinner message="Cargando incidentes..." size="sm" />
+            </div>
           ) : incidents.length === 0 ? (
             <p className="text-sm text-muted-foreground">No hay incidentes para el rango seleccionado.</p>
           ) : (
@@ -991,7 +993,9 @@ export default function AuditLogsClient() {
         </CardHeader>
         <CardContent>
           {deliveriesLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando entregas...</p>
+            <div className="py-6">
+              <LoadingSpinner message="Cargando entregas..." size="sm" />
+            </div>
           ) : deliveries.length === 0 ? (
             <p className="text-sm text-muted-foreground">Sin entregas registradas.</p>
           ) : (
@@ -1056,7 +1060,9 @@ export default function AuditLogsClient() {
         </CardHeader>
         <CardContent>
           {sessionMetricsLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando métricas...</p>
+            <div className="py-6">
+              <LoadingSpinner message="Cargando métricas..." size="sm" />
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div className="rounded-lg border p-4">
@@ -1106,7 +1112,9 @@ export default function AuditLogsClient() {
         </CardHeader>
         <CardContent>
           {quarantinedIpsLoading ? (
-            <p className="text-sm text-muted-foreground">Cargando IPs en cuarentena...</p>
+            <div className="py-6">
+              <LoadingSpinner message="Cargando IPs en cuarentena..." size="sm" />
+            </div>
           ) : quarantinedIps.length === 0 ? (
             <p className="text-sm text-emerald-700">Sin IPs en cuarentena actualmente.</p>
           ) : (
@@ -1266,11 +1274,8 @@ export default function AuditLogsClient() {
 
           {/* Table */}
           {loading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="text-center">
-                <div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-[var(--kt-text-muted)]">Cargando logs...</p>
-              </div>
+            <div className="flex min-h-[16rem] items-center justify-center">
+              <LoadingSpinner message="Cargando logs..." />
             </div>
           ) : (
             <div className="rounded-md border">
