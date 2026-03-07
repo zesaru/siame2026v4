@@ -352,7 +352,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
 
         <section className="space-y-6">
           {/* Header */}
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="sticky top-3 z-20 flex flex-col gap-4 rounded-xl border border-[var(--kt-gray-200)] bg-white/95 p-4 backdrop-blur xl:flex-row xl:items-center xl:justify-between">
             <div className="flex items-center gap-4">
               <Button type="button" variant="ghost" onClick={onCancel}>
                 <ArrowLeft className="h-4 w-4 mr-2" />

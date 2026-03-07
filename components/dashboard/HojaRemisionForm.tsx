@@ -380,7 +380,7 @@ export default function HojaRemisionForm({
       </Card>
 
       {/* Botones de acción */}
-      <div className="flex justify-end gap-3">
+      <div className="sticky bottom-3 z-20 flex justify-end gap-3 rounded-xl border border-[var(--kt-gray-200)] bg-white/95 p-3 shadow-sm backdrop-blur">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>

@@ -238,7 +238,7 @@ export default function EditHojaRemisionPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="sticky top-3 z-20 flex items-center justify-between rounded-xl border border-[var(--kt-gray-200)] bg-white/95 p-4 backdrop-blur">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
