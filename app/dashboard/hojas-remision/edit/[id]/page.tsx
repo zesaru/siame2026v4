@@ -215,11 +215,8 @@ export default function EditHojaRemisionPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[var(--kt-text-muted)]">Cargando hoja de remisión...</p>
-        </div>
+      <div className="flex min-h-[16rem] items-center justify-center">
+        <LoadingSpinner message="Cargando hoja de remisión..." />
       </div>
     )
   }
@@ -470,7 +467,7 @@ export default function EditHojaRemisionPage() {
 
           {/* PASO 2: Confirmación de datos extraídos */}
           {wizardStep === "confirmation" && extractedData && file && (
-            <Suspense fallback={<Card><CardContent className="py-8 text-center">Cargando confirmación...</CardContent></Card>}>
+            <Suspense fallback={<LoadingSpinner message="Cargando confirmación..." />}>
               <HojaRemisionConfirmacion
                 extractedData={extractedData}
                 azureResult={azureResult}

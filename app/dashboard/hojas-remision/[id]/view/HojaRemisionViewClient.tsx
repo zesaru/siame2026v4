@@ -27,6 +27,7 @@ import {
 import { ArrowLeft, FileText, MapPin, User, Calendar, Weight, Trash2, Edit, Send, CheckCircle, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { withTrackView } from "@/lib/utils"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 
 interface HojaRemisionDetails {
   id: string
@@ -159,11 +160,8 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[var(--kt-text-muted)]">Cargando detalles...</p>
-        </div>
+      <div className="flex min-h-[16rem] items-center justify-center">
+        <LoadingSpinner message="Cargando hoja de remisión..." />
       </div>
     )
   }

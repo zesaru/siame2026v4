@@ -390,7 +390,7 @@ export default function NewHojaRemisionPage() {
 
       {/* PASO 2: Confirmación de datos extraídos */}
       {wizardStep === "confirmation" && extractedData && file && (
-        <Suspense fallback={<Card><CardContent className="py-8 text-center">Cargando confirmación...</CardContent></Card>}>
+        <Suspense fallback={<LoadingSpinner message="Cargando confirmación..." />}>
           <HojaRemisionConfirmacion
             extractedData={extractedData}
             azureResult={azureResult}
