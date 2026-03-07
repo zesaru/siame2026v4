@@ -192,21 +192,7 @@ export default function UsersClient({ currentUserId, currentUserRole }: UsersCli
 
       // If editing self, update the session
       if (isEditingSelf && session?.user) {
-        // Update NextAuth session
-        await fetch("/api/auth/session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...session,
-            user: {
-              ...session.user,
-              name: formData.name,
-              email: formData.email,
-            }
-          })
-        })
-
-        // Trigger session refresh
+        // Refresh NextAuth client session with the latest self-profile fields.
         await update({
           ...session,
           user: {
