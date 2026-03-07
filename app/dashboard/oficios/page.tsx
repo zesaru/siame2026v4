@@ -85,28 +85,33 @@ export default async function OficiosPage({ searchParams }: OficiosPageProps) {
           ) : (
             <div className="overflow-auto">
               <table className="min-w-full text-sm">
-                <thead className="border-b bg-[var(--kt-gray-50)]">
+                <thead className="sticky top-0 z-10 border-b bg-[var(--kt-gray-50)]">
                   <tr>
-                    <th className="px-3 py-2 text-left">Nº Oficio</th>
-                    <th className="px-3 py-2 text-left">Asunto</th>
-                    <th className="px-3 py-2 text-left">Remitente</th>
-                    <th className="px-3 py-2 text-left">Destinatario</th>
-                    <th className="px-3 py-2 text-left">Fecha</th>
-                    <th className="px-3 py-2 text-right">Acciones</th>
+                    <th className="px-3 py-2 text-left font-semibold text-[var(--kt-text-muted)]">Nº Oficio</th>
+                    <th className="px-3 py-2 text-left font-semibold text-[var(--kt-text-muted)]">Asunto</th>
+                    <th className="px-3 py-2 text-left font-semibold text-[var(--kt-text-muted)]">Remitente</th>
+                    <th className="px-3 py-2 text-left font-semibold text-[var(--kt-text-muted)]">Destinatario</th>
+                    <th className="px-3 py-2 text-left font-semibold text-[var(--kt-text-muted)]">Fecha</th>
+                    <th className="px-3 py-2 text-right font-semibold text-[var(--kt-text-muted)]">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {oficios.map((oficio) => (
-                    <tr key={oficio.id} className="border-b">
+                  {oficios.map((oficio, index) => (
+                    <tr key={oficio.id} className={`border-b ${index % 2 === 0 ? "bg-white" : "bg-[var(--kt-gray-50)]/40"} hover:bg-[var(--kt-gray-50)]`}>
                       <td className="px-3 py-2 font-medium">{oficio.numeroOficio}</td>
                       <td className="px-3 py-2">{oficio.asunto || "N/A"}</td>
                       <td className="px-3 py-2">{oficio.remitente || "N/A"}</td>
                       <td className="px-3 py-2">{oficio.destinatario || "N/A"}</td>
-                      <td className="px-3 py-2">{new Date(oficio.createdAt).toLocaleString()}</td>
+                      <td className="px-3 py-2">{new Date(oficio.createdAt).toLocaleString("es-PE")}</td>
                       <td className="px-3 py-2 text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <Link href={`/dashboard/oficios/${oficio.id}/view`}>Ver</Link>
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/dashboard/oficios/${oficio.id}/view`}>Ver</Link>
+                          </Button>
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/dashboard/oficios/${oficio.id}/edit`}>Editar</Link>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
