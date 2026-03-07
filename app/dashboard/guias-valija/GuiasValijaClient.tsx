@@ -614,6 +614,14 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                         >
                           <Icon name="eye" size="sm" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Editar guía ${guia.numeroGuia}`}
+                          onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
+                        >
+                          <Icon name="edit" size="sm" />
+                        </Button>
                         {guia.filePath && (
                           <Button
                             variant="ghost"
@@ -624,14 +632,6 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                             <Icon name="document" size="sm" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Editar guía ${guia.numeroGuia}`}
-                          onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
-                        >
-                          <Icon name="refresh" size="sm" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -755,8 +755,26 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                 <span className="hidden xl:inline">Ver</span>
                               </Button>
                             </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Ver detalles completos de la guía {guia.numeroGuia}</p>
+                          </TooltipContent>
+                        </Tooltip>
+
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                aria-label={`Editar guía ${guia.numeroGuia}`}
+                                onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
+                                className="gap-2"
+                              >
+                                <Icon name="edit" size="sm" />
+                                <span className="hidden xl:inline">Editar</span>
+                              </Button>
+                            </TooltipTrigger>
                             <TooltipContent>
-                              <p>Ver detalles completos de la guía {guia.numeroGuia}</p>
+                              <p>Editar información de la guía {guia.numeroGuia}</p>
                             </TooltipContent>
                           </Tooltip>
 
@@ -775,28 +793,10 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>📄 Ver Archivo PDF de la guía {guia.numeroGuia}</p>
+                                <p>Ver archivo PDF de la guía {guia.numeroGuia}</p>
                               </TooltipContent>
                             </Tooltip>
                           )}
-
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`Editar guía ${guia.numeroGuia}`}
-                                onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}
-                                className="gap-2"
-                              >
-                                <Icon name="refresh" size="sm" />
-                                <span className="hidden xl:inline">Editar</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Editar información de la guía {guia.numeroGuia}</p>
-                            </TooltipContent>
-                          </Tooltip>
 
                           <Tooltip>
                             <TooltipTrigger asChild>

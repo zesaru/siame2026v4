@@ -12,10 +12,11 @@ import { forwardRef } from "react"
 interface IconProps {
   name: string
   className?: string
-  size?: "sm" | "md" | "lg" | "xl"
+  size?: "xs" | "sm" | "md" | "lg" | "xl"
 }
 
 const sizeClasses = {
+  xs: "w-3 h-3",
   sm: "w-4 h-4",
   md: "w-5 h-5",
   lg: "w-6 h-6",
@@ -41,9 +42,12 @@ const iconMap: Record<string, keyof typeof LucideIcons> = {
   truck: "Truck",
   weight: "Weight",
   mapPin: "MapPin",
+  "map-pin": "MapPin",
   chevronLeft: "ChevronLeft",
   chevronRight: "ChevronRight",
   refresh: "RefreshCw",
+  edit: "Pencil",
+  pencil: "Pencil",
   search: "Search",
   plus: "Plus",
   trash: "Trash2",
@@ -67,9 +71,24 @@ const iconMap: Record<string, keyof typeof LucideIcons> = {
   chevronsRight: "ChevronsRight",
 }
 
+function resolveIconName(name: string): keyof typeof LucideIcons | undefined {
+  if (iconMap[name]) return iconMap[name]
+
+  const lowerName = name.toLowerCase()
+  if (iconMap[lowerName]) return iconMap[lowerName]
+
+  const kebabName = name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()
+  if (iconMap[kebabName]) return iconMap[kebabName]
+
+  const camelName = name.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase())
+  if (iconMap[camelName]) return iconMap[camelName]
+
+  return undefined
+}
+
 export const Icon = forwardRef<HTMLSpanElement, IconProps>(
   ({ name, className = "", size = "md" }, ref) => {
-    const lucideIconName = iconMap[name]
+    const lucideIconName = resolveIconName(name)
 
     if (!lucideIconName) {
       logger.warn(`Icon "${name}" not found in mapping`)

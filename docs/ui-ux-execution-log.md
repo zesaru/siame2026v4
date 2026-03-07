@@ -20,6 +20,7 @@
 - [ ] Normalize action order across all dashboard tables: `Ver`, `Editar`, `Eliminar`
 - [ ] Normalize empty state copy and CTA strategy in all list pages
 - [ ] Normalize pagination labels and item ranges
+- [x] Normalize action order and iconography in `guias-valija` list (`Ver` → `Editar` → `Archivo` → `Eliminar`)
 
 ### Track B - Form UX
 - [ ] Sticky top action shell in all edit pages
@@ -30,6 +31,7 @@
 - [ ] Replace plain loading texts with standard `LoadingSpinner` wrappers
 - [ ] Ensure errors use one visual pattern (`ErrorState` or alert card)
 - [ ] Ensure no raw HTML appears in detail views
+- [x] Standardized loading wrappers in `hojas-remision` (`view`, `edit`, `new` confirmation fallback)
 
 ## Sprint 3 (Next)
 
