@@ -310,7 +310,7 @@ export default function EditHojaRemisionPage() {
               {showPDF && (
                 <CardContent className="border-t border-[var(--kt-gray-200)]">
                   <div className="h-[72vh] min-h-[460px]">
-                    <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
+                    <Suspense fallback={<LoadingSpinner message="Cargando visor PDF..." />}>
                       <PDFViewer file={file} />
                     </Suspense>
                   </div>
