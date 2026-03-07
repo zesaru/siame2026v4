@@ -26,6 +26,7 @@ const sizeClasses = {
 const iconMap: Record<string, keyof typeof LucideIcons> = {
   home: "Home",
   document: "FileText",
+  "file-text": "FileText",
   suitcase: "Briefcase",
   shipping: "Package",
   package: "Package",

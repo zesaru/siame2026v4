@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { EmptyState } from "@/components/ui/EmptyState"
 import Icon from "@/components/ui/Icon"
 import { toast } from "sonner"
 import type { HojaRemision } from "@prisma/client"
@@ -225,16 +226,19 @@ export default function HojasRemisionClient({
         </CardHeader>
         <CardContent>
           {filteredHojas.length === 0 ? (
-            <div className="text-center py-12">
-              {hojas.length === 0 ? (
-                <p className="text-[var(--kt-text-muted)]">
-                  No hay hojas de remisión registradas
-                </p>
-              ) : (
-                <div>
-                  <p className="text-[var(--kt-text-muted)] mb-2">
-                    No se encontraron hojas que coincidan con los filtros
-                  </p>
+            <EmptyState
+              title={hojas.length === 0 ? "Sin hojas registradas" : "Sin resultados"}
+              message={
+                hojas.length === 0
+                  ? "No hay hojas de remisión registradas."
+                  : "No se encontraron hojas que coincidan con los filtros."
+              }
+              action={
+                hojas.length === 0 ? (
+                  <Button onClick={() => router.push("/dashboard/hojas-remision/new")}>
+                    Subir Hoja de Remisión
+                  </Button>
+                ) : (
                   <Button
                     variant="outline"
                     size="sm"
@@ -245,9 +249,10 @@ export default function HojasRemisionClient({
                   >
                     Limpiar filtros
                   </Button>
-                </div>
-              )}
-            </div>
+                )
+              }
+              className="py-4"
+            />
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-[var(--kt-gray-200)]">
@@ -337,28 +342,32 @@ export default function HojasRemisionClient({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/dashboard/hojas-remision/edit/${hoja.id}`)}
-                            title="Subir PDF y editar"
-                            className="text-[var(--kt-info)] hover:text-[var(--kt-info)]"
+                            onClick={() => router.push(`/dashboard/hojas-remision/${hoja.id}/view`)}
+                            title="Ver detalles"
+                            className="gap-2"
                           >
-                            <Icon name="upload" size="sm" />
+                            <Icon name="eye" size="sm" />
+                            <span className="hidden lg:inline">Ver</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => router.push(`/dashboard/hojas-remision/${hoja.id}/view`)}
-                            title="Ver detalles"
+                            onClick={() => router.push(`/dashboard/hojas-remision/edit/${hoja.id}`)}
+                            title="Subir PDF y editar"
+                            className="gap-2 text-[var(--kt-info)] hover:text-[var(--kt-info)]"
                           >
-                            <Icon name="eye" size="sm" />
+                            <Icon name="upload" size="sm" />
+                            <span className="hidden lg:inline">Editar</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(hoja)}
                             title="Eliminar"
-                            className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                            className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
                           >
                             <Icon name="trash" size="sm" />
+                            <span className="hidden lg:inline">Eliminar</span>
                           </Button>
                         </div>
                       </td>
