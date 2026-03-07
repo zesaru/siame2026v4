@@ -168,9 +168,32 @@ export default function EditGuiaValijaItemPage() {
         </BreadcrumbList>
       </Breadcrumb>
 
+      <div className="sticky top-3 z-20 flex flex-col gap-3 rounded-xl border border-[var(--kt-gray-200)] bg-white/95 p-4 backdrop-blur md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--kt-text-dark)]">
+            Editar Item #{item.numeroItem}
+          </h1>
+          <p className="text-sm text-[var(--kt-text-muted)]">
+            Guía relacionada: <span className="font-medium">{item.guiaValija.numeroGuia}</span>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/dashboard/guias-valija-items")}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? "Guardando..." : "Guardar cambios"}
+          </Button>
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Editar Item de Guía de Valija</CardTitle>
+          <CardTitle>Datos del Item</CardTitle>
           <CardDescription>
             Guía relacionada: <span className="font-medium">{item.guiaValija.numeroGuia}</span>
           </CardDescription>
@@ -242,18 +265,6 @@ export default function EditGuiaValijaItemPage() {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Guardando..." : "Guardar cambios"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/dashboard/guias-valija-items")}
-              disabled={saving}
-            >
-              Cancelar
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>

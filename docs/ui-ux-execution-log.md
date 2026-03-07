@@ -10,6 +10,9 @@
 - [x] Item edit flow for `guias-valija-items` (route + API + form)
 - [x] Table consistency improvements in `oficios` (actions + empty state)
 - [x] Table consistency improvements in `hojas-remision` (actions + empty state)
+- [x] Sticky edit shell in `guias-valija-items/[id]/edit`
+- [x] Standardized loading state in `oficios/view` and `guias-valija-items/[id]/edit`
+- [x] Standardized suspense loading state for PDF viewer in `hojas-remision/new` and `edit`
 
 ## Sprint 2 (In Progress)
 
@@ -40,4 +43,3 @@
 - Keep commits small and scoped by module.
 - Avoid mixing infrastructure/security changes with UI commits.
 - Validate each changed screen with lint and manual responsive check.
-
