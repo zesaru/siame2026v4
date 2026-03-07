@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { withTrackView } from "@/lib/utils"
 
 interface OficioViewClientProps {
@@ -60,7 +61,13 @@ export default function OficioViewClient({ oficioId }: OficioViewClientProps) {
   }, [oficioId])
 
   if (loading) {
-    return <div className="p-6 text-sm text-[var(--kt-text-muted)]">Cargando oficio...</div>
+    return (
+      <Card className="mx-auto mt-6 max-w-4xl">
+        <CardContent className="py-10">
+          <LoadingSpinner message="Cargando oficio..." />
+        </CardContent>
+      </Card>
+    )
   }
 
   if (!oficio) {

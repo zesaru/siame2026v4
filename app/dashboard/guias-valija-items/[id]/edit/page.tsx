@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -130,11 +131,23 @@ export default function EditGuiaValijaItemPage() {
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-[var(--kt-text-muted)]">Cargando item...</div>
+    return (
+      <Card className="mx-auto mt-6 max-w-4xl">
+        <CardContent className="py-10">
+          <LoadingSpinner message="Cargando item..." />
+        </CardContent>
+      </Card>
+    )
   }
 
   if (!item) {
-    return <div className="p-6 text-sm text-[var(--kt-text-muted)]">Item no encontrado</div>
+    return (
+      <Card className="mx-auto mt-6 max-w-4xl">
+        <CardContent className="py-10 text-center text-sm text-[var(--kt-text-muted)]">
+          Item no encontrado
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
