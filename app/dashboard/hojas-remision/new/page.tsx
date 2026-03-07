@@ -153,10 +153,13 @@ export default function NewHojaRemisionPage() {
     setExtractedData(newData)
   }
 
+  const showPdfPanel =
+    file && ((wizardStep === "form" && uploadState === "ready") || wizardStep === "edit")
+
   return (
-    <div className={`space-y-6 ${file ? "lg:pr-[56%]" : ""}`}>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="sticky top-3 z-20 flex items-center justify-between rounded-xl border border-[var(--kt-gray-200)] bg-white/95 p-4 backdrop-blur">
         <div className="flex items-center gap-4">
           <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -202,55 +205,59 @@ export default function NewHojaRemisionPage() {
         )}
       </div>
 
-      {/* Loading State */}
-      {(uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving") && (
-        <Card>
-          <CardContent className="py-8">
-            <LoadingSpinner
-              message={
-                uploadState === "uploading"
-                  ? "Subiendo archivo..."
-                  : uploadState === "analyzing"
-                  ? "Analizando documento con Azure AI..."
-                  : "Guardando en base de datos..."
-              }
-            />
-          </CardContent>
-        </Card>
-      )}
+      <div className={showPdfPanel ? "grid grid-cols-1 gap-6 xl:grid-cols-[minmax(540px,0.95fr)_minmax(680px,1.05fr)]" : "space-y-6"}>
+        {showPdfPanel && file && (
+          <aside className="xl:sticky xl:top-4">
+            <Card className="bg-white shadow-lg">
+              <button
+                onClick={() => setShowPDF(!showPDF)}
+                className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
+              >
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Vista previa PDF
+                  </CardTitle>
+                  <CardDescription>{file.name}</CardDescription>
+                </div>
+                {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+              </button>
 
-      {/* Error State */}
-      {uploadState === "error" && error && (
-        <ErrorState error={error} onRetry={handleRetry} />
-      )}
+              {showPDF && (
+                <CardContent className="border-t border-[var(--kt-gray-200)]">
+                  <div className="h-[72vh] min-h-[460px]">
+                    <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
+                      <PDFViewer file={file} />
+                    </Suspense>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          </aside>
+        )}
 
-      {file && ((wizardStep === "form" && uploadState === "ready") || wizardStep === "edit") && (
-        <Card className="bg-white lg:fixed lg:right-0 lg:top-24 lg:w-[55%] lg:shadow-xl">
-          <button
-            onClick={() => setShowPDF(!showPDF)}
-            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-[var(--kt-gray-50)] transition-colors"
-          >
-            <div>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Vista previa PDF
-              </CardTitle>
-              <CardDescription>{file.name}</CardDescription>
-            </div>
-            {showPDF ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-          </button>
-
-          {showPDF && (
-            <CardContent className="border-t border-[var(--kt-gray-200)]">
-              <div className="h-[62vh] min-h-[420px]">
-                <Suspense fallback={<div className="h-full flex items-center justify-center text-[var(--kt-text-muted)]">Cargando visor PDF...</div>}>
-                  <PDFViewer file={file} />
-                </Suspense>
-              </div>
-            </CardContent>
+        <div className="space-y-6">
+          {/* Loading State */}
+          {(uploadState === "uploading" || uploadState === "analyzing" || uploadState === "saving") && (
+            <Card>
+              <CardContent className="py-8">
+                <LoadingSpinner
+                  message={
+                    uploadState === "uploading"
+                      ? "Subiendo archivo..."
+                      : uploadState === "analyzing"
+                      ? "Analizando documento con Azure AI..."
+                      : "Guardando en base de datos..."
+                  }
+                />
+              </CardContent>
+            </Card>
           )}
-        </Card>
-      )}
+
+          {/* Error State */}
+          {uploadState === "error" && error && (
+            <ErrorState error={error} onRetry={handleRetry} />
+          )}
 
       {/* PASO 1: Formulario inicial (sin PDF subido o después de rechazar) */}
       {wizardStep === "form" && (
@@ -440,6 +447,8 @@ export default function NewHojaRemisionPage() {
           </Card>
         </>
       )}
+        </div>
+      </div>
     </div>
   )
 }
