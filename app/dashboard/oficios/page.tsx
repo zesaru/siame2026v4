@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/EmptyState"
 
 interface OficiosPageProps {
   searchParams: Promise<{
@@ -81,7 +82,15 @@ export default async function OficiosPage({ searchParams }: OficiosPageProps) {
           </form>
 
           {oficios.length === 0 ? (
-            <p className="text-sm text-[var(--kt-text-muted)]">No hay oficios para los filtros seleccionados.</p>
+            <EmptyState
+              title="Sin resultados"
+              message="No hay oficios para los filtros seleccionados."
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/dashboard/oficios">Limpiar filtros</Link>
+                </Button>
+              }
+            />
           ) : (
             <div className="overflow-auto">
               <table className="min-w-full text-sm">
