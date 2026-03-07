@@ -62,7 +62,7 @@ export function DataTablePagination({
   }
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
+    <div className="flex flex-col gap-3 px-2 py-4 lg:flex-row lg:items-center lg:justify-between">
       {/* Info */}
       <div className="text-sm text-muted-foreground">
         Mostrando{" "}
@@ -71,15 +71,15 @@ export function DataTablePagination({
         </span>{" "}
         a{" "}
         <span className="font-medium">{endItem}</span> de{" "}
-        <span className="font-medium">{totalItems}</span> resultados
+        <span className="font-medium">{totalItems}</span> registros
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3 lg:gap-4">
         {/* Items per page */}
         {onItemsPerPageChange && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Filas:</span>
+            <span className="text-sm text-muted-foreground">Filas por página:</span>
             <Select
               value={String(itemsPerPage)}
               onValueChange={(value) => onItemsPerPageChange(Number(value))}
@@ -97,6 +97,9 @@ export function DataTablePagination({
             </Select>
           </div>
         )}
+        <span className="text-sm text-muted-foreground">
+          Página {Math.max(1, currentPage)} de {Math.max(1, totalPages)}
+        </span>
 
         {/* Page buttons */}
         <div className="flex items-center gap-1">
@@ -106,6 +109,7 @@ export function DataTablePagination({
             className="h-8 w-8 p-0"
             onClick={() => onPageChange(1)}
             disabled={currentPage === 1}
+            aria-label="Primera página"
           >
             <Icon name="double-chevrons-left" size="sm" />
           </Button>
@@ -115,6 +119,7 @@ export function DataTablePagination({
             className="h-8 w-8 p-0"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
+            aria-label="Página anterior"
           >
             <Icon name="chevron-left" size="sm" />
           </Button>
@@ -127,6 +132,7 @@ export function DataTablePagination({
               className="h-8 w-8 p-0"
               onClick={() => typeof page === "number" && onPageChange(page)}
               disabled={typeof page !== "number"}
+              aria-label={typeof page === "number" ? `Página ${page}` : "Más páginas"}
             >
               {page}
             </Button>
@@ -138,6 +144,7 @@ export function DataTablePagination({
             className="h-8 w-8 p-0"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages || totalPages === 0}
+            aria-label="Página siguiente"
           >
             <Icon name="chevron-right" size="sm" />
           </Button>
@@ -147,6 +154,7 @@ export function DataTablePagination({
             className="h-8 w-8 p-0"
             onClick={() => onPageChange(totalPages)}
             disabled={currentPage === totalPages || totalPages === 0}
+            aria-label="Última página"
           >
             <Icon name="double-chevrons-right" size="sm" />
           </Button>

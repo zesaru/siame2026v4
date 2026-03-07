@@ -21,6 +21,7 @@
 - [ ] Normalize empty state copy and CTA strategy in all list pages
 - [ ] Normalize pagination labels and item ranges
 - [x] Normalize action order and iconography in `guias-valija` list (`Ver` → `Editar` → `Archivo` → `Eliminar`)
+- [x] Normalize shared pagination copy and controls in `DataTablePagination`
 
 ### Track B - Form UX
 - [ ] Sticky top action shell in all edit pages
