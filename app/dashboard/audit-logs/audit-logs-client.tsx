@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import {
   Select,
   SelectContent,
@@ -1516,7 +1517,9 @@ export default function AuditLogsClient() {
           </div>
 
           {cspLoading ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Cargando reportes CSP...</div>
+            <div className="py-8">
+              <LoadingSpinner message="Cargando reportes CSP..." />
+            </div>
           ) : (
             <div className="rounded-md border">
               <Table>
