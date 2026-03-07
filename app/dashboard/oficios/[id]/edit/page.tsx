@@ -120,7 +120,7 @@ export default function EditOficioPage() {
   return (
     <div className="max-w-3xl mx-auto p-6">
       <Card>
-        <CardHeader>
+        <CardHeader className="sticky top-3 z-20 rounded-t-lg border-b border-[var(--kt-gray-200)] bg-white/95 backdrop-blur">
           <CardTitle>Editar Oficio</CardTitle>
           <CardDescription>Actualiza los campos principales del oficio confirmado.</CardDescription>
         </CardHeader>
@@ -172,7 +172,7 @@ export default function EditOficioPage() {
             />
           </div>
 
-          <div className="flex gap-2">
+          <div className="sticky bottom-3 z-20 flex gap-2 rounded-xl border border-[var(--kt-gray-200)] bg-white/95 p-3 shadow-sm backdrop-blur">
             <Button onClick={handleSave} disabled={saving || deleting}>
               {saving ? "Guardando..." : "Guardar"}
             </Button>
