@@ -36,6 +36,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { logger } from "@/lib/logger"
@@ -110,6 +111,9 @@ export default function GuiaValijaItemsPage() {
   const [jumpToPage, setJumpToPage] = useState("1")
   const [sortBy, setSortBy] = useState<SortBy>("fechaEnvio")
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
+  const [bulkDeleting, setBulkDeleting] = useState(false)
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [filters, setFilters] = useState({
     fechaDesde: "",
     fechaHasta: "",
@@ -127,6 +131,18 @@ export default function GuiaValijaItemsPage() {
   useEffect(() => {
     setJumpToPage(String(pagination.page))
   }, [pagination.page])
+
+  useEffect(() => {
+    setSelectedItemIds((prev) => {
+      if (prev.size === 0) return prev
+      const currentIds = new Set(items.map((item) => item.id))
+      const next = new Set<string>()
+      prev.forEach((id) => {
+        if (currentIds.has(id)) next.add(id)
+      })
+      return next
+    })
+  }, [items])
 
   const hasActiveFilters =
     Boolean(searchTerm.trim()) ||
@@ -296,8 +312,121 @@ export default function GuiaValijaItemsPage() {
     return <ArrowDown className="h-3.5 w-3.5" />
   }
 
+  function toggleSelectItem(itemId: string, checked: boolean) {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(itemId)
+      else next.delete(itemId)
+      return next
+    })
+  }
+
+  function toggleSelectAllVisible(checked: boolean) {
+    const visibleIds = items.map((item) => item.id)
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev)
+      if (checked) {
+        visibleIds.forEach((id) => next.add(id))
+      } else {
+        visibleIds.forEach((id) => next.delete(id))
+      }
+      return next
+    })
+  }
+
+  async function handleDeleteItem(item: GuiaValijaItem) {
+    const confirmed = window.confirm(
+      `¿Eliminar el item N° ${item.numeroItem} de la guía ${item.guiaValija.numeroGuia}?`,
+    )
+    if (!confirmed) return
+
+    try {
+      setDeletingItemId(item.id)
+      const response = await fetch(`/api/guias-valija-items/${item.id}`, {
+        method: "DELETE",
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload.error || "No se pudo eliminar el item")
+      }
+
+      setItems((prev) => prev.filter((current) => current.id !== item.id))
+      setSelectedItemIds((prev) => {
+        if (!prev.has(item.id)) return prev
+        const next = new Set(prev)
+        next.delete(item.id)
+        return next
+      })
+      setPagination((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+        totalPages: Math.max(1, Math.ceil(Math.max(0, prev.total - 1) / prev.limit)),
+      }))
+      toast.success("Item eliminado correctamente")
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al eliminar item"
+      toast.error(message)
+      logger.error(error)
+    } finally {
+      setDeletingItemId(null)
+    }
+  }
+
+  async function handleBulkDeleteSelected() {
+    if (selectedItemIds.size === 0) return
+
+    const selectedCount = selectedItemIds.size
+    const confirmed = window.confirm(
+      `¿Eliminar ${selectedCount} item${selectedCount > 1 ? "s" : ""} seleccionado${selectedCount > 1 ? "s" : ""}?`,
+    )
+    if (!confirmed) return
+
+    const ids = Array.from(selectedItemIds)
+
+    try {
+      setBulkDeleting(true)
+      const response = await fetch("/api/guias-valija-items", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      })
+
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload.error || "No se pudieron eliminar los items seleccionados")
+      }
+
+      const deletedIds = new Set(ids)
+      setItems((prev) => prev.filter((item) => !deletedIds.has(item.id)))
+      setSelectedItemIds(new Set())
+      setPagination((prev) => {
+        const deletedCount = typeof payload.deletedCount === "number" ? payload.deletedCount : ids.length
+        const nextTotal = Math.max(0, prev.total - deletedCount)
+        return {
+          ...prev,
+          total: nextTotal,
+          totalPages: Math.max(1, Math.ceil(nextTotal / prev.limit)),
+        }
+      })
+
+      toast.success(
+        `${ids.length} item${ids.length > 1 ? "s" : ""} eliminado${ids.length > 1 ? "s" : ""} correctamente`,
+      )
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error al eliminar los items seleccionados"
+      toast.error(message)
+      logger.error(error)
+    } finally {
+      setBulkDeleting(false)
+    }
+  }
+
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1
   const to = Math.min(pagination.page * pagination.limit, pagination.total)
+  const allVisibleSelected = items.length > 0 && items.every((item) => selectedItemIds.has(item.id))
+  const selectedCount = selectedItemIds.size
 
   return (
     <div className="space-y-6 pb-4">
@@ -323,6 +452,17 @@ export default function GuiaValijaItemsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {selectedCount > 0 && (
+              <Button
+                variant="outline"
+                onClick={handleBulkDeleteSelected}
+                disabled={bulkDeleting}
+                className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {bulkDeleting ? "Eliminando..." : `Eliminar seleccionados (${selectedCount})`}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setShowFilters((prev) => !prev)}>
               <SlidersHorizontal className="mr-2 h-4 w-4" />
               {showFilters ? "Ocultar filtros" : "Mostrar filtros"}
@@ -475,8 +615,8 @@ export default function GuiaValijaItemsPage() {
           {loading ? (
             <div className="p-4">
               <div className="overflow-hidden rounded-md border border-[var(--kt-gray-200)]">
-                <div className="hidden bg-[var(--kt-gray-50)] px-4 py-3 md:grid md:grid-cols-11 md:gap-4">
-                  {Array.from({ length: 11 }).map((_, idx) => (
+                <div className="hidden bg-[var(--kt-gray-50)] px-4 py-3 md:grid md:grid-cols-12 md:gap-4">
+                  {Array.from({ length: 12 }).map((_, idx) => (
                     <div key={idx} className="h-4 animate-pulse rounded bg-[var(--kt-gray-200)]" />
                   ))}
                 </div>
@@ -511,6 +651,14 @@ export default function GuiaValijaItemsPage() {
                   <div key={item.id} className="space-y-3 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
+                        <label className="mb-1 inline-flex items-center gap-2 text-xs text-[var(--kt-text-muted)]">
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.has(item.id)}
+                            onChange={(event) => toggleSelectItem(item.id, event.target.checked)}
+                          />
+                          Seleccionar
+                        </label>
                         <p className="text-sm font-semibold text-[var(--kt-text-dark)]">N° {rowNumber} · VAL-ITEM #{item.numeroItem}</p>
                         <p className="text-sm text-[var(--kt-text-muted)]">{item.destinatario}</p>
                       </div>
@@ -543,6 +691,16 @@ export default function GuiaValijaItemsPage() {
                       <Pencil className="mr-2 h-4 w-4" />
                       Editar item
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteItem(item)}
+                      disabled={deletingItemId === item.id || bulkDeleting}
+                      className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      {deletingItemId === item.id ? "Eliminando..." : "Eliminar"}
+                    </Button>
                   </div>
                 )})}
               </div>
@@ -551,6 +709,14 @@ export default function GuiaValijaItemsPage() {
                 <table className="min-w-full divide-y divide-[var(--kt-gray-200)]">
                   <thead className="sticky top-0 z-10 bg-[var(--kt-gray-50)]">
                     <tr>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">
+                        <input
+                          type="checkbox"
+                          checked={allVisibleSelected}
+                          onChange={(event) => toggleSelectAllVisible(event.target.checked)}
+                          aria-label="Seleccionar todos los items visibles"
+                        />
+                      </th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">N°</th>
                       <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[var(--kt-text-muted)]">
                         <button type="button" onClick={() => toggleSort("destinatario")} className="inline-flex items-center gap-1.5 hover:text-[var(--kt-text-dark)]">
@@ -589,6 +755,14 @@ export default function GuiaValijaItemsPage() {
                       const rowNumber = (pagination.page - 1) * pagination.limit + index + 1
                       return (
                       <tr key={item.id} className={index % 2 === 0 ? "bg-white hover:bg-[var(--kt-gray-50)]" : "bg-[var(--kt-gray-50)]/40 hover:bg-[var(--kt-gray-50)]"}>
+                        <td className="whitespace-nowrap px-6 py-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedItemIds.has(item.id)}
+                            onChange={(event) => toggleSelectItem(item.id, event.target.checked)}
+                            aria-label={`Seleccionar item ${item.numeroItem}`}
+                          />
+                        </td>
                         <td className="whitespace-nowrap px-6 py-4">
                           <span className="text-sm font-semibold text-[var(--kt-text-dark)]">{rowNumber}</span>
                         </td>
@@ -643,6 +817,19 @@ export default function GuiaValijaItemsPage() {
                             >
                               <Pencil className="h-4 w-4" />
                               <span className="hidden lg:inline">Editar</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteItem(item)}
+                              title="Eliminar item"
+                              disabled={deletingItemId === item.id || bulkDeleting}
+                              className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              <span className="hidden lg:inline">
+                                {deletingItemId === item.id ? "Eliminando..." : "Eliminar"}
+                              </span>
                             </Button>
                           </div>
                         </td>

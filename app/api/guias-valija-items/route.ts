@@ -125,3 +125,38 @@ export async function GET(req: NextRequest) {
     )
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const body = await req.json().catch(() => ({}))
+    const ids = Array.isArray(body?.ids)
+      ? body.ids.filter((value: unknown): value is string => typeof value === "string" && value.trim().length > 0)
+      : []
+
+    if (ids.length === 0) {
+      return NextResponse.json({ error: "Debes enviar al menos un ID válido" }, { status: 400 })
+    }
+
+    const result = await prisma.guiaValijaItem.deleteMany({
+      where: {
+        id: { in: ids },
+      },
+    })
+
+    return NextResponse.json({
+      success: true,
+      deletedCount: result.count,
+    })
+  } catch (error) {
+    console.error("Error deleting guia valija items in bulk:", error)
+    return NextResponse.json(
+      { error: "Error al eliminar items seleccionados" },
+      { status: 500 },
+    )
+  }
+}
