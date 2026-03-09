@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
 import { logger } from "@/lib/logger"
 
-interface HojaRemisionFormData {
+export interface HojaRemisionFormData {
   numero: number
   numeroCompleto: string
   siglaUnidad: string
@@ -33,15 +33,17 @@ interface HojaRemisionFormData {
 }
 
 interface HojaRemisionFormProps {
-  initialData?: ParsedHojaRemisionData
+  initialData?: Partial<HojaRemisionFormData> | ParsedHojaRemisionData
   onSave: (data: HojaRemisionFormData) => void
   onCancel: () => void
+  submitLabel?: string
 }
 
 export default function HojaRemisionForm({
   initialData,
   onSave,
   onCancel,
+  submitLabel = "Guardar Hoja de Remisión",
 }: HojaRemisionFormProps) {
   const [formData, setFormData] = useState<HojaRemisionFormData>({
     numero: initialData?.numero || 0,
@@ -59,6 +61,25 @@ export default function HojaRemisionForm({
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    if (!initialData) return
+
+    setFormData({
+      numero: initialData.numero || 0,
+      numeroCompleto: initialData.numeroCompleto || "",
+      siglaUnidad: initialData.siglaUnidad || "",
+      fecha: initialData.fecha || new Date(),
+      para: initialData.para || "",
+      remitente: initialData.remitente || "",
+      referencia: initialData.referencia || "",
+      documento: initialData.documento || "",
+      asunto: initialData.asunto || "",
+      destino: initialData.destino || "",
+      peso: initialData.peso || undefined,
+      estado: initialData.estado || "borrador",
+    })
+  }, [initialData])
 
   const handleChange = (
     field: keyof HojaRemisionFormData,
@@ -385,7 +406,7 @@ export default function HojaRemisionForm({
           Cancelar
         </Button>
         <Button type="submit" className="bg-[var(--kt-primary)]">
-          Guardar Hoja de Remisión
+          {submitLabel}
         </Button>
       </div>
     </form>

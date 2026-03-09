@@ -1,32 +1,32 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 interface PDFViewerProps {
   file: File | null
+  src?: string | null
 }
 
-export default function PDFViewer({ file }: PDFViewerProps) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+export default function PDFViewer({ file, src }: PDFViewerProps) {
+  const [viewerUrl, setViewerUrl] = useState<string | null>(src ?? null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Crear URL del objeto cuando cambie el archivo
     if (file) {
       const url = URL.createObjectURL(file)
-      setObjectUrl(url)
+      setViewerUrl(url)
       setError(null)
 
-      // Limpiar URL al desmontar
       return () => {
         URL.revokeObjectURL(url)
       }
-    } else {
-      setObjectUrl(null)
     }
-  }, [file])
 
-  if (!file) {
+    setViewerUrl(src ?? null)
+    setError(null)
+  }, [file, src])
+
+  if (!file && !src) {
     return (
       <div className="h-full flex items-center justify-center border-2 border-dashed border-[var(--kt-gray-300)] rounded-lg bg-[var(--kt-gray-50)]">
         <div className="text-center">
@@ -63,9 +63,9 @@ export default function PDFViewer({ file }: PDFViewerProps) {
 
   return (
     <div className="h-full border border-[var(--kt-gray-200)] rounded-lg overflow-hidden">
-      {objectUrl ? (
+      {viewerUrl ? (
         <iframe
-          src={objectUrl}
+          src={viewerUrl}
           className="w-full h-full"
           title="Vista previa PDF"
         />
