@@ -25,9 +25,6 @@ async function resetData() {
     console.log('   📄 Eliminando Document...')
     await prisma.document.deleteMany({})
 
-    console.log('   🔑 Eliminando VerificationToken...')
-    await prisma.verificationToken.deleteMany({})
-
     console.log('✅ Datos eliminados correctamente!')
     console.log('ℹ️  Usuarios y sesiones han sido preservados.')
 

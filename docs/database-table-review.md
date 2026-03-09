@@ -167,6 +167,8 @@ Short version:
 Current repo status after this review:
 
 - `PrismaAdapter(prisma)` has been removed from [pages/api/auth/[...nextauth].ts](/mnt/c/Users/embto/Documents/GitHub/siame2026v4/pages/api/auth/[...nextauth].ts)
+- Legacy models have been removed from [schema.prisma](/mnt/c/Users/embto/Documents/GitHub/siame2026v4/prisma/schema.prisma)
+- A dedicated cleanup migration has been added at [20260309095500_drop_legacy_nextauth_tables/migration.sql](/mnt/c/Users/embto/Documents/GitHub/siame2026v4/prisma/migrations/20260309095500_drop_legacy_nextauth_tables/migration.sql)
 - Active auth remains based on:
 - `CredentialsProvider`
 - JWT sessions

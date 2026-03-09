@@ -17,7 +17,6 @@ async function main() {
 
   console.log('Created demo user:', demoUser)
 
-  // Note: Account creation will be handled by NextAuth when user logs in
   // The demo user now exists and can be used for foreign key relationships
 
   console.log('Database seeded successfully!')
