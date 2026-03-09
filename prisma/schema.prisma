@@ -35,6 +35,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   documents     Document[]
+  guiaValijaUploadBatches GuiaValijaUploadBatch[]
   guiasValija   GuiaValija[]
   hojasRemision HojaRemision[]
   oficios       Oficio[]
@@ -144,11 +145,56 @@ model Document {
   updatedAt DateTime @updatedAt
   analyzedAt DateTime @default(now())
 
+  guiaValijaBatchItems GuiaValijaUploadBatchItem[]
+
   // Indexes for common queries
   @@index([userId])
   @@index([createdAt])
   @@index([processingStatus])
   @@index([fileType])
+}
+
+model GuiaValijaUploadBatch {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status      String   @default("processing") // processing, ready_review, completed, failed
+  totalFiles  Int      @default(0)
+  readyCount  Int      @default(0)
+  savedCount  Int      @default(0)
+  failedCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       GuiaValijaUploadBatchItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model GuiaValijaUploadBatchItem {
+  id             String   @id @default(cuid())
+  batchId        String
+  batch          GuiaValijaUploadBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  documentId     String?
+  document       Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  guiaValijaId   String?
+  guiaValija     GuiaValija? @relation(fields: [guiaValijaId], references: [id], onDelete: SetNull)
+  sortOrder      Int
+  fileName       String
+  filePath       String?
+  analysisStatus String   @default("uploaded") // uploaded, ready_review, saved, failed, skipped
+  errorMessage   String?  @db.Text
+  analysisResult Json?    @db.JsonB
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([batchId])
+  @@index([documentId])
+  @@index([guiaValijaId])
+  @@index([analysisStatus])
+  @@unique([batchId, sortOrder])
 }
 
 // ============================================
@@ -213,6 +259,7 @@ model GuiaValija {
   // ===== Relaciones =====
   items            GuiaValijaItem[]
   precintos        GuiaValijaPrecinto[]
+  uploadBatchItems GuiaValijaUploadBatchItem[]
 
   // ===== Datos de Azure =====
   azureRawData      Json?   @db.JsonB

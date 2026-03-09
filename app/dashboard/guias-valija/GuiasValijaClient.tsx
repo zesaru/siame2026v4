@@ -510,6 +510,22 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => router.push("/dashboard/guias-valija/lote")}
+                      >
+                        <Icon name="upload" size="sm" className="mr-2" />
+                        Lote PDF
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Subir varias guías y revisarlas una por una</p>
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={handleExportCSV}
                         disabled={sortedData.length === 0 || isExporting}
                       >
