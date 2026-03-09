@@ -17,6 +17,13 @@ interface GuiaValijaFormProps {
   rawContent?: string
 }
 
+function normalizeKey(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+}
+
 /**
  * Extrae el número de guía del campo "DE"
  */
@@ -102,22 +109,30 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange, rawContent 
   // Estado local para el número de guía (editable manualmente)
   const [numeroGuiaManual, setNumeroGuiaManual] = useState("")
 
+  const findPairIndex = (matcher: (normalizedKey: string) => boolean) =>
+    editedPairs.findIndex((pair) => matcher(normalizeKey(pair.key)))
+
+  const findPairValue = (matcher: (normalizedKey: string) => boolean) => {
+    const pair = editedPairs.find((item) => matcher(normalizeKey(item.key)))
+    return pair?.value || ""
+  }
+
   // Función auxiliar para encontrar el campo "DE" correcto
   const findDeField = () => {
     // Prioridad 1: Buscar "DE :" o "DE\n:" (con variantes de espacio/nueva línea)
-    let idx = editedPairs.findIndex(p => /^DE\s*[:\n]/.test(p.key))
+    let idx = editedPairs.findIndex(p => /^DE\s*[:\n]/.test(normalizeKey(p.key)))
     if (idx !== -1) return idx
 
     // Prioridad 2: Buscar clave que empiece exactamente con "DE"
-    idx = editedPairs.findIndex(p => p.key.trim().startsWith("DE"))
+    idx = editedPairs.findIndex(p => normalizeKey(p.key).trim().startsWith("DE"))
     if (idx !== -1) return idx
 
     // Prioridad 3: Buscar cualquier clave que contenga "DE" pero NO "DEL" ni "DESTINATARIO"
     idx = editedPairs.findIndex(p =>
-      p.key.includes("DE") &&
-      !p.key.includes("DEL") &&
-      !p.key.includes("DESTINATARIO") &&
-      !p.key.includes("DE ") &&
+      normalizeKey(p.key).includes("DE") &&
+      !normalizeKey(p.key).includes("DEL") &&
+      !normalizeKey(p.key).includes("DESTINATARIO") &&
+      !normalizeKey(p.key).includes("DE ") &&
       p.key.length < 10
     )
     return idx
@@ -125,7 +140,7 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange, rawContent 
 
   // Handlers para cada campo
   const handleParaChange = (newValue: string) => {
-    const idx = editedPairs.findIndex(p => p.key.includes("PARA"))
+    const idx = findPairIndex((key) => key.includes("PARA"))
     if (idx !== -1) onFieldChange(idx, 'value', newValue)
   }
 
@@ -135,29 +150,29 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange, rawContent 
   }
 
   const handleFechaEnvioChange = (newValue: string) => {
-    const idx = editedPairs.findIndex(p => p.key.includes("ENVIO"))
+    const idx = findPairIndex((key) => key.includes("ENVIO"))
     if (idx !== -1) onFieldChange(idx, 'value', newValue)
   }
 
   const handleFechaReciboChange = (newValue: string) => {
-    const idx = editedPairs.findIndex(p => p.key.includes("RECIBO"))
+    const idx = findPairIndex((key) => key.includes("RECIBO"))
     if (idx !== -1) onFieldChange(idx, 'value', newValue)
   }
 
   const handleTotalItemsChange = (newValue: string) => {
     const numericValue = newValue.replace(/\D/g, '')
-    const idx = editedPairs.findIndex(p => p.key.includes("Items"))
+    const idx = findPairIndex((key) => key.includes("ITEM"))
     if (idx !== -1) onFieldChange(idx, 'value', numericValue)
   }
 
   const handlePesoOficialChange = (newValue: string) => {
     const normalizedPeso = normalizePesoOficial(newValue)
-    const idx = editedPairs.findIndex(p => p.key.includes("Peso Oficial"))
+    const idx = findPairIndex((key) => key.includes("PESO OFICIAL"))
     if (idx !== -1) onFieldChange(idx, 'value', normalizedPeso)
   }
 
   // Extraer valores
-  const paraValue = editedPairs.find(p => p.key.includes("PARA"))?.value || ""
+  const paraValue = findPairValue((key) => key.includes("PARA"))
   const deFieldIndex = findDeField()
   const deField = deFieldIndex !== -1 ? editedPairs[deFieldIndex] : null
   const numeroFromGuiaKey = editedPairs.find((p) => /n[º°]?\s*de\s*gu[ií]a|gu[ií]a\s*a[ée]rea/i.test(p.key))?.value || ""
@@ -167,10 +182,10 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange, rawContent 
     shortNumeroFromGuiaKey.length > 0 && shortNumeroFromGuiaKey.length <= 4 ? shortNumeroFromGuiaKey : ""
   const numeroGuiaValue = numeroGuiaManual || extractedNumero
     || numeroFromKeyCandidate
-  const fechaEnvioValue = editedPairs.find(p => p.key.includes("ENVIO"))?.value || ""
-  const fechaReciboValue = editedPairs.find(p => p.key.includes("RECIBO"))?.value || ""
-  const totalItemsValue = extractNumericOnly(editedPairs.find(p => p.key.includes("Items"))?.value || "")
-  const pesoOficialRaw = editedPairs.find(p => p.key.includes("Peso Oficial"))?.value || ""
+  const fechaEnvioValue = findPairValue((key) => key.includes("ENVIO"))
+  const fechaReciboValue = findPairValue((key) => key.includes("RECIBO"))
+  const totalItemsValue = extractNumericOnly(findPairValue((key) => key.includes("ITEM")))
+  const pesoOficialRaw = findPairValue((key) => key.includes("PESO OFICIAL"))
   const pesoOficialValue = normalizePesoOficial(pesoOficialRaw)
 
   // Logging en desarrollo
@@ -180,7 +195,7 @@ export default function GuiaValijaForm({ editedPairs, onFieldChange, rawContent 
   logger.debug('🔍 [GUIA FORM] Nº de guía manual:', numeroGuiaManual)
 
   useEffect(() => {
-    const idx = editedPairs.findIndex((p) => p.key.includes("Peso Oficial"))
+    const idx = findPairIndex((key) => key.includes("PESO OFICIAL"))
     if (idx === -1) return
     const current = editedPairs[idx]?.value || ""
     const normalized = normalizePesoOficial(current)

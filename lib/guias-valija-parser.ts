@@ -179,18 +179,20 @@ export function extractHRNumeroFromContenido(contenido: string): {
 } {
   if (!contenido) return { match: false }
 
-  // Patrón: "HR Nº" seguido de números y opcionalmente texto
-  const hrPattern = /^HR\s*N[º°]\s*(\d+)([^/]*)/i
-  const match = contenido.match(hrPattern)
+  const normalizedContenido = contenido.trim()
+
+  // Acepta variantes: "HR.Nº", "HR. Nº", "HR Nº", "HR N°"
+  const hrPattern = /^HR\.?\s*N[º°]\s*(\d+)([^/]*)/i
+  const match = normalizedContenido.match(hrPattern)
 
   if (!match) return { match: false }
 
   const numero = parseInt(match[1]) || 0
-  const numeroCompleto = contenido.trim()  // Guardar el contenido completo como numeroCompleto
+  const numeroCompleto = normalizedContenido
 
   // Intentar extraer sigla de unidad del formato (ej: "HR Nº5-18-A/ 3 CAJA")
   // El formato parece ser: HR Nº{numero}-{algo}-{sigla}/ ...
-  const siglaMatch = contenido.match(/HR\s*N[º°]\s*\d+[^/]*-([A-Z]{2,4})/i)
+  const siglaMatch = normalizedContenido.match(/HR\.?\s*N[º°]\s*\d+[^/]*-([A-Z]{1,6})/i)
   const siglaUnidad = siglaMatch ? siglaMatch[1].toUpperCase() : null
 
   return {
@@ -199,6 +201,35 @@ export function extractHRNumeroFromContenido(contenido: string): {
     numero,
     siglaUnidad,
     contenidoRestante: contenido
+  }
+}
+
+/**
+ * Extrae numeroOficio de contenidos que empiezan con "OF"
+ * Acepta variantes:
+ * - "OF. Nº 22-6-HH/ 05"
+ * - "OF.Nº 22-6-HH/ 05"
+ * - "OF Nº 22-6-HH/ 05"
+ * - "OF.TRANSCRIP. Nº 0-7-A/ 6166"
+ */
+export function extractOficioNumeroFromContenido(contenido: string): {
+  match: boolean
+  numeroOficio?: string
+  contenidoRestante?: string
+} {
+  if (!contenido) return { match: false }
+
+  const normalizedContenido = contenido.trim()
+  const oficioPattern = /^OF(?:ICIO)?\.?(?:\s*[A-Z.]+)*\s*N[º°]\s*.+$/i
+
+  if (!oficioPattern.test(normalizedContenido)) {
+    return { match: false }
+  }
+
+  return {
+    match: true,
+    numeroOficio: normalizedContenido,
+    contenidoRestante: normalizedContenido,
   }
 }
 
@@ -874,6 +905,63 @@ export async function processGuiaValijaFromAzure(
       logger.success(`🎉 Total de Hojas de Remisión creadas: ${hojasRemisionCreadas}`)
     } else {
       logger.info(`ℹ️  No se encontraron items con formato 'HR Nº'`)
+    }
+
+    // ===== NUEVA LÓGICA: Detectar y crear Oficios =====
+    logger.info(`🔍 Buscando items que contienen 'OF'...`)
+
+    let oficiosCreados = 0
+
+    for (const item of createdItems) {
+      const oficioData = extractOficioNumeroFromContenido(item.contenido)
+
+      if (oficioData.match && oficioData.numeroOficio) {
+        logger.info(`   ✨ Item ${item.numeroItem} contiene referencia OF: ${oficioData.numeroOficio}`)
+
+        const sourceDocumentId = `${guia.id}:item:${item.id}:oficio`
+        const oficioPayload = {
+          asunto: `Item ${item.numeroItem} de Guía de Valija ${guia.numeroGuia}`,
+          remitente: item.remitente || null,
+          destinatario: item.destinatario || null,
+          referencia: `Guía de Valija ${guia.numeroGuia}`,
+          contenidoTexto: item.contenido || null,
+          processedAt: new Date(),
+          metadata: {
+            sourceType: "guia_valija_item",
+            guiaValijaId: guia.id,
+            guiaNumero: guia.numeroGuia,
+            guiaItemId: item.id,
+            numeroItem: item.numeroItem,
+          },
+        }
+
+        const oficioExistentePorNumero = await prisma.oficio.findUnique({
+          where: { numeroOficio: oficioData.numeroOficio },
+        })
+
+        const oficio = oficioExistentePorNumero
+          ? await prisma.oficio.update({
+              where: { id: oficioExistentePorNumero.id },
+              data: oficioPayload,
+            })
+          : await prisma.oficio.create({
+              data: {
+                userId,
+                sourceDocumentId,
+                numeroOficio: oficioData.numeroOficio,
+                ...oficioPayload,
+              },
+            })
+
+        oficiosCreados++
+        logger.success(`   ✅ Oficio ${oficio.createdAt === oficio.updatedAt ? 'creado' : 'actualizado'}: ID=${oficio.id}, ${oficio.numeroOficio}`)
+      }
+    }
+
+    if (oficiosCreados > 0) {
+      logger.success(`🎉 Total de Oficios creados: ${oficiosCreados}`)
+    } else {
+      logger.info(`ℹ️  No se encontraron items con formato 'OF'`)
     }
   }
 
