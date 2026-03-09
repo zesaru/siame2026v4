@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { AnalyzeHojaRemisionFileUseCase } from "@/modules/hojas-remision/application/use-cases"
 import { AzureHojaRemisionAnalysisAdapter } from "@/modules/hojas-remision/infrastructure"
+import { validatePdfFile } from "@/lib/pdf-upload"
 
 // POST mutations don't need force-dynamic (never cached anyway)
 
@@ -18,6 +19,11 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData()
     const file = formData.get("file") as File
+
+    const validation = validatePdfFile(file)
+    if (!validation.ok) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
+    }
 
     const useCase = new AnalyzeHojaRemisionFileUseCase(new AzureHojaRemisionAnalysisAdapter())
     const result = await useCase.execute(file)

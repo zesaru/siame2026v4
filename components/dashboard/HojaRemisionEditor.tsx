@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import HojaRemisionForm, { type HojaRemisionFormData } from "@/components/dashboard/HojaRemisionForm"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
+import { formatFileSize, validatePdfFile } from "@/lib/pdf-upload"
 
 const PDFViewer = dynamic(() => import("@/components/dashboard/PDFViewer"), {
   loading: () => <LoadingSpinner message="Cargando visor PDF..." />,
@@ -43,10 +44,6 @@ interface HojaRemisionEditorProps {
     data: HojaRemisionFormData,
     file?: File | null
   ) => Promise<{ success: boolean; error?: string }>
-}
-
-function formatFileSize(fileSize: number) {
-  return `${(fileSize / 1024).toFixed(1)} KB`
 }
 
 export default function HojaRemisionEditor({
@@ -99,12 +96,9 @@ export default function HojaRemisionEditor({
   ]
 
   const handleFileSelect = (selectedFile: File) => {
-    if (selectedFile.type !== "application/pdf" && !selectedFile.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Solo se permiten archivos PDF.")
-      return
-    }
-    if (selectedFile.size === 0) {
-      toast.error("El archivo PDF esta vacio.")
+    const validation = validatePdfFile(selectedFile)
+    if (!validation.ok) {
+      toast.error(validation.error)
       return
     }
 

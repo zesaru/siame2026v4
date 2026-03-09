@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { hojaRemisionSchema, type HojaRemisionInput } from "./schemas"
 import { logger } from "@/lib/logger"
 import { fileStorageService } from "@/lib/services/file-storage.service"
+import { validatePdfFile } from "@/lib/pdf-upload"
 import { z } from "zod"
 
 /**
@@ -23,12 +24,20 @@ export async function createHojaRemision(
   try {
     // Validar datos con Zod
     const validated = hojaRemisionSchema.parse(data)
+    const validatedFile = file ?? null
+
+    if (validatedFile) {
+      const pdfValidation = validatePdfFile(validatedFile)
+      if (!pdfValidation.ok) {
+        return { success: false, error: pdfValidation.error }
+      }
+    }
 
     logger.separator('─', 70)
     logger.info('⏳ Creando Hoja de Remisión')
     logger.info(`   Número: ${validated.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
-    if (file) {
+    if (validatedFile) {
       logger.info(`   Archivo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
     }
     logger.separator('─', 70)
@@ -57,31 +66,66 @@ export async function createHojaRemision(
     })
 
     // Guardar archivo si se proporciona
-    if (file) {
+    if (validatedFile) {
       try {
         const saveResult = await fileStorageService.saveFile({
           entityType: 'HOJAREMISION',
           entityId: hoja.id,
-          file: file,
+          file: validatedFile,
           date: validated.fecha ? new Date(validated.fecha) : new Date()
         })
+
+        if (!saveResult.success || !saveResult.relativePath || !saveResult.fileHash) {
+          await prisma.hojaRemision.delete({
+            where: { id: hoja.id },
+          })
+
+          return {
+            success: false,
+            error: saveResult.error || "No se pudo guardar el archivo PDF."
+          }
+        }
+
+        const duplicatedByHash = await prisma.hojaRemision.findFirst({
+          where: {
+            fileHash: saveResult.fileHash,
+            id: { not: hoja.id },
+          },
+          select: { id: true, numeroCompleto: true },
+        })
+
+        if (duplicatedByHash) {
+          await fileStorageService.deleteFile(saveResult.relativePath)
+          await prisma.hojaRemision.delete({
+            where: { id: hoja.id },
+          })
+
+          return {
+            success: false,
+            error: `Este PDF ya fue registrado en la hoja ${duplicatedByHash.numeroCompleto}.`
+          }
+        }
 
         if (saveResult.success && saveResult.relativePath) {
           await prisma.hojaRemision.update({
             where: { id: hoja.id },
             data: {
               filePath: saveResult.relativePath,
-              fileHash: saveResult.hash,
-              fileMimeType: file.type
+              fileHash: saveResult.fileHash,
+              fileMimeType: saveResult.fileMimeType || validatedFile.type
             }
           })
           logger.storage('FILE_SAVED', `Hoja de Remisión ${hoja.numeroCompleto}: ${saveResult.relativePath}`)
-        } else {
-          logger.warn('File storage failed:', saveResult.error)
         }
       } catch (error) {
         logger.error('File storage error:', error)
-        // Continuar con DB save aunque falle el archivo
+        await prisma.hojaRemision.delete({
+          where: { id: hoja.id },
+        }).catch(() => undefined)
+        return {
+          success: false,
+          error: "No se pudo guardar el archivo PDF."
+        }
       }
     }
 
@@ -124,13 +168,21 @@ export async function updateHojaRemision(
   try {
     // Validar datos con Zod
     const validated = hojaRemisionSchema.parse(data)
+    const validatedFile = file ?? null
+
+    if (validatedFile) {
+      const pdfValidation = validatePdfFile(validatedFile)
+      if (!pdfValidation.ok) {
+        return { success: false, error: pdfValidation.error }
+      }
+    }
 
     logger.separator('─', 70)
     logger.info('⏳ Actualizando Hoja de Remisión')
     logger.info(`   ID: ${id}`)
     logger.info(`   Número: ${validated.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
-    if (file) {
+    if (validatedFile) {
       logger.info(`   Archivo nuevo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
     }
     logger.separator('─', 70)
@@ -167,43 +219,66 @@ export async function updateHojaRemision(
       }
     }
 
-    // Actualizar hoja de remisión
+    let newFileData: { filePath: string; fileHash: string; fileMimeType: string } | null = null
+
+    if (validatedFile) {
+      try {
+        const saveResult = await fileStorageService.saveFile({
+          entityType: 'HOJAREMISION',
+          entityId: existing.id,
+          file: validatedFile,
+          date: validated.fecha ? new Date(validated.fecha) : new Date()
+        })
+
+        if (!saveResult.success || !saveResult.relativePath || !saveResult.fileHash) {
+          return {
+            success: false,
+            error: saveResult.error || "No se pudo guardar el archivo PDF."
+          }
+        }
+
+        const duplicatedByHash = await prisma.hojaRemision.findFirst({
+          where: {
+            fileHash: saveResult.fileHash,
+            id: { not: existing.id },
+          },
+          select: { id: true, numeroCompleto: true },
+        })
+
+        if (duplicatedByHash) {
+          await fileStorageService.deleteFile(saveResult.relativePath)
+          return {
+            success: false,
+            error: `Este PDF ya fue registrado en la hoja ${duplicatedByHash.numeroCompleto}.`
+          }
+        }
+
+        newFileData = {
+          filePath: saveResult.relativePath,
+          fileHash: saveResult.fileHash,
+          fileMimeType: saveResult.fileMimeType || validatedFile.type || "application/pdf",
+        }
+      } catch (error) {
+        logger.error('File storage error:', error)
+        return {
+          success: false,
+          error: "No se pudo guardar el archivo PDF."
+        }
+      }
+    }
+
     const hoja = await prisma.hojaRemision.update({
       where: { id },
       data: {
         ...validated,
+        ...(newFileData || {}),
         processingStatus: "completed",
         processedAt: new Date(),
       },
     })
 
-    // Guardar archivo nuevo si se proporciona
-    if (file) {
-      try {
-        const saveResult = await fileStorageService.saveFile({
-          entityType: 'HOJAREMISION',
-          entityId: hoja.id,
-          file: file,
-          date: validated.fecha ? new Date(validated.fecha) : new Date()
-        })
-
-        if (saveResult.success && saveResult.relativePath) {
-          await prisma.hojaRemision.update({
-            where: { id: hoja.id },
-            data: {
-              filePath: saveResult.relativePath,
-              fileHash: saveResult.hash,
-              fileMimeType: file.type
-            }
-          })
-          logger.storage('FILE_UPDATED', `Hoja de Remisión ${hoja.numeroCompleto}: ${saveResult.relativePath}`)
-        } else {
-          logger.warn('File storage failed:', saveResult.error)
-        }
-      } catch (error) {
-        logger.error('File storage error:', error)
-        // Continuar aunque falle el guardado del archivo
-      }
+    if (newFileData) {
+      logger.storage('FILE_UPDATED', `Hoja de Remisión ${hoja.numeroCompleto}: ${newFileData.filePath}`)
     }
 
     logger.success(`✅ Hoja de Remisión actualizada exitosamente`)
