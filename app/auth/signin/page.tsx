@@ -57,9 +57,6 @@ export default function SignIn() {
             <span className="text-3xl font-bold text-white">S</span>
           </div>
           <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">SIAME 2026</h1>
-          <p className="text-sm text-[var(--kt-text-muted)] mt-1">
-            Sistema de Inteligencia Artificial para Misiones diplomáticas
-          </p>
         </div>
 
         {/* Sign In Card */}
