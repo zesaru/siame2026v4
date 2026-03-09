@@ -1,4 +1,5 @@
 import { findKeyValue, parseFecha, extractPeso } from "./guias-valija-parser"
+import { normalizeHojaRemisionNumero } from "./hoja-remision-normalizer"
 import { logger } from "./logger"
 
 /**
@@ -124,7 +125,7 @@ export async function parseHojaRemisionFromAzure(
     if (numeroFromValue) {
       // Limpiar espacios extras
       const cleanedNumero = numeroFromValue[1].replace(/\s+/g, '')
-      numeroCompleto = `HR N°${cleanedNumero}`
+      numeroCompleto = normalizeHojaRemisionNumero(`HR N°${cleanedNumero}`)
       // Extraer el primer número para el campo numero
       const firstNumber = cleanedNumero.match(/(\d+)/)
       numero = firstNumber ? parseInt(firstNumber[1]) : 0
@@ -134,7 +135,7 @@ export async function parseHojaRemisionFromAzure(
   // Si no se encontró en keyValuePairs, buscar en el contenido
   if (!numeroCompleto) {
     const hrMatch = content?.match(/HR\s*N[º°]\s*(\d+[^/]*)/i)
-    numeroCompleto = hrMatch ? `HR N°${hrMatch[1].trim()}` : ""
+    numeroCompleto = hrMatch ? normalizeHojaRemisionNumero(`HR N°${hrMatch[1].trim()}`) : ""
   }
 
   if (!numero) {

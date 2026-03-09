@@ -6,6 +6,7 @@ import { hojaRemisionSchema, type HojaRemisionInput } from "./schemas"
 import { logger } from "@/lib/logger"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 import { validatePdfFile } from "@/lib/pdf-upload"
+import { normalizeHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
 import { z } from "zod"
 
 /**
@@ -24,6 +25,11 @@ export async function createHojaRemision(
   try {
     // Validar datos con Zod
     const validated = hojaRemisionSchema.parse(data)
+    const normalizedNumeroCompleto = normalizeHojaRemisionNumero(validated.numeroCompleto)
+    const payload = {
+      ...validated,
+      numeroCompleto: normalizedNumeroCompleto,
+    }
     const validatedFile = file ?? null
 
     if (validatedFile) {
@@ -35,7 +41,7 @@ export async function createHojaRemision(
 
     logger.separator('─', 70)
     logger.info('⏳ Creando Hoja de Remisión')
-    logger.info(`   Número: ${validated.numeroCompleto}`)
+    logger.info(`   Número: ${payload.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
     if (validatedFile) {
       logger.info(`   Archivo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
@@ -44,14 +50,14 @@ export async function createHojaRemision(
 
     // Verificar unicidad de numeroCompleto
     const existing = await prisma.hojaRemision.findUnique({
-      where: { numeroCompleto: validated.numeroCompleto }
+      where: { numeroCompleto: payload.numeroCompleto }
     })
 
     if (existing) {
-      logger.warn(`⚠️  Ya existe Hoja de Remisión con número: ${validated.numeroCompleto}`)
+      logger.warn(`⚠️  Ya existe Hoja de Remisión con número: ${payload.numeroCompleto}`)
       return {
         success: false,
-        error: `Ya existe una hoja de remisión con el número ${validated.numeroCompleto}`
+        error: `Ya existe una hoja de remisión con el número ${payload.numeroCompleto}`
       }
     }
 
@@ -59,7 +65,7 @@ export async function createHojaRemision(
     const hoja = await prisma.hojaRemision.create({
       data: {
         userId: session.user.id,
-        ...validated,
+        ...payload,
         processingStatus: "completed",
         processedAt: new Date(),
       },
@@ -168,6 +174,11 @@ export async function updateHojaRemision(
   try {
     // Validar datos con Zod
     const validated = hojaRemisionSchema.parse(data)
+    const normalizedNumeroCompleto = normalizeHojaRemisionNumero(validated.numeroCompleto)
+    const payload = {
+      ...validated,
+      numeroCompleto: normalizedNumeroCompleto,
+    }
     const validatedFile = file ?? null
 
     if (validatedFile) {
@@ -180,7 +191,7 @@ export async function updateHojaRemision(
     logger.separator('─', 70)
     logger.info('⏳ Actualizando Hoja de Remisión')
     logger.info(`   ID: ${id}`)
-    logger.info(`   Número: ${validated.numeroCompleto}`)
+    logger.info(`   Número: ${payload.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
     if (validatedFile) {
       logger.info(`   Archivo nuevo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
@@ -206,16 +217,16 @@ export async function updateHojaRemision(
     // Verificar unicidad de numeroCompleto (excluyendo el registro actual)
     const duplicateNumber = await prisma.hojaRemision.findFirst({
       where: {
-        numeroCompleto: validated.numeroCompleto,
+        numeroCompleto: payload.numeroCompleto,
         id: { not: id },
       },
     })
 
     if (duplicateNumber) {
-      logger.warn(`⚠️  Ya existe otra Hoja de Remisión con número: ${validated.numeroCompleto}`)
+      logger.warn(`⚠️  Ya existe otra Hoja de Remisión con número: ${payload.numeroCompleto}`)
       return {
         success: false,
-        error: `Ya existe otra hoja de remisión con el número ${validated.numeroCompleto}`
+        error: `Ya existe otra hoja de remisión con el número ${payload.numeroCompleto}`
       }
     }
 
@@ -270,7 +281,7 @@ export async function updateHojaRemision(
     const hoja = await prisma.hojaRemision.update({
       where: { id },
       data: {
-        ...validated,
+        ...payload,
         ...(newFileData || {}),
         processingStatus: "completed",
         processedAt: new Date(),

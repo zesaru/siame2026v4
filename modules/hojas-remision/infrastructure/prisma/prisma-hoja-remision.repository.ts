@@ -1,5 +1,6 @@
 import type { PrismaClient, Prisma } from "@prisma/client"
 import type { CreateHojaRemisionInput, HojaRemisionRepository, UpdateHojaRemisionInput } from "../../domain/repositories"
+import { normalizeHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
 
 export class PrismaHojaRemisionRepository implements HojaRemisionRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -37,7 +38,7 @@ export class PrismaHojaRemisionRepository implements HojaRemisionRepository {
       data: {
         userId: input.userId,
         numero: input.numero || 0,
-        numeroCompleto: input.numeroCompleto,
+        numeroCompleto: normalizeHojaRemisionNumero(input.numeroCompleto),
         siglaUnidad: input.siglaUnidad,
         fecha: input.fecha ? new Date(input.fecha) : new Date(),
         para: input.para,
@@ -63,7 +64,7 @@ export class PrismaHojaRemisionRepository implements HojaRemisionRepository {
       where: { id: input.id },
       data: {
         ...(input.numero !== undefined && { numero: input.numero }),
-        ...(input.numeroCompleto && { numeroCompleto: input.numeroCompleto }),
+        ...(input.numeroCompleto && { numeroCompleto: normalizeHojaRemisionNumero(input.numeroCompleto) }),
         ...(input.siglaUnidad && { siglaUnidad: input.siglaUnidad }),
         ...(input.fecha && { fecha: new Date(input.fecha) }),
         ...(input.para !== undefined && { para: input.para }),

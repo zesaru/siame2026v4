@@ -1,5 +1,6 @@
 import { prisma } from "./db"
 import { logger } from "./logger"
+import { normalizeHojaRemisionNumero } from "./hoja-remision-normalizer"
 import { fileStorageService } from "./services/file-storage.service"
 
 /**
@@ -188,7 +189,7 @@ export function extractHRNumeroFromContenido(contenido: string): {
   if (!match) return { match: false }
 
   const numero = parseInt(match[1]) || 0
-  const numeroCompleto = normalizedContenido
+  const numeroCompleto = normalizeHojaRemisionNumero(normalizedContenido)
 
   // Intentar extraer sigla de unidad del formato (ej: "HR Nº5-18-A/ 3 CAJA")
   // El formato parece ser: HR Nº{numero}-{algo}-{sigla}/ ...
