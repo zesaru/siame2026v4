@@ -129,3 +129,32 @@ export async function PUT(req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Error al actualizar item" }, { status: 500 })
   }
 }
+
+export async function DELETE(_req: NextRequest, context: RouteContext) {
+  try {
+    const session = await getServerSession()
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { id } = await context.params
+
+    const existing = await prisma.guiaValijaItem.findUnique({
+      where: { id },
+      select: { id: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Item no encontrado" }, { status: 404 })
+    }
+
+    await prisma.guiaValijaItem.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting guia valija item:", error)
+    return NextResponse.json({ error: "Error al eliminar item" }, { status: 500 })
+  }
+}
