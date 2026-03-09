@@ -140,7 +140,7 @@ export default function DocumentUpload({ onAnalysisComplete, onError }: Document
           Inteligencia Documental
         </h2>
         <p className="text-gray-600">
-          Sube un documento para extraer texto, tablas, pares clave-valor y entidades mediante análisis con IA.
+          Sube un documento para extraer texto, tablas, pares clave-valor y entidades.
         </p>
       </div>
 
