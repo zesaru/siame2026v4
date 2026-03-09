@@ -281,7 +281,12 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
       exportToExcel(
         sortedData,
         columns,
-        filename
+        filename,
+        {
+          title: "Reporte de Guias de Valija",
+          subtitle: "Exportacion operativa del modulo de guias de valija",
+          sheetName: "GuiasValija",
+        }
       )
 
       toast.success("Datos exportados a Excel", {
@@ -356,10 +361,6 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleCreate}>
-              <Icon name="plus" size="sm" className="mr-2" />
-              Nueva Guía
-            </Button>
             <Button
               variant="outline"
               onClick={fetchGuias}

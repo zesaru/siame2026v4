@@ -98,48 +98,114 @@ export function exportToJSON<T extends Record<string, any>>(
 export function exportToExcel<T extends Record<string, any>>(
   data: T[],
   columns: { key: string; label: string }[],
-  filename: string
+  filename: string,
+  options?: {
+    title?: string
+    subtitle?: string
+    sheetName?: string
+  }
 ) {
   if (data.length === 0) {
     console.warn("No data to export")
     return
   }
 
-  // Create header row
-  const headers = columns.map((col) => col.label).join("\t")
+  const title = options?.title || "Reporte exportado"
+  const subtitle = options?.subtitle || `Generado el ${new Date().toLocaleString("es-PE")}`
+  const sheetName = options?.sheetName || "Reporte"
 
-  // Create data rows
-  const rows = data.map((row) => {
-    return columns
-      .map((col) => {
-        const value = row[col.key]
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
 
-        // Handle null/undefined
-        if (value == null) {
-          return ""
-        }
+  const formatCell = (value: unknown) => {
+    if (value == null) return ""
+    if (value instanceof Date) return value.toLocaleDateString("es-PE")
+    if (typeof value === "object") return JSON.stringify(value)
+    return String(value)
+  }
 
-        // Handle dates
-        if (value instanceof Date) {
-          return value.toISOString()
-        }
+  const colGroup = columns
+    .map((col) => {
+      const rawLength = Math.max(
+        col.label.length,
+        ...data.map((row) => formatCell(row[col.key]).length)
+      )
+      const width = Math.min(Math.max(rawLength + 4, 14), 34)
+      return `<col style="width:${width}ch" />`
+    })
+    .join("")
 
-        // Handle objects/arrays (JSON stringify)
-        if (typeof value === "object") {
-          return JSON.stringify(value)
-        }
+  const headerCells = columns
+    .map(
+      (col) =>
+        `<th>${escapeHtml(col.label)}</th>`
+    )
+    .join("")
 
-        return String(value)
-      })
-      .join("\t")
-  })
+  const bodyRows = data
+    .map((row, rowIndex) => {
+      const cells = columns
+        .map((col) => `<td>${escapeHtml(formatCell(row[col.key]))}</td>`)
+        .join("")
 
-  // Combine header and rows
-  const tsv = [headers, ...rows].join("\n")
+      return `<tr class="${rowIndex % 2 === 0 ? "row-even" : "row-odd"}">${cells}</tr>`
+    })
+    .join("")
 
-  // Add BOM for Excel to recognize UTF-8 correctly
+  const html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="ProgId" content="Excel.Sheet" />
+        <meta name="Generator" content="SIAME" />
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>${escapeHtml(sheetName)}</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+        <style>
+          body { font-family: Calibri, Arial, sans-serif; margin: 24px; color: #1f2937; }
+          .report-title { font-size: 20pt; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
+          .report-subtitle { font-size: 10pt; color: #64748b; margin-bottom: 18px; }
+          .summary { margin-bottom: 14px; font-size: 10pt; color: #334155; }
+          table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+          th { background: #1d4ed8; color: #ffffff; font-size: 10pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 8px; border: 1px solid #bfdbfe; }
+          td { border: 1px solid #dbeafe; padding: 8px; font-size: 10pt; vertical-align: top; word-wrap: break-word; }
+          .row-even td { background: #f8fbff; }
+          .row-odd td { background: #ffffff; }
+        </style>
+      </head>
+      <body>
+        <div class="report-title">${escapeHtml(title)}</div>
+        <div class="report-subtitle">${escapeHtml(subtitle)}</div>
+        <div class="summary">Total de registros exportados: <strong>${data.length}</strong></div>
+        <table>
+          <colgroup>${colGroup}</colgroup>
+          <thead><tr>${headerCells}</tr></thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+      </body>
+    </html>
+  `
+
   const bom = "\uFEFF"
-  const blob = new Blob([bom + tsv], { type: "text/tab-separated-values;charset=utf-8;" })
+  const blob = new Blob([bom + html], {
+    type: "application/vnd.ms-excel;charset=utf-8;",
+  })
   const url = URL.createObjectURL(blob)
   const link = document.createElement("a")
   link.setAttribute("href", url)
