@@ -216,3 +216,11 @@ This means the codebase is now closer to a clean separation where `Account`, `Se
 ## Recommended Next Action
 
 The next high-value step is not dropping tables. It is proving that `PrismaAdapter` can be removed safely.
+
+## Operational Commands
+
+Use these commands when the target database is reachable:
+
+- `npm run db:audit:legacy-auth`
+- `npx prisma migrate deploy`
+- `npm run db:verify`
