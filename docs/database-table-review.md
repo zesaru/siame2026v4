@@ -23,7 +23,7 @@ The only strong candidates for removal are legacy NextAuth tables that no longer
 - `Session`
 - `VerificationToken`
 
-Those tables should not be dropped directly. The current auth setup still uses `PrismaAdapter(prisma)` in [pages/api/auth/[...nextauth].ts](/mnt/c/Users/embto/Documents/GitHub/siame2026v4/pages/api/auth/[...nextauth].ts), so the adapter dependency must be removed or proven harmless before schema cleanup.
+Those tables should not be dropped directly. The adapter has already been removed from runtime, but the schema cleanup still requires functional validation before dropping legacy tables.
 
 ## Current Architecture
 
@@ -32,7 +32,6 @@ The app currently mixes two auth/session layers:
 1. NextAuth with:
 - `CredentialsProvider`
 - `strategy: "jwt"`
-- `PrismaAdapter(prisma)`
 
 2. Custom security/session layer with:
 - `AuthSession`
@@ -111,8 +110,8 @@ Why they look legacy:
 
 Why they cannot be removed yet:
 
-- `PrismaAdapter(prisma)` is still configured in [pages/api/auth/[...nextauth].ts](/mnt/c/Users/embto/Documents/GitHub/siame2026v4/pages/api/auth/[...nextauth].ts).
-- Even if current runtime paths do not actively persist to those tables, the adapter keeps the dependency contract alive.
+- Runtime auth has changed recently and still needs end-to-end validation.
+- Even if current runtime paths no longer persist to those tables, existing environments may still contain historical rows that should be inspected before deletion.
 
 ## Migration Timeline Interpretation
 
@@ -142,7 +141,7 @@ That is the biggest architectural smell in the current schema.
 
 ### Risk 2: False Cleanup
 
-Dropping `Account`, `Session`, or `VerificationToken` before removing `PrismaAdapter` can break:
+Dropping `Account`, `Session`, or `VerificationToken` before validating the adapter removal can break:
 
 - sign-in
 - session retrieval
