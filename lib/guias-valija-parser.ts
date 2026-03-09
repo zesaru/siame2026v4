@@ -242,10 +242,7 @@ export function parsePesoOficial(pesoStr: string): number | null {
 
   // Si tiene el formato "34.700+34.500"
   if (pesoStr.includes('+')) {
-    const parts = pesoStr.split('+').map(p => {
-      const match = p.match(/([\d.,]+)/)
-      return match ? parseFloat(match[1].replace(',', '.')) : 0
-    })
+    const parts = pesoStr.split('+').map((part) => extractPeso(part) || 0)
     const sum = parts.reduce((a, b) => a + b, 0)
     return sum
   }
