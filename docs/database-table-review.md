@@ -50,13 +50,13 @@ This means the real issue is not "too many tables" in general. The issue is dupl
 | Table | Status | Evidence | Recommendation | Risk |
 |---|---|---|---|---|
 | `User` | Required | Used across auth, admin, documents, diplomatic records, lockout, session revocation | Keep | High if changed |
-| `Account` | Likely legacy | Present since initial NextAuth migration; no OAuth providers in active auth config | Review for removal after removing `PrismaAdapter` | High if dropped prematurely |
-| `Session` | Likely legacy | Active auth uses JWT strategy, not database sessions | Review for removal after removing `PrismaAdapter` | High if dropped prematurely |
+| `Account` | Legacy removed from schema | Present in initial NextAuth migration; no OAuth providers in active auth config | Drop via dedicated migration | Medium until migration is applied |
+| `Session` | Legacy removed from schema | Active auth uses JWT strategy, not database sessions | Drop via dedicated migration | Medium until migration is applied |
 | `AuthSession` | Required | Used by `auth-session-registry`, revocation, idle timeout, user session management, security metrics | Keep as operational session store | High if changed |
 | `AuthIpOverride` | Required | Used by IP quarantine and temporary allow overrides | Keep | Medium |
 | `SecurityIncidentState` | Required | Used by security incident workflows and admin security views | Keep | Medium |
 | `SecurityNotificationDelivery` | Required | Used by security notifications and delivery tracking | Keep | Medium |
-| `VerificationToken` | Likely legacy | No email provider, magic link, or email verification flow found | Review for removal after removing `PrismaAdapter` | High if dropped prematurely |
+| `VerificationToken` | Legacy removed from schema | No email provider, magic link, or email verification flow found | Drop via dedicated migration | Medium until migration is applied |
 | `Document` | Required | Core intake/analyze/review workflow | Keep | High |
 | `GuiaValija` | Required | Core diplomatic document entity | Keep | High |
 | `GuiaValijaItem` | Required | Core line-item entity used in edit/list/delete flows and HR linkage | Keep | High |
@@ -208,7 +208,7 @@ This means the codebase is now closer to a clean separation where `Account`, `Se
 - `VerificationToken`
 
 6. Schema Migration
-- Create a dedicated Prisma migration that drops only confirmed legacy tables.
+- Apply the dedicated Prisma migration that drops confirmed legacy tables.
 
 7. Post-Migration Validation
 - Re-run login/session tests and review admin session management flows.

@@ -62,7 +62,7 @@ npx prisma studio            # Open database browser
 ### Database Setup
 - **Database**: PostgreSQL (local instance `localhost:5432/siame2026`)
 - **ORM**: Prisma 6.19.1
-- **Schema Location**: `prisma/schema.prisma` (8 models defined)
+- **Schema Location**: `prisma/schema.prisma`
 - **Generated Client**: Outputs to `app/generated/prisma`
 - **Configuration**: Uses `lib/db.ts` with direct Prisma client
 
@@ -71,15 +71,17 @@ npx prisma studio            # Open database browser
 | Model | Description |
 |-------|-------------|
 | `User` | System users with authentication |
-| `Account` | NextAuth OAuth account linking |
-| `Session` | NextAuth session management |
-| `VerificationToken` | Email verification tokens |
 | `Document` | General document analysis results |
 | `GuiaValija` | Diplomatic pouch guides |
 | `GuiaValijaItem` | Items within a pouch guide |
 | `GuiaValijaPrecinto` | Seals and airway bills |
 | `HojaRemision` | Remission sheets |
-| `RemisionItem` | Items within a remission |
+| `Oficio` | Official letters derived from analyzed documents |
+| `FileAuditLog` | Audit and security event log |
+| `AuthSession` | Active session registry with revocation support |
+| `AuthIpOverride` | Temporary IP overrides for quarantine controls |
+| `SecurityIncidentState` | Incident workflow state |
+| `SecurityNotificationDelivery` | Security notification delivery tracking |
 
 ### Project Structure
 
