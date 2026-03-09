@@ -13,6 +13,7 @@
     "db:reset": "npx tsx scripts/reset-data.ts",
     "db:verify": "npx tsx scripts/verify-data.ts",
     "db:audit:legacy-auth": "node scripts/db-audit-legacy-auth-tables.mjs",
+    "db:cleanup:legacy-auth": "node scripts/db-apply-legacy-auth-cleanup.mjs",
     "db:sync-wsl-host": "node scripts/sync-wsl-db-host.mjs",
     "security:env": "node scripts/security-runtime-env-check.mjs",
     "security:phase1": "node scripts/security-phase1-check.mjs",

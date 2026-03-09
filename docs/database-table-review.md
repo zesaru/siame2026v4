@@ -222,5 +222,6 @@ The next high-value step is not dropping tables. It is proving that `PrismaAdapt
 Use these commands when the target database is reachable:
 
 - `npm run db:audit:legacy-auth`
+- `npm run db:cleanup:legacy-auth -- --dry-run`
 - `npx prisma migrate deploy`
 - `npm run db:verify`
