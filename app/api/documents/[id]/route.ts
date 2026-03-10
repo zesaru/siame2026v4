@@ -10,7 +10,7 @@ import {
 import { toDocumentDetailDto } from "@/modules/documentos/application/mappers"
 import { parseUpdateDocumentKeyValuePairs } from "@/modules/documentos/application/validation"
 import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
 
 export const dynamic = "force-dynamic"
 
@@ -27,27 +27,24 @@ export async function GET(
     )
   }
 
-  if (!canDeleteRecords(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
   try {
     const { id } = await params
     const ipAddress = extractIpAddress(req)
     const userAgent = extractUserAgent(req)
-    const repository = new PrismaDocumentRepository(prisma)
-    const useCase = new GetDocumentByIdForUserUseCase(repository)
-    const result = await useCase.execute(id, session.user.id)
+    const document = canViewAllRecords(session.user.role)
+      ? await prisma.document.findUnique({ where: { id } })
+      : await (async () => {
+          const repository = new PrismaDocumentRepository(prisma)
+          const useCase = new GetDocumentByIdForUserUseCase(repository)
+          const result = await useCase.execute(id, session.user.id)
 
-    if (!result.ok) {
-      console.error("Error fetching document:", result.error)
-      return NextResponse.json(
-        { error: "Failed to fetch document" },
-        { status: 500 }
-      )
-    }
+          if (!result.ok) {
+            console.error("Error fetching document:", result.error)
+            throw new Error("Failed to fetch document")
+          }
 
-    const document = result.value
+          return result.value
+        })()
 
     if (!document) {
       return NextResponse.json(

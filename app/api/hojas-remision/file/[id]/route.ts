@@ -3,8 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
 import { fileStorageService } from "@/lib/services/file-storage.service"
-import { GetHojaRemisionByIdForUserUseCase } from "@/modules/hojas-remision/application/queries"
-import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
 
 export const revalidate = 3600
 
@@ -24,25 +22,14 @@ export async function GET(
       )
     }
 
-    const repository = new PrismaHojaRemisionRepository(prisma)
-    const useCase = new GetHojaRemisionByIdForUserUseCase(repository)
-    const result = await useCase.execute(id, session.user.id)
+    const hoja = await prisma.hojaRemision.findFirst({ where: { id } })
 
-    if (!result.ok) {
-      return NextResponse.json(
-        { error: "Error al obtener la hoja de remisión" },
-        { status: 500 }
-      )
-    }
-
-    if (!result.value) {
+    if (!hoja) {
       return NextResponse.json(
         { error: "Hoja de remisión no encontrada" },
         { status: 404 }
       )
     }
-
-    const hoja = result.value
 
     // Verificar que tenga archivo
     if (!hoja.filePath) {

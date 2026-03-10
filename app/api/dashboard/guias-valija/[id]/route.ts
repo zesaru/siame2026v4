@@ -22,22 +22,15 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!canDeleteRecords(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
   try {
     const { id } = await params
-    const repository = new PrismaGuiaValijaRepository(prisma)
-    const useCase = new GetGuiaValijaByIdForUserUseCase(repository)
-    const result = await useCase.execute({ id, userId: session.user.id })
-
-    if (!result.ok) {
-      console.error("Error fetching guia:", result.error)
-      return NextResponse.json({ error: "Error fetching guia" }, { status: 500 })
-    }
-
-    const guia = result.value
+    const guia = await prisma.guiaValija.findFirst({
+      where: { id },
+      include: {
+        items: { orderBy: { numeroItem: "asc" } },
+        precintos: true,
+      },
+    })
 
     if (!guia) {
       return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })

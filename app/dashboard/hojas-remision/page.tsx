@@ -3,9 +3,8 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { redirect } from "next/navigation"
 
-async function getHojasRemision(userId: string) {
+async function getHojasRemision() {
   return prisma.hojaRemision.findMany({
-    where: { userId },
     orderBy: [{ numeroCompleto: "desc" }, { fecha: "desc" }],
   })
 }
@@ -16,6 +15,6 @@ export default async function Page() {
     redirect("/auth/signin")
   }
 
-  const hojas = await getHojasRemision(session.user.id)
+  const hojas = await getHojasRemision()
   return <HojasRemisionClient initialHojas={hojas} currentUserRole={session.user.role} />
 }

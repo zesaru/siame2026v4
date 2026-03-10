@@ -16,10 +16,6 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!canDeleteRecords(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
   try {
     const { id } = await params
     const trackView = shouldTrackView(req.url)
@@ -29,7 +25,6 @@ export async function GET(
     const guia = await prisma.guiaValija.findFirst({
       where: {
         id,
-        userId: session.user.id,
       },
       include: {
         items: {
@@ -70,6 +65,10 @@ export async function DELETE(
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {

@@ -97,6 +97,10 @@ export function canDeleteRecords(role: Role): boolean {
   return role === "ADMIN" || role === "SUPER_ADMIN"
 }
 
+export function canViewAllRecords(role: Role): boolean {
+  return role === "ADMIN" || role === "SUPER_ADMIN"
+}
+
 /**
  * Require specific roles for an action
  * Throws error if user doesn't have required role

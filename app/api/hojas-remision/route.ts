@@ -36,9 +36,23 @@ export async function GET(req: NextRequest) {
     }
 
     const { page, limit, search, estado } = parsedQuery.value
-    const repository = new PrismaHojaRemisionRepository(prisma)
-    const useCase = new ListHojasRemisionUseCase(repository)
-    const result = await useCase.execute({ userId: session.user.id, page, limit, search, estado })
+    const skip = (page - 1) * limit
+    const where: import("@prisma/client").Prisma.HojaRemisionWhereInput = {}
+    if (search) {
+      where.OR = [
+        { numeroCompleto: { contains: search, mode: "insensitive" } },
+        { para: { contains: search, mode: "insensitive" } },
+        { remitente: { contains: search, mode: "insensitive" } },
+        { destino: { contains: search, mode: "insensitive" } },
+        { asunto: { contains: search, mode: "insensitive" } },
+      ]
+    }
+    if (estado) where.estado = estado
+    const [hojas, total] = await Promise.all([
+      prisma.hojaRemision.findMany({ where, skip, take: limit, orderBy: { createdAt: "desc" } }),
+      prisma.hojaRemision.count({ where }),
+    ])
+    const result = { ok: true as const, value: { hojas, total } }
 
     if (!result.ok) {
       console.error("Error fetching hojas de remision:", result.error)

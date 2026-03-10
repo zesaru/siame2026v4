@@ -31,20 +31,7 @@ export async function GET(
 
     const ipAddress = extractIpAddress(req)
     const userAgent = extractUserAgent(req)
-
-    const repository = new PrismaHojaRemisionRepository(prisma)
-    const useCase = new GetHojaRemisionByIdForUserUseCase(repository)
-    const result = await useCase.execute(id, session.user.id)
-
-    if (!result.ok) {
-      console.error("Error fetching hoja de remision:", result.error)
-      return NextResponse.json(
-        { error: "Failed to fetch hoja de remision" },
-        { status: 500 }
-      )
-    }
-
-    const hoja = result.value
+    const hoja = await prisma.hojaRemision.findFirst({ where: { id } })
 
     if (!hoja) {
       return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
