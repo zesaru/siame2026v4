@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 
@@ -13,7 +12,7 @@ export async function GET(
   try {
     // Next.js 15+ requires await for params
     const { id } = await params
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user) {
       return NextResponse.json(

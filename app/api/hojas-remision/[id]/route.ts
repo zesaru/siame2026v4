@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 import { shouldTrackView } from "@/lib/utils"
-import { GetHojaRemisionByIdForUserUseCase } from "@/modules/hojas-remision/application/queries"
 import {
   DeleteHojaRemisionUseCase,
   UpdateHojaRemisionUseCase,
@@ -23,7 +21,7 @@ export async function GET(
   try {
     const { id } = await params
     const trackView = shouldTrackView(req.url)
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -66,7 +64,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -131,7 +129,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
