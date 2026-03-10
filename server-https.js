@@ -14,8 +14,8 @@ const NEXT_PORT = 3000
 
 const certPath = path.join(__dirname, 'certs')
 const sslOptions = {
-  key: fs.readFileSync(path.join(certPath, 'localhost+4-key.pem')),
-  cert: fs.readFileSync(path.join(certPath, 'localhost+4.pem'))
+  key: fs.readFileSync(path.join(certPath, 'siame2026.local+2-key.pem')),
+  cert: fs.readFileSync(path.join(certPath, 'siame2026.local+2.pem'))
 }
 
 // Start Next.js standalone server on port 3000
@@ -84,18 +84,22 @@ server.listen(PORT, '0.0.0.0', () => {
 ║                                                                   ║
 ║   🚀 SIAME 2026 - HTTPS Server (Production)                       ║
 ║                                                                   ║
-║   ✓ HTTPS habilitado con certificado válido                       ║
+║   ✓ HTTPS habilitado con certificado para siame2026.local        ║
 ║                                                                   ║
-║   URLs de acceso:                                                  ║
+║   URL oficial de acceso:                                           ║
+║   ─────────────────────────────────────────────────────────────────  ║
+║   • https://siame2026.local                                        ║
+║                                                                   ║
+║   URLs alternativas (solo mantenimiento):                          ║
 ║   ─────────────────────────────────────────────────────────────────  ║
 ║   • https://localhost                                             ║
-║   • https://127.0.0.1                                              ║
-║   • https://siame2026.local  (edita hosts)                         ║
 ║   • https://172.18.28.84                                           ║
 ║                                                                   ║
-║   Para agregar siame2026.local, edita:                            ║
-║   • Windows: C:\\Windows\\System32\\drivers\\etc\\hosts            ║
-║   • Agrega: 172.18.28.84  siame2026.local                          ║
+║   Configuración de clientes:                                       ║
+║   ─────────────────────────────────────────────────────────────────  ║
+║   1. Instalar CA: C:\\inetpub\\siame2026\\certs\\siame2026-root-ca.cer   ║
+║   2. Editar hosts: C:\\Windows\\System32\\drivers\\etc\\hosts            ║
+║      Agregar: 172.18.28.84  siame2026.local                         ║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════════╝
   `)
