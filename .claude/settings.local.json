@@ -51,7 +51,19 @@
       "Bash(git reset:*)",
       "Bash(wc:*)",
       "Bash(find:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pm2 stop:*)",
+      "Bash(pm2:*)",
+      "Bash(netsh advfirewall:*)",
+      "Bash(\"C:/Program Files/PostgreSQL/18/bin/psql.exe\":*)",
+      "Bash(powershell:*)",
+      "Bash(choco install:*)",
+      "Bash(mkcert:*)",
+      "Bash(openssl s_client:*)",
+      "Bash(cp:*)",
+      "Bash(Get-WebConfiguration:*)",
+      "Bash(openssl x509:*)",
+      "Bash(git:*)"
     ]
   }
 }
