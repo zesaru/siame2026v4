@@ -11,7 +11,6 @@ import { toDocumentDetailDto } from "@/modules/documentos/application/mappers"
 import { parseUpdateDocumentKeyValuePairs } from "@/modules/documentos/application/validation"
 import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
 import { canDeleteRecords } from "@/lib/middleware/authorization"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export const dynamic = "force-dynamic"
 

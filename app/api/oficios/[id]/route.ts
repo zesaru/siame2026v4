@@ -5,8 +5,6 @@ import { logger } from "@/lib/logger"
 import { shouldTrackView } from "@/lib/utils"
 import { extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 import { canDeleteRecords } from "@/lib/middleware/authorization"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export async function GET(
   req: NextRequest,
