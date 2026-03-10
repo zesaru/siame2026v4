@@ -10,7 +10,7 @@ import {
 import { toHojaRemisionDto } from "@/modules/hojas-remision/application/mappers"
 import { parseUpdateHojaRemisionCommand } from "@/modules/hojas-remision/application/validation"
 import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
 
 // GET /api/hojas-remision/[id] - Obtener hoja de remisión específica
 export async function GET(
@@ -76,11 +76,21 @@ export async function PUT(
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 })
     }
 
+    const isAdmin = canViewAllRecords(session.user.role)
+    const existing = await prisma.hojaRemision.findFirst({
+      where: isAdmin ? { id } : { id, userId: session.user.id },
+      select: { id: true, userId: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
+    }
+
     const repository = new PrismaHojaRemisionRepository(prisma)
     const useCase = new UpdateHojaRemisionUseCase(repository)
     const result = await useCase.execute({
       id,
-      userId: session.user.id,
+      userId: isAdmin ? existing.userId : session.user.id,
       ...parsedBody.value,
     })
 

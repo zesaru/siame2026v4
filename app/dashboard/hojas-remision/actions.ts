@@ -7,6 +7,7 @@ import { logger } from "@/lib/logger"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 import { validatePdfFile } from "@/lib/pdf-upload"
 import { normalizeHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 import { z } from "zod"
 
 /**
@@ -198,12 +199,11 @@ export async function updateHojaRemision(
     }
     logger.separator('─', 70)
 
+    const isAdmin = canViewAllRecords(session.user.role)
+
     // Verificar que la hoja de remisión existe y pertenece al usuario
     const existing = await prisma.hojaRemision.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
+      where: isAdmin ? { id } : { id, userId: session.user.id },
     })
 
     if (!existing) {
@@ -327,11 +327,9 @@ export async function getHojaRemision(
   }
 
   try {
+    const isAdmin = canViewAllRecords(session.user.role)
     const hoja = await prisma.hojaRemision.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
+      where: isAdmin ? { id } : { id, userId: session.user.id },
     })
 
     if (!hoja) {
