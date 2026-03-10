@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/pages/api/auth/[...nextauth]"
+import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { ListHojasRemisionUseCase } from "@/modules/hojas-remision/application/queries"
 import { CreateHojaRemisionUseCase } from "@/modules/hojas-remision/application/use-cases"
@@ -17,7 +16,7 @@ export const revalidate = 60
 // GET /api/hojas-remision - Listar hojas de remisión del usuario
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -82,7 +81,7 @@ export async function GET(req: NextRequest) {
 // POST /api/hojas-remision - Crear nueva hoja de remisión
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
