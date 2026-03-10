@@ -9,7 +9,7 @@ import {
 import { toGuiaValijaDetailDto } from "@/modules/guias-valija/application/mappers"
 import { parseUpdateGuiaValijaCommand } from "@/modules/guias-valija/application/validation"
 import { PrismaGuiaValijaRepository } from "@/modules/guias-valija/infrastructure"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
 
 // GET - Obtener una guía por ID
 export async function GET(
@@ -66,11 +66,40 @@ export async function PUT(
       )
     }
 
+    // Admin/SUPER_ADMIN can update any guia, regular users only their own
+    const isAdmin = canViewAllRecords(session.user.role)
+
+    // First verify the guia exists
+    const existing = await prisma.guiaValija.findFirst({
+      where: isAdmin ? { id } : { id, userId: session.user.id },
+      select: { id: true, numeroGuia: true, userId: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
+    }
+
+    // Check for duplicate numeroGuia
+    if (parsedBody.value.numeroGuia && parsedBody.value.numeroGuia !== existing.numeroGuia) {
+      const duplicate = await prisma.guiaValija.findFirst({
+        where: { numeroGuia: parsedBody.value.numeroGuia },
+        select: { id: true },
+      })
+      if (duplicate) {
+        return NextResponse.json({ error: "El número de guía ya existe" }, { status: 400 })
+      }
+    }
+
+    // For admin updating another user's guia, use the guia owner's userId
+    const targetUserId = isAdmin && existing.userId !== session.user.id
+      ? existing.userId
+      : session.user.id
+
     const repository = new PrismaGuiaValijaRepository(prisma)
     const useCase = new UpdateGuiaValijaByIdForUserUseCase(repository)
     const result = await useCase.execute({
       id,
-      userId: session.user.id,
+      userId: targetUserId,
       data: parsedBody.value,
     })
 

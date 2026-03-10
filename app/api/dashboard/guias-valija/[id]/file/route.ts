@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 import { NextResponse } from "next/server"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 
 export async function POST(
   req: Request,
@@ -15,8 +16,11 @@ export async function POST(
 
   try {
     const { id } = await params
+    // Admin/SUPER_ADMIN can access any guia, regular users only their own
     const guia = await prisma.guiaValija.findFirst({
-      where: { id, userId: session.user.id },
+      where: canViewAllRecords(session.user.role)
+        ? { id }
+        : { id, userId: session.user.id },
       select: { id: true, filePath: true },
     })
 
