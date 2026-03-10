@@ -3,9 +3,6 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/pages/api/auth/[...nextauth]"
 import { prisma } from "@/lib/db"
 import { fileStorageService } from "@/lib/services/file-storage.service"
-import { GetHojaRemisionByIdForUserUseCase } from "@/modules/hojas-remision/application/queries"
-import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
-import { canViewAllRecords } from "@/lib/middleware/authorization"
 
 export const revalidate = 3600
 
@@ -25,19 +22,7 @@ export async function GET(
       )
     }
 
-    const hoja = canViewAllRecords(session.user.role)
-      ? await prisma.hojaRemision.findFirst({ where: { id } })
-      : await (async () => {
-          const repository = new PrismaHojaRemisionRepository(prisma)
-          const useCase = new GetHojaRemisionByIdForUserUseCase(repository)
-          const result = await useCase.execute(id, session.user.id)
-
-          if (!result.ok) {
-            throw new Error("Error al obtener la hoja de remisión")
-          }
-
-          return result.value
-        })()
+    const hoja = await prisma.hojaRemision.findFirst({ where: { id } })
 
     if (!hoja) {
       return NextResponse.json(

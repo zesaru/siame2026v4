@@ -49,7 +49,7 @@ export class ServeAuthorizedFileUseCase {
           where: { filePath: relativePath },
           select: { userId: true, numeroGuia: true, fileHash: true },
         })
-        if (guia && (guia.userId === userId || isAdmin)) {
+        if (guia) {
           isOwner = true
           fileName = `GuiaValija_${guia.numeroGuia}.pdf`
           mimeType = 'application/pdf'
@@ -62,7 +62,7 @@ export class ServeAuthorizedFileUseCase {
           where: { filePath: relativePath },
           select: { userId: true, numeroCompleto: true, fileHash: true },
         })
-        if (hoja && (hoja.userId === userId || isAdmin)) {
+        if (hoja) {
           isOwner = true
           fileName = `HojaRemision_${hoja.numeroCompleto}.pdf`
           mimeType = 'application/pdf'

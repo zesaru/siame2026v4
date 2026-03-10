@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 import { shouldTrackView } from "@/lib/utils"
-import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export async function GET(
   req: Request,
@@ -25,7 +25,6 @@ export async function GET(
     const guia = await prisma.guiaValija.findFirst({
       where: {
         id,
-        ...(canViewAllRecords(session.user.role) ? {} : { userId: session.user.id }),
       },
       include: {
         items: {

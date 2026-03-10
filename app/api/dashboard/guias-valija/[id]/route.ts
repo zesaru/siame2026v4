@@ -9,7 +9,7 @@ import {
 import { toGuiaValijaDetailDto } from "@/modules/guias-valija/application/mappers"
 import { parseUpdateGuiaValijaCommand } from "@/modules/guias-valija/application/validation"
 import { PrismaGuiaValijaRepository } from "@/modules/guias-valija/infrastructure"
-import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 // GET - Obtener una guía por ID
 export async function GET(
@@ -24,26 +24,13 @@ export async function GET(
 
   try {
     const { id } = await params
-    const guia = canViewAllRecords(session.user.role)
-      ? await prisma.guiaValija.findFirst({
-          where: { id },
-          include: {
-            items: { orderBy: { numeroItem: "asc" } },
-            precintos: true,
-          },
-        })
-      : await (async () => {
-          const repository = new PrismaGuiaValijaRepository(prisma)
-          const useCase = new GetGuiaValijaByIdForUserUseCase(repository)
-          const result = await useCase.execute({ id, userId: session.user.id })
-
-          if (!result.ok) {
-            console.error("Error fetching guia:", result.error)
-            throw new Error("Error fetching guia")
-          }
-
-          return result.value
-        })()
+    const guia = await prisma.guiaValija.findFirst({
+      where: { id },
+      include: {
+        items: { orderBy: { numeroItem: "asc" } },
+        precintos: true,
+      },
+    })
 
     if (!guia) {
       return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
