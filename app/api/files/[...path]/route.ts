@@ -3,6 +3,47 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth-v4"
 import { ServeAuthorizedFileUseCase } from "@/modules/files/application/use-cases"
 
+async function authorizeAndResolveFile(request: NextRequest, pathSegments: string[]) {
+  const session = await getServerSession(authOptions)
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "No autenticado" },
+      { status: 401 }
+    )
+  }
+
+  const userRole = session.user.role as 'USER' | 'ADMIN' | 'SUPER_ADMIN'
+  const relativePath = pathSegments.join('/')
+
+  if (!relativePath) {
+    return NextResponse.json(
+      { error: "Ruta de archivo no proporcionada" },
+      { status: 400 }
+    )
+  }
+
+  const url = new URL(request.url)
+  const inline = url.searchParams.get('inline') === 'true'
+  const useCase = new ServeAuthorizedFileUseCase()
+  const result = await useCase.execute({
+    relativePath,
+    userId: session.user.id,
+    userRole,
+    inline,
+    ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+      request.headers.get('x-real-ip') ||
+      undefined,
+    userAgent: request.headers.get('user-agent') || undefined,
+  })
+
+  if (!result.ok) {
+    throw result.error
+  }
+
+  return result.value
+}
+
 /**
  * GET /api/files/[...path]
  *
@@ -21,61 +62,23 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    // Await params (Next.js 15+)
     const { path: pathSegments } = await params
+    const result = await authorizeAndResolveFile(request, pathSegments)
 
-    // 1. Verify authentication
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "No autenticado" },
-        { status: 401 }
-      )
+    if (result instanceof NextResponse) {
+      return result
+    }
+    if (result.status === 'invalid_path') {
+      return NextResponse.json({ error: result.message }, { status: 400 })
+    }
+    if (result.status === 'not_found_or_denied') {
+      return NextResponse.json({ error: result.message }, { status: 404 })
+    }
+    if (result.status === 'storage_not_found') {
+      return NextResponse.json({ error: result.message }, { status: 404 })
     }
 
-    // 1.5. Check if user is ADMIN or SUPER_ADMIN (can view any file)
-    const userRole = session.user.role as 'USER' | 'ADMIN' | 'SUPER_ADMIN'
-
-    // 2. Reconstruct the file path from URL segments
-    const relativePath = pathSegments.join('/')
-
-    if (!relativePath) {
-      return NextResponse.json(
-        { error: "Ruta de archivo no proporcionada" },
-        { status: 400 }
-      )
-    }
-
-    const url = new URL(request.url)
-    const inline = url.searchParams.get('inline') === 'true'
-    const useCase = new ServeAuthorizedFileUseCase()
-    const result = await useCase.execute({
-      relativePath,
-      userId: session.user.id,
-      userRole,
-      inline,
-      ipAddress: request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-        request.headers.get('x-real-ip') ||
-        undefined,
-      userAgent: request.headers.get('user-agent') || undefined,
-    })
-
-    if (!result.ok) {
-      throw result.error
-    }
-
-    if (result.value.status === 'invalid_path') {
-      return NextResponse.json({ error: result.value.message }, { status: 400 })
-    }
-    if (result.value.status === 'not_found_or_denied') {
-      return NextResponse.json({ error: result.value.message }, { status: 404 })
-    }
-    if (result.value.status === 'storage_not_found') {
-      return NextResponse.json({ error: result.value.message }, { status: 404 })
-    }
-
-    const { buffer, mimeType, fileName } = result.value
+    const { buffer, mimeType, fileName, inline } = result
     const contentDisposition = inline ? 'inline' : `attachment; filename="${fileName}"`
 
     // 9. Return file with appropriate headers
@@ -96,6 +99,47 @@ export async function GET(
     return NextResponse.json(
       {
         error: "Error al servir el archivo",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function HEAD(
+  request: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> }
+) {
+  try {
+    const { path: pathSegments } = await params
+    const result = await authorizeAndResolveFile(request, pathSegments)
+
+    if (result instanceof NextResponse) {
+      return result
+    }
+    if (result.status === 'invalid_path') {
+      return NextResponse.json({ error: result.message }, { status: 400 })
+    }
+    if (result.status === 'not_found_or_denied') {
+      return NextResponse.json({ error: result.message }, { status: 404 })
+    }
+    if (result.status === 'storage_not_found') {
+      return NextResponse.json({ error: result.message }, { status: 404 })
+    }
+
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Content-Type': result.mimeType,
+        'Cache-Control': 'no-store',
+      },
+    })
+  } catch (error) {
+    console.error('[FileAPI] Error checking file:', error)
+
+    return NextResponse.json(
+      {
+        error: "Error al verificar el archivo",
         message: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }

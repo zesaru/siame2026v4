@@ -124,6 +124,7 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
   const [loading, setLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [showPdf, setShowPdf] = useState(true)
+  const [pdfAvailable, setPdfAvailable] = useState<boolean | null>(null)
   const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
   useEffect(() => {
@@ -138,7 +139,10 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
         if (!response.ok) throw new Error("Error al cargar la hoja de remision.")
         const data = await response.json()
 
-        if (mounted) setHoja(data)
+        if (mounted) {
+          setHoja(data)
+          setPdfAvailable(data.filePath ? null : false)
+        }
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") {
           toast.error("Error al cargar la hoja de remision.")
@@ -233,11 +237,19 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
 
           <div className="flex flex-wrap items-center gap-2">
             {hoja.filePath && (
-              <Button asChild variant="outline">
-                <Link href={`/api/hojas-remision/file/${hoja.id}`} target="_blank">
-                  <Download className="mr-2 h-4 w-4" />
-                  Abrir PDF
-                </Link>
+              <Button
+                variant="outline"
+                disabled={pdfAvailable === false}
+                onClick={() => {
+                  if (pdfAvailable === false) {
+                    toast.error("El PDF asociado no está disponible en almacenamiento.")
+                    return
+                  }
+                  window.open(`/api/hojas-remision/file/${hoja.id}`, "_blank")
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                {pdfAvailable === false ? "PDF no disponible" : "Abrir PDF"}
               </Button>
             )}
             <Button variant="outline" onClick={() => router.push(`/dashboard/hojas-remision/edit/${hoja.id}`)}>
@@ -268,10 +280,16 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
               <div className="space-y-1">
                 <CardTitle className="text-lg">Documento fuente</CardTitle>
                 <CardDescription>
-                  {hoja.filePath ? "Vista previa del PDF asociado." : "Esta hoja no tiene PDF asociado."}
+                  {hoja.filePath
+                    ? pdfAvailable === false
+                      ? "El registro existe, pero el archivo físico ya no está disponible."
+                      : "Vista previa del PDF asociado."
+                    : "Esta hoja no tiene PDF asociado."}
                 </CardDescription>
               </div>
-              <Badge variant="outline">{hoja.filePath ? "PDF disponible" : "Sin archivo"}</Badge>
+              <Badge variant="outline">
+                {hoja.filePath ? (pdfAvailable === false ? "Archivo faltante" : "PDF disponible") : "Sin archivo"}
+              </Badge>
             </button>
 
             {showPdf && (
@@ -289,9 +307,20 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
 
                 <div className="h-[72vh] min-h-[480px]">
                   {hoja.filePath ? (
-                    <PDFViewer file={null} src={`/api/hojas-remision/file/${hoja.id}`} />
+                    <PDFViewer
+                      file={null}
+                      src={`/api/hojas-remision/file/${hoja.id}`}
+                      emptyMessage="Esta hoja no tiene PDF asociado."
+                      missingMessage="El PDF asociado ya no está disponible en almacenamiento."
+                      onAvailabilityChange={setPdfAvailable}
+                    />
                   ) : (
-                    <PDFViewer file={null} src={null} />
+                    <PDFViewer
+                      file={null}
+                      src={null}
+                      emptyMessage="Esta hoja no tiene PDF asociado."
+                      onAvailabilityChange={setPdfAvailable}
+                    />
                   )}
                 </div>
               </CardContent>
