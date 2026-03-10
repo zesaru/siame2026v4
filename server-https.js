@@ -13,13 +13,33 @@ const PORT = 443
 const NEXT_PORT = 3000
 
 const certPath = path.join(__dirname, 'certs')
+const standaloneServer = path.join(__dirname, '.next', 'standalone', 'server.js')
+let serverStarted = false
+
+function failStartup(message, error) {
+  console.error(`[HTTPS Server] ${message}`)
+  if (error) {
+    console.error(error)
+  }
+  process.exit(1)
+}
+
+function ensureFileExists(filePath, description) {
+  if (!fs.existsSync(filePath)) {
+    failStartup(`${description} no encontrado: ${filePath}`)
+  }
+}
+
+ensureFileExists(path.join(certPath, 'siame2026.local+2-key.pem'), 'Clave TLS')
+ensureFileExists(path.join(certPath, 'siame2026.local+2.pem'), 'Certificado TLS')
+ensureFileExists(standaloneServer, 'Servidor standalone de Next.js')
+
 const sslOptions = {
   key: fs.readFileSync(path.join(certPath, 'siame2026.local+2-key.pem')),
   cert: fs.readFileSync(path.join(certPath, 'siame2026.local+2.pem'))
 }
 
 // Start Next.js standalone server on port 3000
-const standaloneServer = path.join(__dirname, '.next', 'standalone', 'server.js')
 const nextProcess = spawn('node', [standaloneServer], {
   cwd: __dirname,
   stdio: 'inherit',
@@ -27,14 +47,53 @@ const nextProcess = spawn('node', [standaloneServer], {
 })
 
 nextProcess.on('error', (err) => {
-  console.error('Failed to start Next.js:', err)
-  process.exit(1)
+  failStartup('No se pudo iniciar Next.js standalone', err)
 })
 
 nextProcess.on('exit', (code) => {
+  if (!serverStarted) {
+    failStartup(`Next.js terminó antes de que el proxy HTTPS quedara listo. Código: ${code}`)
+  }
   console.log(`Next.js exited with code ${code}`)
-  process.exit(code)
+  process.exit(code || 0)
 })
+
+function waitForNextServer(timeoutMs = 15000) {
+  const startedAt = Date.now()
+
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      const req = http.request(
+        {
+          hostname: '127.0.0.1',
+          port: NEXT_PORT,
+          path: '/auth/signin',
+          method: 'HEAD',
+          timeout: 2000,
+        },
+        () => {
+          resolve()
+        }
+      )
+
+      req.on('error', () => {
+        if (Date.now() - startedAt >= timeoutMs) {
+          reject(new Error(`Next.js no respondió en puerto ${NEXT_PORT} dentro de ${timeoutMs}ms`))
+          return
+        }
+        setTimeout(check, 300)
+      })
+
+      req.on('timeout', () => {
+        req.destroy()
+      })
+
+      req.end()
+    }
+
+    check()
+  })
+}
 
 // Proxy function
 function proxyRequest(req, res) {
@@ -78,8 +137,15 @@ function proxyRequest(req, res) {
 // Create HTTPS proxy server
 const server = https.createServer(sslOptions, proxyRequest)
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`
+server.on('error', (err) => {
+  failStartup(`No se pudo abrir el puerto HTTPS ${PORT}`, err)
+})
+
+waitForNextServer()
+  .then(() => {
+    server.listen(PORT, '0.0.0.0', () => {
+      serverStarted = true
+      console.log(`
 ╔═══════════════════════════════════════════════════════════════════════╗
 ║                                                                   ║
 ║   🚀 SIAME 2026 - HTTPS Server (Production)                       ║
@@ -103,12 +169,18 @@ server.listen(PORT, '0.0.0.0', () => {
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════════╝
   `)
-})
+    })
+  })
+  .catch((err) => {
+    failStartup('Next.js no quedó listo; el proxy HTTPS no se iniciará', err)
+  })
 
 // Graceful shutdown
 const shutdown = () => {
   console.log('\\nShutting down gracefully...')
-  nextProcess.kill('SIGTERM')
+  if (nextProcess && !nextProcess.killed) {
+    nextProcess.kill('SIGTERM')
+  }
   server.close(() => {
     console.log('Server closed')
     process.exit(0)
