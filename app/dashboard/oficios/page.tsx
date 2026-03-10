@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/EmptyState"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 
 interface OficiosPageProps {
   searchParams: Promise<{
@@ -25,7 +26,7 @@ export default async function OficiosPage({ searchParams }: OficiosPageProps) {
   const limit = 20
 
   const where = {
-    userId: session.user.id,
+    ...(canViewAllRecords(session.user.role) ? {} : { userId: session.user.id }),
     ...(search
       ? {
           OR: [

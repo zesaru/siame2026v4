@@ -6,6 +6,7 @@ import { CreateGuiaValijaForUserUseCase } from "@/modules/guias-valija/applicati
 import { toGuiaValijaDetailDto, toGuiaValijaListDto } from "@/modules/guias-valija/application/mappers"
 import { parseCreateGuiaValijaCommand } from "@/modules/guias-valija/application/validation"
 import { PrismaGuiaValijaRepository } from "@/modules/guias-valija/infrastructure"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 
 // Revalidate guías list every 60 seconds (moderately frequent updates)
 export const revalidate = 60
@@ -19,9 +20,63 @@ export async function GET() {
   }
 
   try {
-    const repository = new PrismaGuiaValijaRepository(prisma)
-    const useCase = new ListGuiasValijaByUserUseCase(repository)
-    const result = await useCase.execute({ userId: session.user.id })
+    const result = canViewAllRecords(session.user.role)
+      ? await (async () => {
+          const value = await prisma.guiaValija.findMany({
+            select: {
+              id: true,
+              numeroGuia: true,
+              fechaEmision: true,
+              tipoValija: true,
+              isExtraordinaria: true,
+              fechaEnvio: true,
+              fechaRecibo: true,
+              origenCiudad: true,
+              destinoCiudad: true,
+              origenPais: true,
+              destinoPais: true,
+              destinatarioNombre: true,
+              remitenteNombre: true,
+              pesoValija: true,
+              numeroPaquetes: true,
+              estado: true,
+              processingStatus: true,
+              filePath: true,
+              fileMimeType: true,
+              userId: true,
+              createdAt: true,
+              updatedAt: true,
+              items: {
+                select: {
+                  id: true,
+                  numeroItem: true,
+                  destinatario: true,
+                  contenido: true,
+                  remitente: true,
+                  cantidad: true,
+                  peso: true,
+                },
+              },
+              precintos: {
+                select: {
+                  id: true,
+                  precinto: true,
+                  precintoCable: true,
+                  numeroBolsaTamano: true,
+                  guiaAereaNumero: true,
+                },
+              },
+              _count: { select: { items: true, precintos: true } },
+            },
+            orderBy: { createdAt: "desc" },
+          })
+          return { ok: true as const, value }
+        })()
+      : await (async () => {
+          const repository = new PrismaGuiaValijaRepository(prisma)
+          const useCase = new ListGuiasValijaByUserUseCase(repository)
+          return useCase.execute({ userId: session.user.id })
+        })()
 
     if (!result.ok) {
       console.error("Error fetching guias:", result.error)

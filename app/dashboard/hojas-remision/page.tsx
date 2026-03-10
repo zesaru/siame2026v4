@@ -1,11 +1,12 @@
 import HojasRemisionClient from "@/components/dashboard/HojasRemisionClient"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 import { redirect } from "next/navigation"
 
-async function getHojasRemision(userId: string) {
+async function getHojasRemision(userId: string, includeAll: boolean) {
   return prisma.hojaRemision.findMany({
-    where: { userId },
+    where: includeAll ? {} : { userId },
     orderBy: [{ numeroCompleto: "desc" }, { fecha: "desc" }],
   })
 }
@@ -16,6 +17,6 @@ export default async function Page() {
     redirect("/auth/signin")
   }
 
-  const hojas = await getHojasRemision(session.user.id)
+  const hojas = await getHojasRemision(session.user.id, canViewAllRecords(session.user.role))
   return <HojasRemisionClient initialHojas={hojas} currentUserRole={session.user.role} />
 }

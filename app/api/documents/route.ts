@@ -6,6 +6,8 @@ import { ListDocumentsUseCase } from "@/modules/documentos/application/queries"
 import { toDocumentsListResponseDto } from "@/modules/documentos/application/mappers"
 import { parseDocumentQueryParams } from "@/modules/documentos/application/validation"
 import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
+import type { Prisma } from "@prisma/client"
 
 export const dynamic = "force-dynamic"
 
@@ -48,16 +50,64 @@ export async function GET(req: NextRequest) {
     }
 
     const { page, limit, search, reviewStatus, documentType } = parsedQuery.value
-    const repository = new PrismaDocumentRepository(prisma)
-    const useCase = new ListDocumentsUseCase(repository)
-    const result = await useCase.execute({
-      userId: session.user.id,
-      page,
-      limit,
-      search,
-      reviewStatus,
-      documentType,
-    })
+    const result = canViewAllRecords(session.user.role)
+      ? await (async () => {
+          const skip = (page - 1) * limit
+          const where: Prisma.DocumentWhereInput = {}
+          if (search) {
+            where.OR = [
+              { fileName: { contains: search, mode: "insensitive" } },
+              { contentText: { contains: search, mode: "insensitive" } },
+            ]
+          }
+          if (reviewStatus) {
+            where.metadata = { path: ["reviewStatus"], equals: reviewStatus }
+          }
+          if (documentType) {
+            where.AND = [
+              ...(Array.isArray(where.AND) ? where.AND : []),
+              { metadata: { path: ["analysis", "tipoDocumento"], equals: documentType } },
+            ]
+          }
+          const [documents, total] = await Promise.all([
+            prisma.document.findMany({
+              where,
+              orderBy: { createdAt: "desc" },
+              skip,
+              take: limit,
+              select: {
+                id: true,
+                fileName: true,
+                fileSize: true,
+                fileType: true,
+                fileExtension: true,
+                pageCount: true,
+                language: true,
+                tableCount: true,
+                keyValueCount: true,
+                entityCount: true,
+                processingStatus: true,
+                metadata: true,
+                createdAt: true,
+                analyzedAt: true,
+              },
+            }),
+            prisma.document.count({ where }),
+          ])
+          return { ok: true as const, value: { documents, total } }
+        })()
+      : await (async () => {
+          const repository = new PrismaDocumentRepository(prisma)
+          const useCase = new ListDocumentsUseCase(repository)
+          return useCase.execute({
+            userId: session.user.id,
+            page,
+            limit,
+            search,
+            reviewStatus,
+            documentType,
+          })
+        })()
 
     if (!result.ok) {
       logger.error("Error fetching documents:", result.error)

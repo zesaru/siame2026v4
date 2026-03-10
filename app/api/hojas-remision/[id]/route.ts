@@ -12,7 +12,7 @@ import {
 import { toHojaRemisionDto } from "@/modules/hojas-remision/application/mappers"
 import { parseUpdateHojaRemisionCommand } from "@/modules/hojas-remision/application/validation"
 import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
 
 // GET /api/hojas-remision/[id] - Obtener hoja de remisión específica
 export async function GET(
@@ -31,20 +31,20 @@ export async function GET(
 
     const ipAddress = extractIpAddress(req)
     const userAgent = extractUserAgent(req)
+    const hoja = canViewAllRecords(session.user.role)
+      ? await prisma.hojaRemision.findFirst({ where: { id } })
+      : await (async () => {
+          const repository = new PrismaHojaRemisionRepository(prisma)
+          const useCase = new GetHojaRemisionByIdForUserUseCase(repository)
+          const result = await useCase.execute(id, session.user.id)
 
-    const repository = new PrismaHojaRemisionRepository(prisma)
-    const useCase = new GetHojaRemisionByIdForUserUseCase(repository)
-    const result = await useCase.execute(id, session.user.id)
+          if (!result.ok) {
+            console.error("Error fetching hoja de remision:", result.error)
+            throw new Error("Failed to fetch hoja de remision")
+          }
 
-    if (!result.ok) {
-      console.error("Error fetching hoja de remision:", result.error)
-      return NextResponse.json(
-        { error: "Failed to fetch hoja de remision" },
-        { status: 500 }
-      )
-    }
-
-    const hoja = result.value
+          return result.value
+        })()
 
     if (!hoja) {
       return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })

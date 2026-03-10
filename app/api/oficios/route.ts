@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
 import { logger } from "@/lib/logger"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 
 export const revalidate = 60
 
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     const search = (searchParams.get("search") || "").trim()
 
     const where = {
-      userId: session.user.id,
+      ...(canViewAllRecords(session.user.role) ? {} : { userId: session.user.id }),
       ...(search
         ? {
             OR: [

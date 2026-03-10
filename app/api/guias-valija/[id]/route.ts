@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 import { shouldTrackView } from "@/lib/utils"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
 
 export async function GET(
   req: Request,
@@ -16,10 +16,6 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  if (!canDeleteRecords(session.user.role)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
   try {
     const { id } = await params
     const trackView = shouldTrackView(req.url)
@@ -29,7 +25,7 @@ export async function GET(
     const guia = await prisma.guiaValija.findFirst({
       where: {
         id,
-        userId: session.user.id,
+        ...(canViewAllRecords(session.user.role) ? {} : { userId: session.user.id }),
       },
       include: {
         items: {
@@ -70,6 +66,10 @@ export async function DELETE(
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {
