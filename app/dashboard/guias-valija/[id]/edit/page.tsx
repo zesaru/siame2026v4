@@ -58,6 +58,7 @@ export default function EditGuiaValijaPage() {
   const params = useParams()
   const [guia, setGuia] = useState<GuiaValijaDetails | null>(null)
   const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
 
   useEffect(() => {
     const abortController = new AbortController()
@@ -77,17 +78,24 @@ export default function EditGuiaValijaPage() {
         const response = await fetch(`/api/dashboard/guias-valija/${id}`, {
           signal: abortController.signal
         })
+        if (response.status === 404) {
+          if (mounted) {
+            setGuia(null)
+            setNotFound(true)
+          }
+          return
+        }
         if (!response.ok) throw new Error("Error al cargar la guía")
 
         const data = await response.json()
 
         if (mounted) {
           setGuia(data)
+          setNotFound(false)
         }
       } catch (error) {
         if (error instanceof Error && error.name !== 'AbortError') {
-          toast.error("Error al cargar la guía")
-          router.push("/dashboard/guias-valija")
+          toast.error("No se pudo cargar la guía.")
         }
       } finally {
         if (mounted) {
@@ -125,7 +133,12 @@ export default function EditGuiaValijaPage() {
   if (!guia) {
     return (
       <EmptyState
-        title="Guía no encontrada"
+        title={notFound ? "Guía no disponible" : "Guía no encontrada"}
+        message={
+          notFound
+            ? "La guía que intentaste editar ya no existe o el enlace quedó desactualizado."
+            : undefined
+        }
         action={
           <button
             onClick={() => router.push("/dashboard/guias-valija")}
