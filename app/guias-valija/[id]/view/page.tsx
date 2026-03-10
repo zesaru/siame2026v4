@@ -73,6 +73,7 @@ export default function GuiaValijaViewPage() {
   const [error, setError] = useState("")
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("resumen")
+  const [notFound, setNotFound] = useState(false)
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
   const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
@@ -88,14 +89,20 @@ export default function GuiaValijaViewPage() {
   async function fetchGuiaDetails() {
     try {
       const response = await fetch(withTrackView(`/api/guias-valija/${params.id}`, true))
+      if (response.status === 404) {
+        setGuia(null)
+        setNotFound(true)
+        return
+      }
       if (!response.ok) throw new Error("Error al cargar los detalles de la guía")
       const data = await response.json()
       setGuia(data)
+      setNotFound(false)
       if (data.items) {
         setItems(data.items)
       }
     } catch (error) {
-      toast.error("Error al cargar los detalles de la guía")
+      toast.error("No se pudo cargar la guía")
     } finally {
       setLoading(false)
     }
@@ -204,8 +211,14 @@ export default function GuiaValijaViewPage() {
   if (!guia) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-[var(--kt-text-dark)] mb-2">Guía no encontrada</h2>
-        <p className="text-[var(--kt-text-muted)] mb-4">No se pudo cargar la guía de valija solicitada</p>
+        <h2 className="text-xl font-semibold text-[var(--kt-text-dark)] mb-2">
+          {notFound ? "Guía no disponible" : "Guía no encontrada"}
+        </h2>
+        <p className="text-[var(--kt-text-muted)] mb-4">
+          {notFound
+            ? "La guía que intentaste abrir ya no existe o el enlace quedó desactualizado."
+            : "No se pudo cargar la guía de valija solicitada"}
+        </p>
         <Button onClick={() => router.back()}>
           Volver atrás
         </Button>

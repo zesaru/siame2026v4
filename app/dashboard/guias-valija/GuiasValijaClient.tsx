@@ -188,6 +188,26 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
     }
   }
 
+  async function openGuiaFile(filePath: string, numeroGuia: string) {
+    try {
+      const url = `/api/files/${filePath}?inline=true`
+      const response = await fetch(url, {
+        method: "HEAD",
+        cache: "no-store",
+      })
+
+      if (!response.ok) {
+        throw new Error("missing_file")
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer")
+    } catch {
+      toast.error("El PDF de la guía no está disponible.", {
+        description: `La guía ${numeroGuia} sigue registrada, pero su archivo ya no está en almacenamiento.`,
+      })
+    }
+  }
+
   function handleCreate() {
     router.push("/guias-valija/create")
   }
@@ -647,7 +667,7 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
                             variant="ghost"
                             size="sm"
                             aria-label={`Ver archivo de ${guia.numeroGuia}`}
-                            onClick={() => window.open(`/api/files/${guia.filePath}?inline=true`, "_blank")}
+                            onClick={() => openGuiaFile(guia.filePath!, guia.numeroGuia)}
                           >
                             <Icon name="document" size="sm" />
                           </Button>
@@ -807,7 +827,7 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
                                   variant="ghost"
                                   size="sm"
                                   aria-label={`Ver archivo de ${guia.numeroGuia}`}
-                                  onClick={() => window.open(`/api/files/${guia.filePath}?inline=true`, '_blank')}
+                                  onClick={() => openGuiaFile(guia.filePath!, guia.numeroGuia)}
                                   className="gap-2"
                                 >
                                   <Icon name="document" size="sm" />
