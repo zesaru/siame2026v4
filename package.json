@@ -28,7 +28,11 @@
     "security:ops": "npx tsx scripts/security-ops.ts",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@azure/ai-form-recognizer": "^5.1.0",
@@ -86,6 +90,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@prisma/client": "^6.19.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
