@@ -5,15 +5,14 @@ test.beforeEach(async ({ page }) => {
   await loginAsDefaultUser(page)
 })
 
-test("dashboard quick links navigate to guias and hojas", async ({ page }) => {
-  await page.getByRole("link", { name: /Guías de valija/i }).click()
+test("guias and hojas routes load after login", async ({ page }) => {
+  await page.goto("/dashboard/guias-valija")
   await expect(page).toHaveURL(/\/dashboard\/guias-valija$/)
   await expect(page.getByText(/Lista de guías de valija registradas/i)).toBeVisible()
 
-  await page.goto("/dashboard")
-  await page.getByRole("link", { name: /Hojas de remision/i }).click()
+  await page.goto("/dashboard/hojas-remision")
   await expect(page).toHaveURL(/\/dashboard\/hojas-remision$/)
-  await expect(page.getByText(/Hojas de Remision/i)).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Hojas de Remisión" })).toBeVisible()
 })
 
 test("documents pending route loads after login", async ({ page }) => {

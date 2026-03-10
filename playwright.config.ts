@@ -18,7 +18,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
   },
   webServer: {
-    command: "npm run dev",
+    command: "npx next dev --webpack --hostname 127.0.0.1 --port 3000",
     url: `${baseURL}/auth/signin`,
     reuseExistingServer,
     timeout: 120_000,
