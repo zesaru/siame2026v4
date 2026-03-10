@@ -10,6 +10,7 @@ import {
 import { toDocumentDetailDto } from "@/modules/documentos/application/mappers"
 import { parseUpdateDocumentKeyValuePairs } from "@/modules/documentos/application/validation"
 import { PrismaDocumentRepository } from "@/modules/documentos/infrastructure"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export const dynamic = "force-dynamic"
 
@@ -24,6 +25,10 @@ export async function GET(
       { error: "Unauthorized" },
       { status: 401 }
     )
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {

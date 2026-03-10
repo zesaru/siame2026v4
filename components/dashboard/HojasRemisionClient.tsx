@@ -35,10 +35,11 @@ import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/EmptyState"
 import Icon from "@/components/ui/Icon"
 import { toast } from "sonner"
-import type { HojaRemision } from "@prisma/client"
+import type { HojaRemision, Role } from "@prisma/client"
 
 interface HojasRemisionClientProps {
   initialHojas: HojaRemision[]
+  currentUserRole: Role
 }
 
 function getEstadoColor(estado: string) {
@@ -58,12 +59,14 @@ function getEstadoColor(estado: string) {
 
 export default function HojasRemisionClient({
   initialHojas,
+  currentUserRole,
 }: HojasRemisionClientProps) {
   const router = useRouter()
   const [searchTerm, setSearchTerm] = useState("")
   const [yearFilter, setYearFilter] = useState<string>("all")
   const [deleteConfirm, setDeleteConfirm] = useState<HojaRemision | null>(null)
   const [hojas, setHojas] = useState<HojaRemision[]>(initialHojas)
+  const canDelete = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
 
   // Extraer años únicos de las hojas
   const availableYears = useMemo(() => {
@@ -359,16 +362,18 @@ export default function HojasRemisionClient({
                             <Icon name="upload" size="sm" />
                             <span className="hidden lg:inline">Editar</span>
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDelete(hoja)}
-                            title="Eliminar"
-                            className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                          >
-                            <Icon name="trash" size="sm" />
-                            <span className="hidden lg:inline">Eliminar</span>
-                          </Button>
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(hoja)}
+                              title="Eliminar"
+                              className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                            >
+                              <Icon name="trash" size="sm" />
+                              <span className="hidden lg:inline">Eliminar</span>
+                            </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -381,26 +386,28 @@ export default function HojasRemisionClient({
       </Card>
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar Hoja de Remisión</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que deseas eliminar la hoja de remisión <strong>{deleteConfirm?.numeroCompleto}</strong>?
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canDelete && (
+        <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar Hoja de Remisión</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que deseas eliminar la hoja de remisión <strong>{deleteConfirm?.numeroCompleto}</strong>?
+                Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

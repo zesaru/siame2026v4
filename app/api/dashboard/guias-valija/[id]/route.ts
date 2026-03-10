@@ -9,6 +9,7 @@ import {
 import { toGuiaValijaDetailDto } from "@/modules/guias-valija/application/mappers"
 import { parseUpdateGuiaValijaCommand } from "@/modules/guias-valija/application/validation"
 import { PrismaGuiaValijaRepository } from "@/modules/guias-valija/infrastructure"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 // GET - Obtener una guía por ID
 export async function GET(
@@ -19,6 +20,10 @@ export async function GET(
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {

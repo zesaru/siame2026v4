@@ -12,6 +12,7 @@ import {
 import { toHojaRemisionDto } from "@/modules/hojas-remision/application/mappers"
 import { parseUpdateHojaRemisionCommand } from "@/modules/hojas-remision/application/validation"
 import { PrismaHojaRemisionRepository } from "@/modules/hojas-remision/infrastructure"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 // GET /api/hojas-remision/[id] - Obtener hoja de remisión específica
 export async function GET(
@@ -147,6 +148,10 @@ export async function DELETE(
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!canDeleteRecords(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const repository = new PrismaHojaRemisionRepository(prisma)

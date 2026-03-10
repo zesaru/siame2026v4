@@ -124,6 +124,7 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
   const [loading, setLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [showPdf, setShowPdf] = useState(true)
+  const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
   useEffect(() => {
     const controller = new AbortController()
@@ -243,14 +244,16 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirm(true)}
-              className="border-[var(--kt-danger)]/20 text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)]"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Eliminar
-            </Button>
+            {canDelete && (
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirm(true)}
+                className="border-[var(--kt-danger)]/20 text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)]"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -447,22 +450,24 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
         </div>
       </div>
 
-      <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar hoja de remision</AlertDialogTitle>
-            <AlertDialogDescription>
-              Estas a punto de eliminar <strong>{hoja.numeroCompleto}</strong>. Esta accion no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canDelete && (
+        <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar hoja de remision</AlertDialogTitle>
+              <AlertDialogDescription>
+                Estas a punto de eliminar <strong>{hoja.numeroCompleto}</strong>. Esta accion no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={confirmDelete} className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]">
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

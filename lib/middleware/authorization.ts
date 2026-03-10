@@ -90,6 +90,14 @@ export function canAssignRole(actorRole: Role, roleToAssign: Role): boolean {
 }
 
 /**
+ * Check if user can delete records.
+ * Only ADMIN and SUPER_ADMIN can perform destructive delete actions.
+ */
+export function canDeleteRecords(role: Role): boolean {
+  return role === "ADMIN" || role === "SUPER_ADMIN"
+}
+
+/**
  * Require specific roles for an action
  * Throws error if user doesn't have required role
  */
@@ -102,6 +110,21 @@ export async function requireRole(allowedRoles: Role[]): Promise<void> {
 
   if (!hasRole(user.role, allowedRoles)) {
     throw new Error(`Forbidden: Requires one of roles: ${allowedRoles.join(", ")}`)
+  }
+}
+
+/**
+ * Require delete permission for destructive actions.
+ */
+export async function requireDeletePermission(): Promise<void> {
+  const user = await getAuthenticatedUser()
+
+  if (!user) {
+    throw new Error("Unauthorized: No session found")
+  }
+
+  if (!canDeleteRecords(user.role)) {
+    throw new Error("Forbidden: Only admin and superadmin can delete records")
   }
 }
 

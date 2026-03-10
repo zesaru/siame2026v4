@@ -74,6 +74,7 @@ export default function GuiaValijaViewPage() {
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>("resumen")
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
+  const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
   useEffect(() => {
     if (status === "loading") return
@@ -240,14 +241,16 @@ export default function GuiaValijaViewPage() {
                   <Package className="mr-2 h-4 w-4" />
                   Editar Items
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDeleteConfirm(true)}
-                  className="text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)] hover:text-[var(--kt-danger)]"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setDeleteConfirm(true)}
+                    className="text-[var(--kt-danger)] hover:bg-[var(--kt-danger-light)] hover:text-[var(--kt-danger)]"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </>
             ) : (
               <>
@@ -378,26 +381,28 @@ export default function GuiaValijaViewPage() {
       )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar Guía de Valija</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que deseas eliminar la guía de valija <strong>{guia?.numeroGuia}</strong>?
-              Esta acción no se puede deshacer y se eliminarán todos los items y precintos asociados.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canDelete && (
+        <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar Guía de Valija</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que deseas eliminar la guía de valija <strong>{guia?.numeroGuia}</strong>?
+                Esta acción no se puede deshacer y se eliminarán todos los items y precintos asociados.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }
