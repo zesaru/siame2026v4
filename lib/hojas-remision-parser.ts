@@ -21,10 +21,9 @@ export interface ParsedHojaRemisionData {
 }
 
 /**
- * Extrae campos de la primera tabla (DOCUMENTO, ASUNTO, DESTINO)
- * La tabla tiene la estructura:
- * Row 0: [DOCUMENTO, ASUNTO, DESTINO] (headers)
- * Row 1: [valor1, valor2, valor3] (content)
+ * Extrae campos de tablas (DOCUMENTO, ASUNTO, DESTINO)
+ * Busca en TODAS las tablas, no solo la primera
+ * Maneja documentos de múltiples páginas
  */
 function extractFromTables(tables: any[]): {
   documento: string | null
@@ -35,42 +34,63 @@ function extractFromTables(tables: any[]): {
     return { documento: null, asunto: null, destino: null }
   }
 
-  const firstTable = tables[0]
-  if (!firstTable.cells) {
-    return { documento: null, asunto: null, destino: null }
+  // Buscar en todas las tablas
+  for (const table of tables) {
+    if (!table.cells) continue
+
+    // Buscar celdas que contengan los nombres de los campos (en cualquier posición)
+    const docHeader = table.cells.find((c: any) =>
+      c.content?.includes('DOCUMENTO') && c.rowIndex === 0
+    )
+    const asuntoHeader = table.cells.find((c: any) =>
+      c.content?.includes('ASUNTO') && c.rowIndex === 0
+    )
+    const destHeader = table.cells.find((c: any) =>
+      (c.content?.includes('DESTINO') || c.content?.includes('DIRIGIDO A')) && c.rowIndex === 0
+    )
+
+    // Si encontramos al menos 2 de las 3 cabeceras en esta tabla, usarla
+    if (docHeader && asuntoHeader) {
+      // Buscar valores en la fila siguiente (rowIndex = 1) o en filas cercanas
+      const docCol = docHeader.columnIndex
+      const asuntoCol = asuntoHeader.columnIndex
+      const destCol = destHeader?.columnIndex
+
+      // Buscar contenido en las filas siguientes (hasta rowIndex 3 para ser flexibles)
+      const documento = table.cells.find((c: any) =>
+        c.columnIndex === docCol && c.rowIndex >= 1 && c.rowIndex <= 3 && c.content?.trim()
+      )
+      const asunto = table.cells.find((c: any) =>
+        c.columnIndex === asuntoCol && c.rowIndex >= 1 && c.rowIndex <= 3 && c.content?.trim()
+      )
+      const destino = destCol !== undefined
+        ? table.cells.find((c: any) =>
+            c.columnIndex === destCol && c.rowIndex >= 1 && c.rowIndex <= 3 && c.content?.trim()
+          )
+        : null
+
+      if (documento || asunto) {
+        if (process.env.NODE_ENV === 'development') {
+          console.log('\n📋 [EXTRACT FROM TABLES]')
+          console.log(`   Tabla encontrada con ${table.rowCount} filas`)
+          console.log(`   DOCUMENTO: ${documento?.content || 'No encontrado'}`)
+          console.log(`   ASUNTO: ${asunto?.content?.substring(0, 50) || 'No encontrado'}${asunto?.content?.length > 50 ? '...' : ''}`)
+          console.log(`   DESTINO: ${destino?.content || 'No encontrado'}`)
+        }
+        return {
+          documento: documento?.content?.trim() || null,
+          asunto: asunto?.content?.trim() || null,
+          destino: destino?.content?.trim() || null,
+        }
+      }
+    }
   }
 
-  // Buscar cabeceras para identificar columnas
-  const headerCells = firstTable.cells.filter((cell: any) => cell.kind === 'columnHeader')
-
-  // Mapeo de columnas por contenido del header
-  const docCol = headerCells.find((c: any) => c.content?.includes('DOCUMENTO'))
-  const asuntoCol = headerCells.find((c: any) => c.content?.includes('ASUNTO'))
-  const destCol = headerCells.find((c: any) => c.content?.includes('DESTINO'))
-
-  // Buscar celdas de contenido en la misma columna pero en fila siguiente
-  const documento = docCol
-    ? firstTable.cells.find((c: any) => c.kind === 'content' && c.columnIndex === docCol.columnIndex && c.rowIndex === 1)
-    : null
-  const asunto = asuntoCol
-    ? firstTable.cells.find((c: any) => c.kind === 'content' && c.columnIndex === asuntoCol.columnIndex && c.rowIndex === 1)
-    : null
-  const destino = destCol
-    ? firstTable.cells.find((c: any) => c.kind === 'content' && c.columnIndex === destCol.columnIndex && c.rowIndex === 1)
-    : null
-
+  // Si no se encontró en ninguna tabla con el formato esperado
   if (process.env.NODE_ENV === 'development') {
-    console.log('\n📋 [EXTRACT FROM TABLES]')
-    console.log(`   DOCUMENTO: ${documento?.content || 'No encontrado'}`)
-    console.log(`   ASUNTO: ${asunto?.content?.substring(0, 50) || 'No encontrado'}${asunto?.content?.length > 50 ? '...' : ''}`)
-    console.log(`   DESTINO: ${destino?.content || 'No encontrado'}`)
+    console.log('\n⚠️ [EXTRACT FROM TABLES] No se encontró tabla con formato esperado')
   }
-
-  return {
-    documento: documento?.content?.trim() || null,
-    asunto: asunto?.content?.trim() || null,
-    destino: destino?.content?.trim() || null,
-  }
+  return { documento: null, asunto: null, destino: null }
 }
 
 /**
@@ -156,8 +176,37 @@ export async function parseHojaRemisionFromAzure(
 
   // 3. Priorizar datos de tabla sobre keyValuePairs
   const documento = tableData.documento || findKeyValue(keyValuePairs, 'DOCUMENTO')
-  const asunto = tableData.asunto || findKeyValue(keyValuePairs, 'ASUNTO')
-  const destino = tableData.destino || findKeyValue(keyValuePairs, 'DESTINO')
+
+  // Para ASUNTO: primero intentar tabla, luego buscar en keyValuePairs,
+  // y finalmente extraer del content si no se encontró
+  let asunto = tableData.asunto || findKeyValue(keyValuePairs, 'ASUNTO')
+
+  // Si el asunto es "ASUNTO" (error de Azure), buscar en el contenido
+  if (!asunto || asunto === 'ASUNTO' || asunto.length < 10) {
+    // Buscar en el contenido el texto que describe los items
+    // Generalmente comienza con "Se remite" o similar
+    const asuntoMatch = content?.match(/Se remite[^.]*\./i)
+    if (asuntoMatch) {
+      asunto = asuntoMatch[0].trim()
+    } else {
+      // Si no, buscar el primer texto largo después de "DOCUMENTO" en el contenido
+      const lines = content?.split('\n') || []
+      for (const line of lines) {
+        if (line.length > 50 && !line.includes('MINISTERIO') && !line.includes('DIRECCIÓN')) {
+          asunto = line.trim()
+          break
+        }
+      }
+    }
+  }
+
+  // Para DESTINO: usar "PARA" o buscar clave válida (ignorar el error DESTINO=ASUNTO)
+  let destino = tableData.destino || findKeyValue(keyValuePairs, 'DESTINO')
+
+  // Si el destino es "ASUNTO" (error de Azure), usar "PARA" como fallback
+  if (!destino || destino === 'ASUNTO' || destino.length < 5) {
+    destino = para || null
+  }
 
   // Calcular confidence scores
   const hasHojaRemisionPair = !!hojaRemisionPair
