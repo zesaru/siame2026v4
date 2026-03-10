@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import Icon from "@/components/ui/Icon"
 import GuiaValijaItems from "./GuiaValijaItems"
+import PDFViewer from "./PDFViewer"
 import { toast } from "sonner"
 import { ArrowLeft, Save, X, AlertCircle, Upload, FileText, Eye, ChevronDown, ChevronUp } from "lucide-react"
 import { guiaValijaSchema, GuiaValijaFormData } from "@/lib/schemas/guia-valija"
@@ -51,6 +52,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
   const [isUploadingPdf, setIsUploadingPdf] = useState(false)
   const [currentFilePath, setCurrentFilePath] = useState<string | null>(guia?.filePath || null)
   const [showPdfPreview, setShowPdfPreview] = useState(true)
+  const [pdfAvailable, setPdfAvailable] = useState<boolean | null>(guia?.filePath ? null : false)
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
   const pdfInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -106,6 +108,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
 
   useEffect(() => {
     setCurrentFilePath(guia?.filePath || null)
+    setPdfAvailable(guia?.filePath ? null : false)
   }, [guia?.filePath])
 
   // Confirmación de cambios no guardados
@@ -189,6 +192,7 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
       }
 
       setCurrentFilePath(result.filePath || null)
+      setPdfAvailable(result.filePath ? null : false)
       setSelectedPdf(null)
       if (pdfInputRef.current) {
         pdfInputRef.current.value = ""
@@ -263,10 +267,17 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => window.open(`/api/files/${currentFilePath}?inline=true`, "_blank")}
+                disabled={pdfAvailable === false}
+                onClick={() => {
+                  if (pdfAvailable === false) {
+                    toast.error("El PDF asociado no está disponible en almacenamiento.")
+                    return
+                  }
+                  window.open(`/api/files/${currentFilePath}?inline=true`, "_blank")
+                }}
               >
                 <Eye className="mr-2 h-4 w-4" />
-                Ver PDF
+                {pdfAvailable === false ? "PDF no disponible" : "Ver PDF"}
               </Button>
             </div>
           ) : (
@@ -339,11 +350,15 @@ export default function GuiaValijaEditableForm({ guia, onSuccess, onCancel }: Gu
           </CardHeader>
           {showPdfPreview && (
             <CardContent className="pt-0">
-              <iframe
-                src={`/api/files/${currentFilePath}?inline=true`}
-                title="Vista previa del PDF de la guía"
-                className="h-[62vh] w-full rounded-md border"
-              />
+              <div className="h-[62vh]">
+                <PDFViewer
+                  file={null}
+                  src={`/api/files/${currentFilePath}?inline=true`}
+                  emptyMessage="Esta guía todavía no tiene PDF adjunto."
+                  missingMessage="El PDF de esta guía ya no está disponible en almacenamiento."
+                  onAvailabilityChange={setPdfAvailable}
+                />
+              </div>
             </CardContent>
           )}
             </Card>

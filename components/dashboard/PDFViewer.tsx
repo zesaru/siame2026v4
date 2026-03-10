@@ -5,26 +5,84 @@ import { useEffect, useState } from "react"
 interface PDFViewerProps {
   file: File | null
   src?: string | null
+  emptyMessage?: string
+  missingMessage?: string
+  onAvailabilityChange?: (available: boolean) => void
 }
 
-export default function PDFViewer({ file, src }: PDFViewerProps) {
+export default function PDFViewer({
+  file,
+  src,
+  emptyMessage = "Sube un PDF para ver el preview",
+  missingMessage = "Archivo no disponible en almacenamiento",
+  onAvailabilityChange,
+}: PDFViewerProps) {
   const [viewerUrl, setViewerUrl] = useState<string | null>(src ?? null)
   const [error, setError] = useState<string | null>(null)
+  const [isChecking, setIsChecking] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
     if (file) {
       const url = URL.createObjectURL(file)
       setViewerUrl(url)
       setError(null)
+       setIsChecking(false)
+      onAvailabilityChange?.(true)
 
       return () => {
         URL.revokeObjectURL(url)
       }
     }
 
-    setViewerUrl(src ?? null)
-    setError(null)
-  }, [file, src])
+    if (!src) {
+      setViewerUrl(null)
+      setError(null)
+      setIsChecking(false)
+      onAvailabilityChange?.(false)
+      return
+    }
+
+    const verifySource = async () => {
+      setIsChecking(true)
+      setError(null)
+
+      try {
+        const response = await fetch(src, {
+          method: "HEAD",
+          cache: "no-store",
+          credentials: "same-origin",
+        })
+
+        if (!response.ok) {
+          throw new Error(missingMessage)
+        }
+
+        if (!cancelled) {
+          setViewerUrl(src)
+          onAvailabilityChange?.(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setViewerUrl(null)
+          setError(missingMessage)
+          onAvailabilityChange?.(false)
+        }
+      } finally {
+        if (!cancelled) {
+          setIsChecking(false)
+        }
+      }
+    }
+
+    setViewerUrl(null)
+    void verifySource()
+
+    return () => {
+      cancelled = true
+    }
+  }, [file, src, missingMessage, onAvailabilityChange])
 
   if (!file && !src) {
     return (
@@ -44,7 +102,7 @@ export default function PDFViewer({ file, src }: PDFViewerProps) {
             />
           </svg>
           <p className="mt-2 text-sm text-[var(--kt-text-muted)]">
-            Sube un PDF para ver el preview
+            {emptyMessage}
           </p>
         </div>
       </div>
@@ -63,7 +121,11 @@ export default function PDFViewer({ file, src }: PDFViewerProps) {
 
   return (
     <div className="h-full border border-[var(--kt-gray-200)] rounded-lg overflow-hidden">
-      {viewerUrl ? (
+      {isChecking ? (
+        <div className="h-full flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[var(--kt-primary)] border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      ) : viewerUrl ? (
         <iframe
           src={viewerUrl}
           className="w-full h-full"

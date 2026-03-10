@@ -402,6 +402,29 @@ class FileStorageService {
   }
 
   /**
+   * Checks whether a file exists in storage without reading its contents
+   */
+  async fileExists(relativePath: string): Promise<boolean> {
+    try {
+      const normalizedPath = relativePath.replace(/\//g, path.sep)
+      const absolutePath = path.join(this.config.rootPath, normalizedPath)
+
+      const resolvedRoot = path.resolve(this.config.rootPath)
+      const resolvedAbsolute = path.resolve(absolutePath)
+
+      if (!resolvedAbsolute.startsWith(resolvedRoot)) {
+        throw new Error('Path traversal attempt detected')
+      }
+
+      await fs.access(absolutePath, constants.F_OK)
+      return true
+    } catch (error) {
+      console.error(`[FileStorage] File not available: ${relativePath}`, error)
+      return false
+    }
+  }
+
+  /**
    * Deletes a file securely
    */
   async deleteFile(relativePath: string): Promise<boolean> {
