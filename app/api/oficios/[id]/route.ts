@@ -4,6 +4,9 @@ import { prisma } from "@/lib/db"
 import { logger } from "@/lib/logger"
 import { shouldTrackView } from "@/lib/utils"
 import { extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export async function GET(
   req: NextRequest,
@@ -13,6 +16,10 @@ export async function GET(
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {
@@ -76,6 +83,10 @@ export async function PUT(
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {
@@ -150,6 +161,10 @@ export async function DELETE(
   const session = await auth()
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {

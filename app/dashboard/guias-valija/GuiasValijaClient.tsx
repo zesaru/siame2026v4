@@ -44,6 +44,7 @@ import { exportToCSV, exportToExcel, getExportFilename } from "@/lib/utils/expor
 import type { DashboardGuiaValijaListItem } from "@/modules/guias-valija/application/dto"
 import { toast } from "sonner"
 import { Boxes, CheckCircle2, Gauge, Send } from "lucide-react"
+import type { Role } from "@prisma/client"
 
 // Estado mapping for better badge styling
 const estadoVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -62,9 +63,10 @@ const estadoLabels: Record<string, string> = {
 
 interface GuiasValijaClientProps {
   initialGuias: DashboardGuiaValijaListItem[]
+  currentUserRole: Role
 }
 
-export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientProps) {
+export default function GuiasValijaClient({ initialGuias, currentUserRole }: GuiasValijaClientProps) {
   const router = useRouter()
   const pathname = usePathname()
   const urlSearchParams = useSearchParams()
@@ -81,6 +83,7 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
   // Form states - Removed, now using separate pages
   const [deleteConfirm, setDeleteConfirm] = useState<DashboardGuiaValijaListItem | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const canDelete = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
 
   const filteredGuias = useMemo(() => {
     const term = deferredSearchTerm.trim().toLowerCase()
@@ -649,15 +652,17 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                             <Icon name="document" size="sm" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Eliminar guía ${guia.numeroGuia}`}
-                          onClick={() => handleDelete(guia)}
-                          className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                        >
-                          <Icon name="trash" size="sm" />
-                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Eliminar guía ${guia.numeroGuia}`}
+                            onClick={() => handleDelete(guia)}
+                            className="text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                          >
+                            <Icon name="trash" size="sm" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -815,23 +820,25 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
                             </Tooltip>
                           )}
 
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`Eliminar guía ${guia.numeroGuia}`}
-                                onClick={() => handleDelete(guia)}
-                                className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                              >
-                                <Icon name="trash" size="sm" />
-                                <span className="hidden xl:inline">Eliminar</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Eliminar guía {guia.numeroGuia} (no se puede deshacer)</p>
-                            </TooltipContent>
-                          </Tooltip>
+                          {canDelete && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  aria-label={`Eliminar guía ${guia.numeroGuia}`}
+                                  onClick={() => handleDelete(guia)}
+                                  className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                                >
+                                  <Icon name="trash" size="sm" />
+                                  <span className="hidden xl:inline">Eliminar</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Eliminar guía {guia.numeroGuia} (no se puede deshacer)</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -858,26 +865,28 @@ export default function GuiasValijaClient({ initialGuias }: GuiasValijaClientPro
       {/* Form Dialog - Removed, now using separate pages */}
 
       {/* Delete Confirmation */}
-      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar Guía</AlertDialogTitle>
-            <AlertDialogDescription>
-              ¿Estás seguro de que deseas eliminar la guía <strong>{deleteConfirm?.numeroGuia}</strong>?
-              Esta acción no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
-            >
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canDelete && (
+        <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar Guía</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Estás seguro de que deseas eliminar la guía <strong>{deleteConfirm?.numeroGuia}</strong>?
+                Esta acción no se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
+              >
+                Eliminar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

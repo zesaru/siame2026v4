@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useDeferredValue, useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { logger } from "@/lib/logger"
 import type { DocumentListItemDto, DocumentsListResponseDto } from "@/modules/documentos/application/dto"
 
@@ -39,6 +40,7 @@ export default function DocumentHistory({
   onStateChange,
   onClose
 }: DocumentHistoryProps) {
+  const { data: session } = useSession()
   const [documents, setDocuments] = useState<DocumentHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(initialPage)
@@ -48,6 +50,7 @@ export default function DocumentHistory({
   const [typeFilter, setTypeFilter] = useState<"all" | "guia_valija" | "hoja_remision" | "oficio">(initialTypeFilter)
   const deferredSearch = useDeferredValue(search)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
   const fetchDocuments = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -286,13 +289,15 @@ export default function DocumentHistory({
                           Verificar
                         </button>
                       )}
-                      <button
-                        onClick={() => deleteDocument(doc.id)}
-                        disabled={deletingId === doc.id}
-                        className="text-red-600 hover:text-red-900 disabled:opacity-50"
-                      >
-                        {deletingId === doc.id ? "Deleting..." : "Delete"}
-                      </button>
+                      {canDelete && (
+                        <button
+                          onClick={() => deleteDocument(doc.id)}
+                          disabled={deletingId === doc.id}
+                          className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                        >
+                          {deletingId === doc.id ? "Deleting..." : "Delete"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

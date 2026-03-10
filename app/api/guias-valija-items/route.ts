@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { prisma } from "@/lib/db"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 60
@@ -131,6 +132,10 @@ export async function DELETE(req: NextRequest) {
     const session = await getServerSession()
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (!canDeleteRecords(session.user.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const body = await req.json().catch(() => ({}))

@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -31,12 +32,14 @@ interface OficioDetail {
 }
 
 export default function EditOficioPage() {
+  const { data: session } = useSession()
   const params = useParams<{ id: string }>()
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
   const [form, setForm] = useState({
     numeroOficio: "",
     asunto: "",
@@ -186,35 +189,39 @@ export default function EditOficioPage() {
             <Button variant="outline" onClick={() => router.push(`/dashboard/oficios/${params.id}/view`)} disabled={saving || deleting}>
               Cancelar
             </Button>
-            <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} disabled={saving || deleting}>
-              {deleting ? "Eliminando..." : "Eliminar"}
-            </Button>
+            {canDelete && (
+              <Button variant="destructive" onClick={() => setDeleteDialogOpen(true)} disabled={saving || deleting}>
+                {deleting ? "Eliminando..." : "Eliminar"}
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Eliminar oficio</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará el oficio permanentemente. No se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleDelete()
-              }}
-              disabled={deleting}
-            >
-              {deleting ? "Eliminando..." : "Confirmar eliminación"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {canDelete && (
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Eliminar oficio</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta acción eliminará el oficio permanentemente. No se puede deshacer.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  handleDelete()
+                }}
+                disabled={deleting}
+              >
+                {deleting ? "Eliminando..." : "Confirmar eliminación"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   )
 }

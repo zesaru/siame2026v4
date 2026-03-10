@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 import { shouldTrackView } from "@/lib/utils"
+import { canDeleteRecords } from "@/lib/middleware/authorization"
 
 export async function GET(
   req: Request,
@@ -13,6 +14,10 @@ export async function GET(
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
   try {

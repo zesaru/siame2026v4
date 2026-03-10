@@ -17,5 +17,5 @@ export default async function Page() {
   }
 
   const hojas = await getHojasRemision(session.user.id)
-  return <HojasRemisionClient initialHojas={hojas} />
+  return <HojasRemisionClient initialHojas={hojas} currentUserRole={session.user.role} />
 }

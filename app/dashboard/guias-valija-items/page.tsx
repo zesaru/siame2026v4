@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -103,6 +104,7 @@ function formatWeight(weight?: number) {
 }
 
 export default function GuiaValijaItemsPage() {
+  const { data: session } = useSession()
   const router = useRouter()
   const [items, setItems] = useState<GuiaValijaItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,6 +116,7 @@ export default function GuiaValijaItemsPage() {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
   const [filters, setFilters] = useState({
     fechaDesde: "",
     fechaHasta: "",
@@ -452,7 +455,7 @@ export default function GuiaValijaItemsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {selectedCount > 0 && (
+            {canDelete && selectedCount > 0 && (
               <Button
                 variant="outline"
                 onClick={handleBulkDeleteSelected}
@@ -818,19 +821,21 @@ export default function GuiaValijaItemsPage() {
                               <Pencil className="h-4 w-4" />
                               <span className="hidden lg:inline">Editar</span>
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteItem(item)}
-                              title="Eliminar item"
-                              disabled={deletingItemId === item.id || bulkDeleting}
-                              className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="hidden lg:inline">
-                                {deletingItemId === item.id ? "Eliminando..." : "Eliminar"}
-                              </span>
-                            </Button>
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteItem(item)}
+                                title="Eliminar item"
+                                disabled={deletingItemId === item.id || bulkDeleting}
+                                className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="hidden lg:inline">
+                                  {deletingItemId === item.id ? "Eliminando..." : "Eliminar"}
+                                </span>
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
