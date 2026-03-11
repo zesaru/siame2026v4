@@ -10,6 +10,7 @@ Dejar una base de pruebas E2E estable para validar los flujos críticos del sist
 - navegacion a hojas de remision
 - acceso a documentos pendientes
 - visibilidad de acciones por rol
+- acceso a pantallas administrativas por rol
 - carga por lote de guias
 - guardado mockeado del lote
 
@@ -29,10 +30,12 @@ Valores por defecto:
 - `E2E_ADMIN_EMAIL=admin@siame.com`
 - `E2E_ADMIN_PASSWORD=temp123`
 
-Variables opcionales para cubrir permisos de usuario comun:
+Variables opcionales para ampliar cobertura por rol:
 
 - `E2E_USER_EMAIL`
 - `E2E_USER_PASSWORD`
+- `E2E_SUPER_ADMIN_EMAIL`
+- `E2E_SUPER_ADMIN_PASSWORD`
 
 Archivo de referencia:
 
@@ -62,7 +65,7 @@ pnpm run test:e2e:headed
 - Si no existe uno, Playwright arranca `next dev` con `webpack`.
 - Los reportes HTML quedan en `playwright-report/`.
 - Los artefactos temporales quedan en `test-results/`.
-- El test de `USER` queda en `skip` si no existen `E2E_USER_EMAIL` y `E2E_USER_PASSWORD`.
+- Los tests de `USER` y `SUPER_ADMIN` quedan en `skip` si faltan sus credenciales.
 - Los tests avanzados de lote mockean el backend para validar UI sin depender de Azure.
 
 ## Suite actual

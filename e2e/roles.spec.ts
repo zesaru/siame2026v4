@@ -19,6 +19,24 @@ test("admin sees delete actions on guias and hojas lists", async ({ page }) => {
   }
 })
 
+test("admin can access users management page", async ({ page }) => {
+  await loginAsRole(page, "ADMIN")
+
+  await page.goto("/dashboard/usuarios")
+  await expect(page).toHaveURL(/\/dashboard\/usuarios$/)
+  await expect(page.getByRole("heading", { name: /Gestión de Usuarios/i })).toBeVisible()
+})
+
+test("super admin can access audit logs page", async ({ page }) => {
+  test.skip(!hasRoleCredentials("SUPER_ADMIN"), "E2E_SUPER_ADMIN_EMAIL/E2E_SUPER_ADMIN_PASSWORD no configurados")
+
+  await loginAsRole(page, "SUPER_ADMIN")
+
+  await page.goto("/dashboard/audit-logs")
+  await expect(page).toHaveURL(/\/dashboard\/audit-logs$/)
+  await expect(page.getByText(/Registros de Auditoría|Auditoría/i).first()).toBeVisible()
+})
+
 test("user cannot see delete actions and cannot access users admin page", async ({ page }) => {
   test.skip(!hasRoleCredentials("USER"), "E2E_USER_EMAIL/E2E_USER_PASSWORD no configurados")
 
