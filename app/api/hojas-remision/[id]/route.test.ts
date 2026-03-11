@@ -129,3 +129,47 @@ describe("PUT /api/hojas-remision/[id]", () => {
     await expect(res.json()).resolves.toEqual({ error: "Hoja de remisión no encontrada" })
   })
 })
+
+describe("DELETE /api/hojas-remision/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("allows admin to delete another user's hoja", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } })
+    findFirstMock.mockResolvedValue({ id: "h1", userId: "owner-1" })
+    deleteUseCaseExecuteMock.mockResolvedValue({
+      ok: true,
+      value: { status: "deleted" },
+    })
+
+    const { DELETE } = await import("./route")
+    const req = new Request("http://localhost/api/hojas-remision/h1", {
+      method: "DELETE",
+    }) as unknown as NextRequest
+    const res = await DELETE(req, { params: Promise.resolve({ id: "h1" }) })
+
+    expect(findFirstMock).toHaveBeenCalledWith({
+      where: { id: "h1" },
+      select: { id: true, userId: true },
+    })
+    expect(deleteUseCaseExecuteMock).toHaveBeenCalledWith("h1", "owner-1")
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ success: true })
+  })
+
+  it("returns 404 when regular user targets another user's hoja", async () => {
+    authMock.mockResolvedValue({ user: { id: "user-1", role: "USER" } })
+
+    const { DELETE } = await import("./route")
+    const req = new Request("http://localhost/api/hojas-remision/h1", {
+      method: "DELETE",
+    }) as unknown as NextRequest
+    const res = await DELETE(req, { params: Promise.resolve({ id: "h1" }) })
+
+    expect(findFirstMock).not.toHaveBeenCalled()
+    expect(deleteUseCaseExecuteMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Forbidden" })
+  })
+})

@@ -1,4 +1,6 @@
-import { auth } from "@/lib/auth"
+import { auth } from "@/lib/auth-v4"
+import { prisma } from "@/lib/db"
+import { canViewAllRecords } from "@/lib/middleware/authorization"
 import { redirect } from "next/navigation"
 import type { Metadata } from "next"
 import HojaRemisionViewClient from "./HojaRemisionViewClient"
@@ -24,9 +26,12 @@ export default async function HojaRemisionViewPage(
   }
 
   const { id: hojaId } = await params
+  const isAdmin = canViewAllRecords(session.user.role)
+  const initialHoja = await prisma.hojaRemision.findFirst({
+    where: isAdmin ? { id: hojaId } : { id: hojaId, userId: session.user.id },
+  })
 
-  // Pass session and ID to client component
   return (
-    <HojaRemisionViewClient session={session} hojaId={hojaId} />
+    <HojaRemisionViewClient session={session} hojaId={hojaId} initialHoja={initialHoja} />
   )
 }

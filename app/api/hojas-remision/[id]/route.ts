@@ -149,9 +149,19 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    const isAdmin = canViewAllRecords(session.user.role)
+    const existing = await prisma.hojaRemision.findFirst({
+      where: isAdmin ? { id } : { id, userId: session.user.id },
+      select: { id: true, userId: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Hoja de remisión no encontrada" }, { status: 404 })
+    }
+
     const repository = new PrismaHojaRemisionRepository(prisma)
     const useCase = new DeleteHojaRemisionUseCase(repository)
-    const result = await useCase.execute(id, session.user.id)
+    const result = await useCase.execute(id, isAdmin ? existing.userId : session.user.id)
 
     if (!result.ok) {
       console.error("Error deleting hoja de remision:", result.error)

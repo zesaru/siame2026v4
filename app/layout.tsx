@@ -4,11 +4,14 @@ import { Providers } from "@/components/providers";
 import { ToasterProvider } from "@/components/providers/toaster";
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/icon.svg",
+  },
   title: {
-    default: "SIAME 2026 - Sistema Inteligente para Misiones diplomáticas",
+    default: "SIAME 2026",
     template: "%s | SIAME 2026",
   },
-  description: "Plataforma integral de gestión documental con inteligencia artificial para el procesamiento automático de Guías de Valija y Hojas de Remisión. Potenciado por Azure AI.",
+  description: "Plataforma integral de gestión documental para la gestión de Guías de Valija, Hojas de Remisión y documentos institucionales.",
   keywords: ["SIAME", "gestión documental", "inteligencia artificial", "Azure AI", "valija diplomática", "misiones diplomáticas", "documentos"],
   authors: [{ name: "SIAME Team" }],
   creator: "SIAME 2026",
@@ -17,14 +20,14 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_ES",
     url: "https://siame2026.com",
-    title: "SIAME 2026 - Sistema Inteligente para Misiones diplomáticas",
-    description: "Plataforma integral de gestión documental con inteligencia artificial",
+    title: "SIAME 2026",
+    description: "Plataforma integral de gestión documental institucional",
     siteName: "SIAME 2026",
   },
   twitter: {
     card: "summary_large_image",
-    title: "SIAME 2026 - Sistema Inteligente para Misiones diplomáticas",
-    description: "Plataforma integral de gestión documental con inteligencia artificial",
+    title: "SIAME 2026",
+    description: "Plataforma integral de gestión documental institucional",
   },
 };
 
