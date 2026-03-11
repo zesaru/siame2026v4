@@ -28,6 +28,7 @@ import {
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import PDFViewer from "@/components/dashboard/PDFViewer"
 import { withTrackView } from "@/lib/utils"
+import { HOJA_REMISION_STATUS, normalizeHojaRemisionEstado } from "@/lib/hoja-remision-status"
 import { toast } from "sonner"
 import {
   ArrowLeft,
@@ -85,49 +86,49 @@ function formatRichTextAsPlainText(value: string) {
 }
 
 function getEstadoConfig(estado: string) {
-  const key = estado.toLowerCase()
+  const key = normalizeHojaRemisionEstado(estado)
 
   const config = {
-    borrador: {
-      label: "Borrador",
+    [HOJA_REMISION_STATUS.PENDING_REVIEW]: {
+      label: "SIN REVISAR",
       className: "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]",
       icon: <FileText className="h-3.5 w-3.5" />,
     },
-    enviada: {
-      label: "Enviada",
-      className: "bg-[var(--kt-info-light)] text-[var(--kt-info)]",
-      icon: <Send className="h-3.5 w-3.5" />,
-    },
-    recibida: {
-      label: "Recibida",
+    [HOJA_REMISION_STATUS.REVIEWED]: {
+      label: "REVISADA",
       className: "bg-[var(--kt-success-light)] text-[var(--kt-success)]",
       icon: <CheckCircle className="h-3.5 w-3.5" />,
     },
-    anulada: {
-      label: "Anulada",
-      className: "bg-[var(--kt-danger-light)] text-[var(--kt-danger)]",
-      icon: <XCircle className="h-3.5 w-3.5" />,
-    },
   }
 
-  return config[key as keyof typeof config] || config.borrador
+  return config[key as keyof typeof config] || config[HOJA_REMISION_STATUS.PENDING_REVIEW]
 }
 
 interface HojaRemisionViewClientProps {
   session: any
   hojaId: string
+  initialHoja?: HojaRemisionDetails | null
 }
 
-export default function HojaRemisionViewClient({ session, hojaId }: HojaRemisionViewClientProps) {
+export default function HojaRemisionViewClient({
+  session,
+  hojaId,
+  initialHoja = null,
+}: HojaRemisionViewClientProps) {
   const router = useRouter()
-  const [hoja, setHoja] = useState<HojaRemisionDetails | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [hoja, setHoja] = useState<HojaRemisionDetails | null>(initialHoja)
+  const [loading, setLoading] = useState(!initialHoja)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
   const [showPdf, setShowPdf] = useState(true)
   const [pdfAvailable, setPdfAvailable] = useState<boolean | null>(null)
   const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
   useEffect(() => {
+    if (initialHoja) {
+      setPdfAvailable(initialHoja.filePath ? null : false)
+      return
+    }
+
     const controller = new AbortController()
     let mounted = true
 
@@ -175,7 +176,10 @@ export default function HojaRemisionViewClient({ session, hojaId }: HojaRemision
     }
   }
 
-  const estadoConfig = useMemo(() => getEstadoConfig(hoja?.estado || "borrador"), [hoja?.estado])
+  const estadoConfig = useMemo(
+    () => getEstadoConfig(hoja?.estado || HOJA_REMISION_STATUS.PENDING_REVIEW),
+    [hoja?.estado]
+  )
 
   if (loading) {
     return (

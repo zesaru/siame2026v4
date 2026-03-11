@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
+import { HOJA_REMISION_STATUS, normalizeHojaRemisionEstado } from "@/lib/hoja-remision-status"
 import { logger } from "@/lib/logger"
 
 export interface HojaRemisionFormData {
@@ -57,7 +58,7 @@ export default function HojaRemisionForm({
     asunto: initialData?.asunto || "",
     destino: initialData?.destino || "",
     peso: initialData?.peso || undefined,
-    estado: "borrador",
+    estado: normalizeHojaRemisionEstado(initialData?.estado),
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -77,7 +78,7 @@ export default function HojaRemisionForm({
       asunto: initialData.asunto || "",
       destino: initialData.destino || "",
       peso: initialData.peso || undefined,
-      estado: initialData.estado || "borrador",
+      estado: normalizeHojaRemisionEstado(initialData.estado),
     })
   }, [initialData])
 
@@ -389,10 +390,8 @@ export default function HojaRemisionForm({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="borrador">Borrador</SelectItem>
-                  <SelectItem value="enviada">Enviada</SelectItem>
-                  <SelectItem value="recibida">Recibida</SelectItem>
-                  <SelectItem value="anulada">Anulada</SelectItem>
+                  <SelectItem value={HOJA_REMISION_STATUS.PENDING_REVIEW}>SIN REVISAR</SelectItem>
+                  <SelectItem value={HOJA_REMISION_STATUS.REVIEWED}>REVISADA</SelectItem>
                 </SelectContent>
               </Select>
             </div>

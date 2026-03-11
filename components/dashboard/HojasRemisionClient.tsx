@@ -36,6 +36,7 @@ import { EmptyState } from "@/components/ui/EmptyState"
 import Icon from "@/components/ui/Icon"
 import { toast } from "sonner"
 import type { HojaRemision, Role } from "@prisma/client"
+import { HOJA_REMISION_STATUS, normalizeHojaRemisionEstado } from "@/lib/hoja-remision-status"
 
 interface HojasRemisionClientProps {
   initialHojas: HojaRemision[]
@@ -43,15 +44,11 @@ interface HojasRemisionClientProps {
 }
 
 function getEstadoColor(estado: string) {
-  switch (estado.toLowerCase()) {
-    case "borrador":
+  switch (normalizeHojaRemisionEstado(estado)) {
+    case HOJA_REMISION_STATUS.PENDING_REVIEW:
       return "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]"
-    case "enviada":
-      return "bg-blue-100 text-blue-700"
-    case "recibida":
+    case HOJA_REMISION_STATUS.REVIEWED:
       return "bg-[var(--kt-success-light)] text-[var(--kt-success)]"
-    case "anulada":
-      return "bg-[var(--kt-danger-light)] text-[var(--kt-danger)]"
     default:
       return "bg-[var(--kt-gray-200)] text-[var(--kt-gray-700)]"
   }
@@ -337,7 +334,7 @@ export default function HojasRemisionClient({
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Badge className={getEstadoColor(hoja.estado)}>
-                          {hoja.estado}
+                          {normalizeHojaRemisionEstado(hoja.estado)}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">

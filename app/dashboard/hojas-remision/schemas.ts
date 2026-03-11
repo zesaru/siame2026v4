@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { HOJA_REMISION_STATUS } from "@/lib/hoja-remision-status"
 
 /**
  * Schema de validación para Hoja de Remisión
@@ -17,7 +18,7 @@ export const hojaRemisionSchema = z.object({
   asunto: z.string().min(1, "Asunto es requerido"),
   destino: z.string().min(1, "Destino es requerido"),
   peso: z.number().positive().optional(),
-  estado: z.enum(["borrador", "enviada", "recibida", "anulada"]).default("borrador"),
+  estado: z.enum([HOJA_REMISION_STATUS.PENDING_REVIEW, HOJA_REMISION_STATUS.REVIEWED]).default(HOJA_REMISION_STATUS.PENDING_REVIEW),
 })
 
 /**
