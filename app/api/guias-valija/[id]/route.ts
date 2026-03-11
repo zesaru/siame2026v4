@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { logDocumentView, extractIpAddress, extractUserAgent } from "@/lib/services/file-audit.service"
 import { shouldTrackView } from "@/lib/utils"
-import { canDeleteRecords } from "@/lib/middleware/authorization"
+import { canDeleteRecords, canViewAllRecords } from "@/lib/middleware/authorization"
 
 export async function GET(
   req: Request,
@@ -73,13 +73,11 @@ export async function DELETE(
 
   try {
     const { id } = await params
+    const isAdmin = canViewAllRecords(session.user.role)
 
-    // Verificar que la guía pertenece al usuario
     const guia = await prisma.guiaValija.findFirst({
-      where: {
-        id,
-        userId: session.user.id,
-      },
+      where: isAdmin ? { id } : { id, userId: session.user.id },
+      select: { id: true },
     })
 
     if (!guia) {

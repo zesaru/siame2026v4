@@ -134,11 +134,28 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
+  if (!canDeleteRecords(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  }
+
   try {
     const { id } = await params
+    const isAdmin = canViewAllRecords(session.user.role)
+    const existing = await prisma.guiaValija.findFirst({
+      where: isAdmin ? { id } : { id, userId: session.user.id },
+      select: { id: true, userId: true },
+    })
+
+    if (!existing) {
+      return NextResponse.json({ error: "Guía no encontrada" }, { status: 404 })
+    }
+
     const repository = new PrismaGuiaValijaRepository(prisma)
     const useCase = new DeleteGuiaValijaByIdForUserUseCase(repository)
-    const result = await useCase.execute({ id, userId: session.user.id })
+    const result = await useCase.execute({
+      id,
+      userId: isAdmin ? existing.userId : session.user.id,
+    })
 
     if (!result.ok) {
       console.error("Error deleting guia:", result.error)

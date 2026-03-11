@@ -122,3 +122,52 @@ describe("PUT /api/dashboard/guias-valija/[id]", () => {
     await expect(res.json()).resolves.toEqual({ error: "Guía no encontrada" })
   })
 })
+
+describe("DELETE /api/dashboard/guias-valija/[id]", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("allows admin to delete another user's guia", async () => {
+    authMock.mockResolvedValue({ user: { id: "admin-1", role: "ADMIN" } })
+    findFirstMock.mockResolvedValue({ id: "g1", userId: "owner-1" })
+    deleteUseCaseExecuteMock.mockResolvedValue({
+      ok: true,
+      value: { deleted: true },
+    })
+
+    const { DELETE } = await import("./route")
+    const req = new Request("http://localhost/api/dashboard/guias-valija/g1", {
+      method: "DELETE",
+    })
+
+    const res = await DELETE(req, { params: Promise.resolve({ id: "g1" }) })
+
+    expect(findFirstMock).toHaveBeenCalledWith({
+      where: { id: "g1" },
+      select: { id: true, userId: true },
+    })
+    expect(deleteUseCaseExecuteMock).toHaveBeenCalledWith({
+      id: "g1",
+      userId: "owner-1",
+    })
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({ success: true })
+  })
+
+  it("returns 403 when a regular user tries to delete a guia", async () => {
+    authMock.mockResolvedValue({ user: { id: "user-1", role: "USER" } })
+
+    const { DELETE } = await import("./route")
+    const req = new Request("http://localhost/api/dashboard/guias-valija/g1", {
+      method: "DELETE",
+    })
+
+    const res = await DELETE(req, { params: Promise.resolve({ id: "g1" }) })
+
+    expect(findFirstMock).not.toHaveBeenCalled()
+    expect(deleteUseCaseExecuteMock).not.toHaveBeenCalled()
+    expect(res.status).toBe(403)
+    await expect(res.json()).resolves.toEqual({ error: "Forbidden" })
+  })
+})
