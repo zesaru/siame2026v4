@@ -13,6 +13,7 @@ Dejar una base de pruebas E2E estable para validar los flujos críticos del sist
 - acceso a pantallas administrativas por rol
 - carga por lote de guias
 - guardado mockeado del lote
+- navegación y edición de items y oficios
 
 ## Instalacion
 
@@ -41,14 +42,10 @@ Archivo de referencia:
 
 - [.env.e2e.example](/mnt/c/users/embto/documents/github/siame2026v4/.env.e2e.example)
 
-Ejemplo:
+Importante:
 
-```bash
-set -a
-source .env.e2e
-set +a
-pnpm run test:e2e
-```
+- `playwright.config.ts` carga `.env.e2e` automáticamente si existe.
+- Ya no hace falta `source .env.e2e` antes de correr la suite.
 
 ## Comandos
 
@@ -66,7 +63,7 @@ pnpm run test:e2e:headed
 - Los reportes HTML quedan en `playwright-report/`.
 - Los artefactos temporales quedan en `test-results/`.
 - Los tests de `USER` y `SUPER_ADMIN` quedan en `skip` si faltan sus credenciales.
-- Los tests avanzados de lote mockean el backend para validar UI sin depender de Azure.
+- Los tests avanzados de lote y edición mockean backend para validar UI sin depender de Azure ni de mutar datos reales.
 
 ## Suite actual
 
@@ -75,3 +72,6 @@ pnpm run test:e2e:headed
 - [business-navigation.spec.ts](/mnt/c/users/embto/documents/github/siame2026v4/e2e/business-navigation.spec.ts)
 - [roles.spec.ts](/mnt/c/users/embto/documents/github/siame2026v4/e2e/roles.spec.ts)
 - [batch-upload.spec.ts](/mnt/c/users/embto/documents/github/siame2026v4/e2e/batch-upload.spec.ts)
+- [delete-flows.spec.ts](/mnt/c/users/embto/documents/github/siame2026v4/e2e/delete-flows.spec.ts)
+- [edit-save-flows.spec.ts](/mnt/c/users/embto/documents/github/siame2026v4/e2e/edit-save-flows.spec.ts)
+- [items-oficios.spec.ts](/mnt/c/users/embto/documents/github/siame2026v4/e2e/items-oficios.spec.ts)

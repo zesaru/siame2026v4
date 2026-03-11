@@ -34,7 +34,7 @@ test("items de valija list and edit page load when records exist", async ({ page
   await expect(page.getByText(/Editar Item #|Datos del Item|Item no encontrado|Cargando/i).first()).toBeVisible()
 })
 
-test("oficios list and edit page load when records exist", async ({ page }) => {
+test("oficios list, view and edit pages load when records exist", async ({ page }) => {
   await page.goto("/dashboard/oficios")
   await expect(page).toHaveURL(/\/dashboard\/oficios/)
   await expect(page.getByPlaceholder("Buscar por número, asunto, remitente o destinatario")).toBeVisible()
@@ -48,6 +48,11 @@ test("oficios list and edit page load when records exist", async ({ page }) => {
   }
 
   const oficioId = oficios[0].id
+
+  await page.goto(`/dashboard/oficios/${oficioId}/view`, { waitUntil: "domcontentloaded" })
+  await expect(page).toHaveURL(new RegExp(`/dashboard/oficios/${oficioId}/view$`))
+  await expect(page.getByText(/Oficio Confirmado|Oficio no encontrado/i).first()).toBeVisible()
+
   await page.goto(`/dashboard/oficios/${oficioId}/edit`, { waitUntil: "domcontentloaded" })
   await expect(page).toHaveURL(new RegExp(`/dashboard/oficios/${oficioId}/edit$`))
   await expect(page.getByText(/Editar Oficio|Cargando oficio|Nº Oficio/i).first()).toBeVisible()
