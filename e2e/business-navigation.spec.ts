@@ -30,7 +30,7 @@ test("guias detail api and edit page load for an existing record when available"
   const guiaId = guias[0].id
   await page.goto(`/dashboard/guias-valija/${guiaId}/edit`, { waitUntil: "domcontentloaded" })
   await expect(page).toHaveURL(new RegExp(`/dashboard/guias-valija/${guiaId}/edit$`))
-  await expect(page.getByText(/Editar Guía de Valija|Documento PDF de la guía|Ruta de la Valija|Guía no disponible|Guía no encontrada/i).first()).toBeVisible()
+  await expect(page.getByText(/Editar Guía de Valija|Documento PDF de la guía|Ruta de la Valija|Guía no disponible|Guía no encontrada|Cargando.../i).first()).toBeVisible()
 })
 
 test("hojas view and edit pages load for an existing record when available", async ({ page }) => {

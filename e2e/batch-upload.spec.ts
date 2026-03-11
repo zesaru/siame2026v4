@@ -36,6 +36,14 @@ const mockBatchResponse = {
   ],
 }
 
+const mockSavedResponse = {
+  success: true,
+  guia: {
+    id: "mock-guia-1",
+    numeroGuia: "20",
+  },
+}
+
 test("batch upload page loads and accepts local pdf selection", async ({ page }) => {
   await loginAsDefaultUser(page)
 
@@ -84,4 +92,47 @@ test("batch upload renders review queue after mocked batch creation", async ({ p
   await expect(page.getByText("sample.pdf").first()).toBeVisible()
   await expect(page.getByText(/Item activo/i)).toBeVisible()
   await expect(page.getByRole("button", { name: /Guardar y continuar/i })).toBeVisible()
+})
+
+test("batch upload marks item as saved after mocked save", async ({ page }) => {
+  await loginAsDefaultUser(page)
+
+  await page.route("**/api/guias-valija/batches", async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify(mockBatchResponse),
+      })
+      return
+    }
+
+    await route.continue()
+  })
+
+  await page.route("**/api/guias-valija/batches/mock-batch-1/items/mock-item-1/save", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockSavedResponse),
+    })
+  })
+
+  await page.route("**/api/guias-valija/batches/mock-batch-1", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(mockBatchResponse),
+    })
+  })
+
+  await page.goto("/dashboard/guias-valija/lote")
+  const fileInput = page.locator('input[type="file"]').first()
+  await fileInput.setInputFiles(path.resolve("e2e/fixtures/sample.pdf"))
+  await page.getByRole("button", { name: /Crear lote \(1\)/i }).click()
+
+  await page.getByRole("button", { name: /Guardar y continuar/i }).click()
+
+  await expect(page.getByText(/Este archivo ya fue guardado como guía de valija/i)).toBeVisible()
+  await expect(page.getByText("1").nth(1)).toBeVisible()
 })

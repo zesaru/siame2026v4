@@ -11,12 +11,14 @@ Dejar una base de pruebas E2E estable para validar los flujos críticos del sist
 - acceso a documentos pendientes
 - visibilidad de acciones por rol
 - carga por lote de guias
+- guardado mockeado del lote
 
 ## Instalacion
 
 ```bash
 pnpm install
 pnpm run test:e2e:install
+cp .env.e2e.example .env.e2e
 ```
 
 ## Variables de entorno
@@ -32,14 +34,16 @@ Variables opcionales para cubrir permisos de usuario comun:
 - `E2E_USER_EMAIL`
 - `E2E_USER_PASSWORD`
 
+Archivo de referencia:
+
+- [.env.e2e.example](/mnt/c/users/embto/documents/github/siame2026v4/.env.e2e.example)
+
 Ejemplo:
 
 ```bash
-E2E_BASE_URL=http://127.0.0.1:3000 \
-E2E_ADMIN_EMAIL=admin@siame.com \
-E2E_ADMIN_PASSWORD=temp123 \
-E2E_USER_EMAIL=usuario@siame.com \
-E2E_USER_PASSWORD=secret \
+set -a
+source .env.e2e
+set +a
 pnpm run test:e2e
 ```
 
@@ -59,6 +63,7 @@ pnpm run test:e2e:headed
 - Los reportes HTML quedan en `playwright-report/`.
 - Los artefactos temporales quedan en `test-results/`.
 - El test de `USER` queda en `skip` si no existen `E2E_USER_EMAIL` y `E2E_USER_PASSWORD`.
+- Los tests avanzados de lote mockean el backend para validar UI sin depender de Azure.
 
 ## Suite actual
 
