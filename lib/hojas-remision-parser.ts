@@ -2,6 +2,82 @@ import { findKeyValue, parseFecha, extractPeso } from "./guias-valija-parser"
 import { normalizeHojaRemisionNumero } from "./hoja-remision-normalizer"
 import { logger } from "./logger"
 
+function normalizeTableText(value: string | null | undefined) {
+  return (value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase()
+}
+
+function isHeaderMatch(content: string | null | undefined, variants: string[]) {
+  const normalized = normalizeTableText(content)
+  return variants.some((variant) => normalized.includes(variant))
+}
+
+function mergeColumnContent(cells: any[], columnIndex: number, headerRowIndex: number) {
+  const merged = cells
+    .filter((cell: any) => cell.columnIndex === columnIndex && cell.rowIndex > headerRowIndex && cell.content?.trim())
+    .sort((a: any, b: any) => {
+      if (a.rowIndex !== b.rowIndex) return a.rowIndex - b.rowIndex
+      return a.columnIndex - b.columnIndex
+    })
+    .map((cell: any) => cell.content.trim())
+    .filter((value: string, index: number, source: string[]) => value && source.indexOf(value) === index)
+    .join("\n")
+    .trim()
+
+  return merged || null
+}
+
+interface HojaRemisionTableMatch {
+  table: any
+  headerRowIndex: number
+  docCol: number
+  asuntoCol: number
+  destCol?: number
+}
+
+function findMatchingTable(table: any): HojaRemisionTableMatch | null {
+  if (!table?.cells) return null
+
+  const docHeader = table.cells.find((c: any) => isHeaderMatch(c.content, ["DOCUMENTO"]))
+  const asuntoHeader = table.cells.find((c: any) => isHeaderMatch(c.content, ["ASUNTO"]))
+  const destHeader = table.cells.find((c: any) => isHeaderMatch(c.content, ["DESTINO", "DIRIGIDO A"]))
+
+  if (!docHeader || !asuntoHeader) return null
+
+  return {
+    table,
+    headerRowIndex: Math.min(docHeader.rowIndex, asuntoHeader.rowIndex, destHeader?.rowIndex ?? asuntoHeader.rowIndex),
+    docCol: docHeader.columnIndex,
+    asuntoCol: asuntoHeader.columnIndex,
+    destCol: destHeader?.columnIndex,
+  }
+}
+
+function hasCompatibleHeaders(base: HojaRemisionTableMatch, candidate: HojaRemisionTableMatch) {
+  return (
+    base.table.columnCount === candidate.table.columnCount &&
+    base.docCol === candidate.docCol &&
+    base.asuntoCol === candidate.asuntoCol &&
+    (base.destCol ?? -1) === (candidate.destCol ?? -1)
+  )
+}
+
+function mergeFieldValues(values: Array<string | null | undefined>) {
+  const merged = values
+    .filter(Boolean)
+    .flatMap((value) => (value || "").split("\n"))
+    .map((value) => value.trim())
+    .filter((value, index, source) => value && source.indexOf(value) === index)
+    .join("\n")
+    .trim()
+
+  return merged || null
+}
+
 /**
  * Resultado del parsing de una Hoja de Remisión
  */
@@ -34,55 +110,49 @@ function extractFromTables(tables: any[]): {
     return { documento: null, asunto: null, destino: null }
   }
 
-  // Buscar en todas las tablas
-  for (const table of tables) {
-    if (!table.cells) continue
+  const matches = tables
+    .map((table) => findMatchingTable(table))
+    .filter((value): value is HojaRemisionTableMatch => Boolean(value))
 
-    // Buscar celdas que contengan los nombres de los campos (en cualquier posición)
-    const docHeader = table.cells.find((c: any) =>
-      c.content?.includes('DOCUMENTO') && c.rowIndex === 0
-    )
-    const asuntoHeader = table.cells.find((c: any) =>
-      c.content?.includes('ASUNTO') && c.rowIndex === 0
-    )
-    const destHeader = table.cells.find((c: any) =>
-      (c.content?.includes('DESTINO') || c.content?.includes('DIRIGIDO A')) && c.rowIndex === 0
-    )
+  for (let index = 0; index < matches.length; index += 1) {
+    const base = matches[index]
+    const compatibleGroup = [base]
 
-    // Si encontramos al menos 2 de las 3 cabeceras en esta tabla, usarla
-    if (docHeader && asuntoHeader) {
-      // Buscar valores en la fila siguiente (rowIndex = 1) o en filas cercanas
-      const docCol = docHeader.columnIndex
-      const asuntoCol = asuntoHeader.columnIndex
-      const destCol = destHeader?.columnIndex
+    for (let next = index + 1; next < matches.length; next += 1) {
+      if (!hasCompatibleHeaders(base, matches[next])) break
+      compatibleGroup.push(matches[next])
+      index = next
+    }
 
-      // Buscar contenido en las filas siguientes (hasta rowIndex 3 para ser flexibles)
-      const documento = table.cells.find((c: any) =>
-        c.columnIndex === docCol && c.rowIndex >= 1 && c.rowIndex <= 3 && c.content?.trim()
+    const documento = mergeFieldValues(
+      compatibleGroup.map((match) =>
+        mergeColumnContent(match.table.cells.filter((cell: any) => cell?.content), match.docCol, match.headerRowIndex)
       )
-      const asunto = table.cells.find((c: any) =>
-        c.columnIndex === asuntoCol && c.rowIndex >= 1 && c.rowIndex <= 3 && c.content?.trim()
+    )
+    const asunto = mergeFieldValues(
+      compatibleGroup.map((match) =>
+        mergeColumnContent(match.table.cells.filter((cell: any) => cell?.content), match.asuntoCol, match.headerRowIndex)
       )
-      const destino = destCol !== undefined
-        ? table.cells.find((c: any) =>
-            c.columnIndex === destCol && c.rowIndex >= 1 && c.rowIndex <= 3 && c.content?.trim()
+    )
+    const destino = base.destCol !== undefined
+      ? mergeFieldValues(
+          compatibleGroup.map((match) =>
+            match.destCol !== undefined
+              ? mergeColumnContent(match.table.cells.filter((cell: any) => cell?.content), match.destCol, match.headerRowIndex)
+              : null
           )
-        : null
+        )
+      : null
 
-      if (documento || asunto) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('\n📋 [EXTRACT FROM TABLES]')
-          console.log(`   Tabla encontrada con ${table.rowCount} filas`)
-          console.log(`   DOCUMENTO: ${documento?.content || 'No encontrado'}`)
-          console.log(`   ASUNTO: ${asunto?.content?.substring(0, 50) || 'No encontrado'}${asunto?.content?.length > 50 ? '...' : ''}`)
-          console.log(`   DESTINO: ${destino?.content || 'No encontrado'}`)
-        }
-        return {
-          documento: documento?.content?.trim() || null,
-          asunto: asunto?.content?.trim() || null,
-          destino: destino?.content?.trim() || null,
-        }
+    if (documento || asunto) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('\n📋 [EXTRACT FROM TABLES]')
+        console.log(`   Tablas fusionadas: ${compatibleGroup.length}`)
+        console.log(`   DOCUMENTO: ${documento || 'No encontrado'}`)
+        console.log(`   ASUNTO: ${asunto?.substring(0, 80) || 'No encontrado'}${asunto && asunto.length > 80 ? '...' : ''}`)
+        console.log(`   DESTINO: ${destino || 'No encontrado'}`)
       }
+      return { documento, asunto, destino }
     }
   }
 
@@ -91,6 +161,20 @@ function extractFromTables(tables: any[]): {
     console.log('\n⚠️ [EXTRACT FROM TABLES] No se encontró tabla con formato esperado')
   }
   return { documento: null, asunto: null, destino: null }
+}
+
+function looksLikeInvalidDestino(value: string | null | undefined) {
+  if (!value) return true
+
+  const trimmed = value.trim()
+  if (!trimmed || trimmed === "ASUNTO" || trimmed.length < 5) return true
+
+  // Evita valores que en realidad parecen número de HR/referencia
+  if (/^\d[\dA-Z\-\/\s]+$/i.test(trimmed) && !trimmed.includes(" ")) {
+    return true
+  }
+
+  return false
 }
 
 /**
@@ -203,8 +287,8 @@ export async function parseHojaRemisionFromAzure(
   // Para DESTINO: usar "PARA" o buscar clave válida (ignorar el error DESTINO=ASUNTO)
   let destino = tableData.destino || findKeyValue(keyValuePairs, 'DESTINO')
 
-  // Si el destino es "ASUNTO" (error de Azure), usar "PARA" como fallback
-  if (!destino || destino === 'ASUNTO' || destino.length < 5) {
+  // Si el destino es inválido o parece un número/referencia, usar "PARA" como fallback
+  if (looksLikeInvalidDestino(destino)) {
     destino = para || null
   }
 
