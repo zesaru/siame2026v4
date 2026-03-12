@@ -6,7 +6,10 @@ import { hojaRemisionSchema, type HojaRemisionInput } from "./schemas"
 import { logger } from "@/lib/logger"
 import { fileStorageService } from "@/lib/services/file-storage.service"
 import { validatePdfFile } from "@/lib/pdf-upload"
-import { normalizeHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
+import {
+  normalizeDescripcionEmpaque,
+  splitHojaRemisionNumero,
+} from "@/lib/hoja-remision-normalizer"
 import { canViewAllRecords } from "@/lib/middleware/authorization"
 import { z } from "zod"
 
@@ -26,10 +29,15 @@ export async function createHojaRemision(
   try {
     // Validar datos con Zod
     const validated = hojaRemisionSchema.parse(data)
-    const normalizedNumeroCompleto = normalizeHojaRemisionNumero(validated.numeroCompleto)
+    const numeroParts = splitHojaRemisionNumero(validated.numeroCompleto)
+    const normalizedDescripcionEmpaque = normalizeDescripcionEmpaque(
+      validated.descripcionEmpaque || numeroParts.descripcionEmpaque
+    )
     const payload = {
       ...validated,
-      numeroCompleto: normalizedNumeroCompleto,
+      documento: validated.documento || "",
+      numeroCompleto: numeroParts.numeroCompleto,
+      descripcionEmpaque: normalizedDescripcionEmpaque || undefined,
     }
     const validatedFile = file ?? null
 
@@ -45,7 +53,7 @@ export async function createHojaRemision(
     logger.info(`   Número: ${payload.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
     if (validatedFile) {
-      logger.info(`   Archivo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+      logger.info(`   Archivo: ${validatedFile.name} (${(validatedFile.size / 1024).toFixed(1)} KB)`)
     }
     logger.separator('─', 70)
 
@@ -147,7 +155,7 @@ export async function createHojaRemision(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: "Datos inválidos: " + error.errors.map(e => e.message).join(", ")
+        error: "Datos inválidos: " + error.issues.map((issue) => issue.message).join(", ")
       }
     }
 
@@ -175,10 +183,15 @@ export async function updateHojaRemision(
   try {
     // Validar datos con Zod
     const validated = hojaRemisionSchema.parse(data)
-    const normalizedNumeroCompleto = normalizeHojaRemisionNumero(validated.numeroCompleto)
+    const numeroParts = splitHojaRemisionNumero(validated.numeroCompleto)
+    const normalizedDescripcionEmpaque = normalizeDescripcionEmpaque(
+      validated.descripcionEmpaque || numeroParts.descripcionEmpaque
+    )
     const payload = {
       ...validated,
-      numeroCompleto: normalizedNumeroCompleto,
+      documento: validated.documento || "",
+      numeroCompleto: numeroParts.numeroCompleto,
+      descripcionEmpaque: normalizedDescripcionEmpaque || undefined,
     }
     const validatedFile = file ?? null
 
@@ -195,7 +208,7 @@ export async function updateHojaRemision(
     logger.info(`   Número: ${payload.numeroCompleto}`)
     logger.info(`   Usuario: ${session.user.email}`)
     if (validatedFile) {
-      logger.info(`   Archivo nuevo: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`)
+      logger.info(`   Archivo nuevo: ${validatedFile.name} (${(validatedFile.size / 1024).toFixed(1)} KB)`)
     }
     logger.separator('─', 70)
 
@@ -303,7 +316,7 @@ export async function updateHojaRemision(
     if (error instanceof z.ZodError) {
       return {
         success: false,
-        error: "Datos inválidos: " + error.errors.map(e => e.message).join(", ")
+        error: "Datos inválidos: " + error.issues.map((issue) => issue.message).join(", ")
       }
     }
 

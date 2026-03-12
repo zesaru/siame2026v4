@@ -86,7 +86,7 @@ export function parseFecha(fechaStr: string): Date | null {
   const matchSlash = cleanedFechaStr.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
   if (matchSlash) {
     const [, day, month, year] = matchSlash
-    const date = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`)
+    const date = new Date(Date.UTC(parseInt(year), parseInt(month) - 1, parseInt(day)))
     // Validar que la fecha sea correcta
     if (isNaN(date.getTime())) {
       return null
@@ -109,7 +109,7 @@ export function parseFecha(fechaStr: string): Date | null {
 
     const month = meses[monthStr.toLowerCase()]
     if (month !== undefined) {
-      const date = new Date(parseInt(year), month, parseInt(day))
+      const date = new Date(Date.UTC(parseInt(year), month, parseInt(day)))
       // Validar que la fecha sea correcta
       if (isNaN(date.getTime())) {
         return null
@@ -302,6 +302,10 @@ export function findKeyValue(keyValuePairs: any[], searchKey: string): string | 
   })
 
   const pair = bestPair
+
+  if (!pair || bestScore <= 0) {
+    return null
+  }
 
   // DEBUG: Log en desarrollo
   if (process.env.NODE_ENV === 'development' && pair) {

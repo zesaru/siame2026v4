@@ -57,6 +57,7 @@ interface HojaRemisionDetails {
   documento: string
   asunto: string
   destino: string
+  descripcionEmpaque?: string | null
   peso?: number | null
   estado: string
   filePath?: string | null
@@ -119,6 +120,7 @@ export default function HojaRemisionViewClient({
   const [hoja, setHoja] = useState<HojaRemisionDetails | null>(initialHoja)
   const [loading, setLoading] = useState(!initialHoja)
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+  const [editChoiceOpen, setEditChoiceOpen] = useState(false)
   const [showPdf, setShowPdf] = useState(true)
   const [pdfAvailable, setPdfAvailable] = useState<boolean | null>(null)
   const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
@@ -166,11 +168,21 @@ export default function HojaRemisionViewClient({
       const response = await fetch(`/api/hojas-remision/${hojaId}`, {
         method: "DELETE",
       })
+
+      if (response.status === 404) {
+        toast.info("La hoja de remision ya no estaba disponible.")
+        setDeleteConfirm(false)
+        router.push("/dashboard/hojas-remision")
+        router.refresh()
+        return
+      }
+
       if (!response.ok) throw new Error("Error al eliminar")
 
       toast.success("Hoja de remision eliminada.")
       setDeleteConfirm(false)
       router.push("/dashboard/hojas-remision")
+      router.refresh()
     } catch {
       toast.error("No se pudo eliminar la hoja de remision.")
     }
@@ -256,7 +268,7 @@ export default function HojaRemisionViewClient({
                 {pdfAvailable === false ? "PDF no disponible" : "Abrir PDF"}
               </Button>
             )}
-            <Button variant="outline" onClick={() => router.push(`/dashboard/hojas-remision/edit/${hoja.id}`)}>
+            <Button variant="outline" onClick={() => setEditChoiceOpen(true)}>
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </Button>
@@ -409,7 +421,7 @@ export default function HojaRemisionViewClient({
                 <div className="rounded-xl border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] p-4">
                   <div className="mb-3 flex items-center gap-2">
                     <User className="h-4 w-4 text-[var(--kt-primary)]" />
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Para</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Destinatario</p>
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--kt-text-dark)]">{hoja.para}</p>
                 </div>
@@ -428,6 +440,15 @@ export default function HojaRemisionViewClient({
                   <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Referencia</p>
                   <div className="rounded-xl border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] px-4 py-3 text-sm text-[var(--kt-text-dark)]">
                     {hoja.referencia}
+                  </div>
+                </div>
+              )}
+
+              {hoja.descripcionEmpaque && (
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Descripcion empaque</p>
+                  <div className="rounded-xl border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] px-4 py-3 text-sm text-[var(--kt-text-dark)]">
+                    {hoja.descripcionEmpaque}
                   </div>
                 </div>
               )}
@@ -474,7 +495,7 @@ export default function HojaRemisionViewClient({
                 <Button variant="outline" onClick={() => router.push("/dashboard/hojas-remision")}>
                   Volver al listado
                 </Button>
-                <Button onClick={() => router.push(`/dashboard/hojas-remision/edit/${hoja.id}`)}>
+                <Button onClick={() => setEditChoiceOpen(true)}>
                   Editar hoja
                 </Button>
               </div>
@@ -501,6 +522,38 @@ export default function HojaRemisionViewClient({
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      <AlertDialog open={editChoiceOpen} onOpenChange={setEditChoiceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Como quieres editar esta hoja?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Puedes corregir campos manualmente o subir un PDF nuevo para analizarlo antes de guardar
+              {hoja ? ` en ${hoja.numeroCompleto}` : ""}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditChoiceOpen(false)
+                router.push(`/dashboard/hojas-remision/edit/${hojaId}`)
+              }}
+            >
+              Editar campos
+            </Button>
+            <AlertDialogAction
+              onClick={() => {
+                setEditChoiceOpen(false)
+                router.push(`/dashboard/hojas-remision/edit/${hojaId}?intent=upload`)
+              }}
+            >
+              Subir archivo y analizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

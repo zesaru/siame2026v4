@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner"
 import { toast } from "sonner"
@@ -17,8 +17,10 @@ interface EditableHojaRemision extends Partial<HojaRemisionFormData> {
 export default function EditHojaRemisionPage() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const [loading, setLoading] = useState(true)
   const [hoja, setHoja] = useState<EditableHojaRemision | null>(null)
+  const initialIntent = searchParams.get("intent") === "upload" ? "upload" : "manual"
 
   useEffect(() => {
     let mounted = true
@@ -79,6 +81,7 @@ export default function EditHojaRemisionPage() {
       documentId={hoja.id}
       documentNumber={hoja.numeroCompleto}
       initialFormData={hoja}
+      initialIntent={initialIntent}
       onSave={async (data: HojaRemisionFormData, file?: File | null) =>
         updateHojaRemision(params.id as string, data, file ?? undefined)
       }

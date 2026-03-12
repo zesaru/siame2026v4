@@ -1,6 +1,6 @@
 import type { PrismaClient, Prisma } from "@prisma/client"
 import type { CreateHojaRemisionInput, HojaRemisionRepository, UpdateHojaRemisionInput } from "../../domain/repositories"
-import { normalizeHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
+import { normalizeDescripcionEmpaque, normalizeHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
 import { HOJA_REMISION_STATUS, normalizeHojaRemisionEstado } from "@/lib/hoja-remision-status"
 
 export class PrismaHojaRemisionRepository implements HojaRemisionRepository {
@@ -48,6 +48,7 @@ export class PrismaHojaRemisionRepository implements HojaRemisionRepository {
         documento: input.documento,
         asunto: input.asunto,
         destino: input.destino,
+        descripcionEmpaque: normalizeDescripcionEmpaque(input.descripcionEmpaque),
         peso: input.peso,
         estado: normalizeHojaRemisionEstado(input.estado) || HOJA_REMISION_STATUS.PENDING_REVIEW,
       },
@@ -74,6 +75,9 @@ export class PrismaHojaRemisionRepository implements HojaRemisionRepository {
         ...(input.documento !== undefined && { documento: input.documento }),
         ...(input.asunto !== undefined && { asunto: input.asunto }),
         ...(input.destino !== undefined && { destino: input.destino }),
+        ...(input.descripcionEmpaque !== undefined && {
+          descripcionEmpaque: normalizeDescripcionEmpaque(input.descripcionEmpaque),
+        }),
         ...(input.peso !== undefined && { peso: input.peso }),
         ...(input.estado && { estado: normalizeHojaRemisionEstado(input.estado) }),
       },

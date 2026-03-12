@@ -11,6 +11,7 @@ export interface HojaRemisionRow {
   documento: string
   asunto: string
   destino: string
+  descripcionEmpaque: string | null
   peso: number | null
   estado: string
   processingStatus: string
@@ -48,6 +49,7 @@ export interface CreateHojaRemisionInput {
   documento: string
   asunto: string
   destino: string
+  descripcionEmpaque?: string | null
   peso?: number | null
   estado?: string
 }
@@ -65,6 +67,7 @@ export interface UpdateHojaRemisionInput {
   documento?: string
   asunto?: string
   destino?: string
+  descripcionEmpaque?: string | null
   peso?: number | null
   estado?: string
 }

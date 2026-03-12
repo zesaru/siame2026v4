@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { auth } from "@/lib/auth-v4"
 import { prisma } from "@/lib/db"
+import { normalizeDescripcionEmpaque, splitHojaRemisionNumero } from "@/lib/hoja-remision-normalizer"
 import { logger } from "@/lib/logger"
 
 function buildGuiaNumero(base: string | null | undefined) {
@@ -146,13 +147,14 @@ export async function POST(req: NextRequest) {
     } else if (tipoDocumento === "hoja_remision") {
       const numero = Number(extractedData.numero || 0)
       const baseNumeroCompleto = buildHojaNumeroCompleto(extractedData.numeroCompleto, numero)
+      const numeroParts = splitHojaRemisionNumero(baseNumeroCompleto)
       const numeroCompleto = await (async () => {
         const exists = await prisma.hojaRemision.findUnique({
-          where: { numeroCompleto: baseNumeroCompleto },
+          where: { numeroCompleto: numeroParts.numeroCompleto },
           select: { id: true },
         })
-        if (!exists) return baseNumeroCompleto
-        return `${baseNumeroCompleto}-${Date.now()}`
+        if (!exists) return numeroParts.numeroCompleto
+        return `${numeroParts.numeroCompleto}-${Date.now()}`
       })()
 
       const hoja = await prisma.hojaRemision.create({
@@ -166,6 +168,9 @@ export async function POST(req: NextRequest) {
           asunto: extractedData.asunto || "Detectado automáticamente",
           documento: document.contentText || document.fileName || "Sin contenido",
           destino: extractedData.destino || "Por asignar",
+          descripcionEmpaque: normalizeDescripcionEmpaque(
+            extractedData.descripcionEmpaque || numeroParts.descripcionEmpaque
+          ) || null,
           estado: "borrador",
           processingStatus: "completed",
           processedAt: new Date(),

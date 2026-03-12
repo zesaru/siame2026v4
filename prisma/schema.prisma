@@ -352,6 +352,7 @@ model HojaRemision {
   documento         String   @db.Text                             // Multilinea
   asunto            String   @db.Text                             // Multilinea
   destino           String   @db.Text                             // Multilinea
+  descripcionEmpaque String? @db.Text                             // Tipo o detalle de empaque
   peso              Float?                                         // Opcional
 
   // ===== Estados (MANTENER) =====

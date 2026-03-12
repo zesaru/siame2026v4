@@ -17,6 +17,7 @@ export const hojaRemisionSchema = z.object({
   documento: z.string().optional(),
   asunto: z.string().min(1, "Asunto es requerido"),
   destino: z.string().min(1, "Destino es requerido"),
+  descripcionEmpaque: z.string().optional(),
   peso: z.number().positive().optional(),
   estado: z.enum([HOJA_REMISION_STATUS.PENDING_REVIEW, HOJA_REMISION_STATUS.REVIEWED]).default(HOJA_REMISION_STATUS.PENDING_REVIEW),
 })

@@ -20,6 +20,7 @@ const createSchema = z.object({
   documento: z.string().min(1, "documento, asunto, and destino are required"),
   asunto: z.string().min(1, "documento, asunto, and destino are required"),
   destino: z.string().min(1, "documento, asunto, and destino are required"),
+  descripcionEmpaque: z.string().optional().nullable(),
   peso: z.coerce.number().optional().nullable(),
   estado: z.string().optional(),
 })
@@ -35,6 +36,7 @@ const updateSchema = z.object({
   documento: z.string().optional(),
   asunto: z.string().optional(),
   destino: z.string().optional(),
+  descripcionEmpaque: z.string().optional().nullable(),
   peso: z.coerce.number().optional().nullable(),
   estado: z.string().optional(),
 })

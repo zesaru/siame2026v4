@@ -1,15 +1,24 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import {
+  type ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
+  useReactTable,
+} from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Breadcrumb,
-  BreadcrumbList,
   BreadcrumbItem,
   BreadcrumbLink,
+  BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
@@ -30,10 +39,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { EmptyState } from "@/components/ui/EmptyState"
 import Icon from "@/components/ui/Icon"
+import { DataTablePagination, SortableHeader } from "@/components/ui/data-table"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
 import type { HojaRemision, Role } from "@prisma/client"
 import { HOJA_REMISION_STATUS, normalizeHojaRemisionEstado } from "@/lib/hoja-remision-status"
@@ -54,6 +65,10 @@ function getEstadoColor(estado: string) {
   }
 }
 
+function truncateText(value: string, max: number) {
+  return value.length > max ? `${value.substring(0, max)}...` : value
+}
+
 export default function HojasRemisionClient({
   initialHojas,
   currentUserRole,
@@ -62,38 +77,64 @@ export default function HojasRemisionClient({
   const [searchTerm, setSearchTerm] = useState("")
   const [yearFilter, setYearFilter] = useState<string>("all")
   const [deleteConfirm, setDeleteConfirm] = useState<HojaRemision | null>(null)
+  const [editChoice, setEditChoice] = useState<HojaRemision | null>(null)
   const [hojas, setHojas] = useState<HojaRemision[]>(initialHojas)
+  const [sorting, setSorting] = useState<SortingState>([{ id: "fecha", desc: true }])
+  const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 10 })
   const canDelete = currentUserRole === "ADMIN" || currentUserRole === "SUPER_ADMIN"
 
-  // Extraer años únicos de las hojas
   const availableYears = useMemo(() => {
     const years = new Set<number>()
     hojas.forEach((hoja) => {
       years.add(new Date(hoja.fecha).getFullYear())
     })
-    return Array.from(years).sort((a, b) => b - a) // Descendente
+    return Array.from(years).sort((a, b) => b - a)
   }, [hojas])
 
-  // Filtrar hojas basado en búsqueda y año
   const filteredHojas = useMemo(() => {
-    return hojas.filter((hoja) => {
-      const matchesSearch =
-        searchTerm === "" ||
-        hoja.numeroCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hoja.para.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hoja.remitente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        hoja.asunto.toLowerCase().includes(searchTerm.toLowerCase())
+    return hojas
+      .filter((hoja) => {
+        const matchesSearch =
+          searchTerm === "" ||
+          hoja.numeroCompleto.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hoja.para.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hoja.remitente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          hoja.asunto.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const hojaYear = new Date(hoja.fecha).getFullYear()
-      const matchesYear = yearFilter === "all" || hojaYear.toString() === yearFilter
+        const hojaYear = new Date(hoja.fecha).getFullYear()
+        const matchesYear = yearFilter === "all" || hojaYear.toString() === yearFilter
 
-      return matchesSearch && matchesYear
-    })
+        return matchesSearch && matchesYear
+      })
   }, [hojas, searchTerm, yearFilter])
+
+  const stats = useMemo(() => {
+    const withPdf = hojas.filter((hoja) => Boolean(hoja.filePath)).length
+    const pendingReview = hojas.filter(
+      (hoja) => normalizeHojaRemisionEstado(hoja.estado) === HOJA_REMISION_STATUS.PENDING_REVIEW
+    ).length
+    const currentYear = new Date().getFullYear()
+    const currentYearCount = hojas.filter((hoja) => new Date(hoja.fecha).getFullYear() === currentYear).length
+
+    return {
+      total: hojas.length,
+      withPdf,
+      pendingReview,
+      currentYearCount,
+    }
+  }, [hojas])
 
   const handleDelete = (hoja: HojaRemision) => {
     setDeleteConfirm(hoja)
   }
+
+  const handleEdit = (hoja: HojaRemision) => {
+    setEditChoice(hoja)
+  }
+
+  useEffect(() => {
+    setPagination((current) => ({ ...current, pageIndex: 0 }))
+  }, [searchTerm, yearFilter])
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return
@@ -103,21 +144,178 @@ export default function HojasRemisionClient({
         method: "DELETE",
       })
 
-      if (!response.ok) throw new Error("Error al eliminar la hoja de remisión")
+      if (response.status === 404) {
+        toast.info("La hoja de remision ya no estaba disponible.")
+        setDeleteConfirm(null)
+        setHojas((current) => current.filter((h) => h.id !== deleteConfirm.id))
+        router.refresh()
+        return
+      }
 
-      toast.success("Hoja de Remisión eliminada correctamente")
+      if (!response.ok) throw new Error("Error al eliminar la hoja de remision")
+
+      toast.success("Hoja de remision eliminada correctamente")
       setDeleteConfirm(null)
-
-      // Actualizar la lista localmente
-      setHojas(hojas.filter((h) => h.id !== deleteConfirm.id))
-    } catch (error) {
-      toast.error("Error al eliminar la hoja de remisión")
+      setHojas((current) => current.filter((h) => h.id !== deleteConfirm.id))
+      router.refresh()
+    } catch {
+      toast.error("Error al eliminar la hoja de remision")
     }
   }
 
+  const columns = useMemo<ColumnDef<HojaRemision>[]>(
+    () => [
+      {
+        accessorKey: "numeroCompleto",
+        header: ({ column }) => (
+          <SortableHeader
+            isSorted={column.getIsSorted() !== false}
+            sortDirection={column.getIsSorted() === "asc" ? "asc" : column.getIsSorted() === "desc" ? "desc" : null}
+            onSort={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Nro. H.R:
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold text-[var(--kt-text-dark)]">{row.original.numeroCompleto}</p>
+          </div>
+        ),
+      },
+      {
+        accessorKey: "remitente",
+        header: ({ column }) => (
+          <SortableHeader
+            isSorted={column.getIsSorted() !== false}
+            sortDirection={column.getIsSorted() === "asc" ? "asc" : column.getIsSorted() === "desc" ? "desc" : null}
+            onSort={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Remitente
+          </SortableHeader>
+        ),
+        cell: ({ row }) => <p className="text-sm text-[var(--kt-text-dark)]">{row.original.siglaUnidad || "-"}</p>,
+      },
+      {
+        accessorKey: "fecha",
+        sortingFn: "datetime",
+        header: ({ column }) => (
+          <SortableHeader
+            isSorted={column.getIsSorted() !== false}
+            sortDirection={column.getIsSorted() === "asc" ? "asc" : column.getIsSorted() === "desc" ? "desc" : null}
+            onSort={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Fecha
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <div className="space-y-2 text-sm">
+            <p className="text-[var(--kt-text-dark)]">{new Date(row.original.fecha).toLocaleDateString("es-PE")}</p>
+            {row.original.filePath ? (
+              <a
+                href={`/api/hojas-remision/file/${row.original.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 text-[var(--kt-primary)] hover:text-[var(--kt-primary-dark)]"
+                title="Abrir PDF"
+              >
+                <Icon name="file-text" size="sm" />
+                <span>Ver PDF</span>
+              </a>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "asunto",
+        header: ({ column }) => (
+          <SortableHeader
+            isSorted={column.getIsSorted() !== false}
+            sortDirection={column.getIsSorted() === "asc" ? "asc" : column.getIsSorted() === "desc" ? "desc" : null}
+            onSort={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Asunto
+          </SortableHeader>
+        ),
+        cell: ({ row }) => <span className="text-sm text-[var(--kt-text-muted)]">{truncateText(row.original.asunto, 88)}</span>,
+      },
+      {
+        accessorKey: "estado",
+        header: ({ column }) => (
+          <SortableHeader
+            isSorted={column.getIsSorted() !== false}
+            sortDirection={column.getIsSorted() === "asc" ? "asc" : column.getIsSorted() === "desc" ? "desc" : null}
+            onSort={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Estado
+          </SortableHeader>
+        ),
+        cell: ({ row }) => (
+          <Badge className={getEstadoColor(row.original.estado)}>
+            {normalizeHojaRemisionEstado(row.original.estado)}
+          </Badge>
+        ),
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        header: () => <div className="text-right">Acciones</div>,
+        cell: ({ row }) => (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/dashboard/hojas-remision/${row.original.id}/view`)}
+              title="Consultar HR"
+              className="gap-2"
+            >
+              <Icon name="eye" size="sm" />
+              <span>Ver</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEdit(row.original)}
+              title="Editar datos o reemplazar PDF"
+              className="gap-2 border-[var(--kt-info)]/25 text-[var(--kt-info)] hover:text-[var(--kt-info)]"
+            >
+              <Icon name="edit" size="sm" />
+              <span>Editar</span>
+            </Button>
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDelete(row.original)}
+                title="Eliminar HR"
+                className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
+              >
+                <Icon name="trash" size="sm" />
+                <span>Eliminar</span>
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    [canDelete, router]
+  )
+
+  const table = useReactTable({
+    data: filteredHojas,
+    columns,
+    state: {
+      sorting,
+      pagination,
+    },
+    onSortingChange: setSorting,
+    onPaginationChange: setPagination,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+  })
+
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
@@ -125,58 +323,84 @@ export default function HojasRemisionClient({
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Hojas de Remisión</BreadcrumbPage>
+            <BreadcrumbPage>Hojas de Remision</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--kt-text-dark)]">
-            Hojas de Remisión
-          </h1>
-          <p className="text-[var(--kt-text-muted)] mt-1">
-            Gestiona tus documentos diplomáticos
-          </p>
-        </div>
-        <Button
-          onClick={() => router.push("/dashboard/hojas-remision/new")}
-          className="bg-[var(--kt-primary)] hover:bg-[var(--kt-primary-dark)]"
-        >
-          Subir Hoja de Remisión
-        </Button>
-      </div>
+      <Card className="overflow-hidden border-[var(--kt-gray-200)] bg-[radial-gradient(circle_at_top_left,rgba(54,153,255,0.16),transparent_28%),linear-gradient(135deg,#ffffff_0%,#f6faff_52%,#eef5ff_100%)] shadow-[0_20px_55px_-30px_rgba(54,153,255,0.4)]">
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+            <div className="space-y-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--kt-primary)]">Mesa HR</p>
+                <h1 className="text-3xl font-semibold tracking-[-0.02em] text-[var(--kt-text-dark)]">Hojas de Remision</h1>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--kt-text-muted)]">
+                  Desde aqui revisas hojas existentes y, cuando hace falta, reemplazas su soporte PDF desde el flujo de edicion.
+                </p>
+              </div>
 
-      {/* Filtros */}
-      <Card>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Total HR</p>
+                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.total}</p>
+                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">registros disponibles en la mesa</p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Con PDF</p>
+                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.withPdf}</p>
+                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">soportes documentales asociados</p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Sin revisar</p>
+                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.pendingReview}</p>
+                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">pendientes de validacion final</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="xl:w-[320px]">
+              <div className="rounded-2xl border border-[var(--kt-gray-200)] bg-white/80 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Uso sugerido</p>
+                <p className="mt-2 text-sm font-medium text-[var(--kt-text-dark)]">Editar desde documentos</p>
+                <p className="mt-1 text-xs text-[var(--kt-text-muted)]">
+                  Las hojas se incorporan desde el flujo documental. En esta mesa puedes revisar registros existentes y corregirlos.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[var(--kt-gray-200)]">
         <CardHeader>
-          <CardTitle>Filtros de Búsqueda</CardTitle>
+          <CardTitle>Filtros de busqueda</CardTitle>
+          <CardDescription>Busca por numero, destinatario, remitente o asunto y reduce la mesa por anio.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <Label htmlFor="search">Buscar</Label>
               <Input
                 id="search"
                 type="text"
-                placeholder="Número, para, remitente, asunto..."
+                placeholder="Numero, para, remitente, asunto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <p className="text-xs text-[var(--kt-text-muted)] mt-1">
-                Busca por número completo, destinatario, remitente o asunto
+              <p className="mt-1 text-xs text-[var(--kt-text-muted)]">
+                Encuentra rapido una HR para verla, corregirla o reemplazar su soporte.
               </p>
             </div>
 
             <div>
-              <Label htmlFor="year">Año</Label>
+              <Label htmlFor="year">Anio</Label>
               <Select value={yearFilter} onValueChange={setYearFilter}>
                 <SelectTrigger id="year" suppressHydrationWarning>
-                  <SelectValue placeholder="Todos los años" />
+                  <SelectValue placeholder="Todos los anios" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los años</SelectItem>
+                  <SelectItem value="all">Todos los anios</SelectItem>
                   {availableYears.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
                       {year}
@@ -184,17 +408,17 @@ export default function HojasRemisionClient({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-[var(--kt-text-muted)] mt-1">
-                Filtra por año de la hoja de remisión
+              <p className="mt-1 text-xs text-[var(--kt-text-muted)]">
+                {stats.currentYearCount} HR corresponden al anio actual.
               </p>
             </div>
           </div>
 
           {(searchTerm || yearFilter !== "all") && (
-            <div className="mt-4 pt-4 border-t border-[var(--kt-gray-200)]">
+            <div className="mt-4 border-t border-[var(--kt-gray-200)] pt-4">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-[var(--kt-text-muted)]">
-                  Mostrando {filteredHojas.length} de {hojas.length} hojas
+                  Mostrando {sortedData.length} de {hojas.length} hojas
                 </p>
                 <Button
                   variant="outline"
@@ -212,17 +436,17 @@ export default function HojasRemisionClient({
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardHeader>
+      <Card className="border-[var(--kt-gray-200)]">
+        <CardHeader className="border-b border-[var(--kt-gray-200)] bg-[linear-gradient(180deg,#f8fafc,white)]">
           <CardTitle>
-            Hojas Registradas ({filteredHojas.length})
+            Mesa operativa ({filteredHojas.length})
             {filteredHojas.length !== hojas.length && (
-              <span className="text-sm font-normal text-[var(--kt-text-muted)] ml-2">
-                (filtrado de {hojas.length} total)
+              <span className="ml-2 text-sm font-normal text-[var(--kt-text-muted)]">
+                filtrado sobre {hojas.length} registros
               </span>
             )}
           </CardTitle>
+          <CardDescription>Las acciones se separan entre consulta, edicion de datos y eliminacion.</CardDescription>
         </CardHeader>
         <CardContent>
           {filteredHojas.length === 0 ? (
@@ -230,15 +454,11 @@ export default function HojasRemisionClient({
               title={hojas.length === 0 ? "Sin hojas registradas" : "Sin resultados"}
               message={
                 hojas.length === 0
-                  ? "No hay hojas de remisión registradas."
-                  : "No se encontraron hojas que coincidan con los filtros."
+                  ? "Todavia no hay hojas de remision registradas."
+                  : "No se encontraron hojas que coincidan con los filtros actuales."
               }
               action={
-                hojas.length === 0 ? (
-                  <Button onClick={() => router.push("/dashboard/hojas-remision/new")}>
-                    Subir Hoja de Remisión
-                  </Button>
-                ) : (
+                hojas.length === 0 ? undefined : (
                   <Button
                     variant="outline"
                     size="sm"
@@ -254,157 +474,123 @@ export default function HojasRemisionClient({
               className="py-4"
             />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-[var(--kt-gray-200)]">
-                <thead className="bg-[var(--kt-gray-50)]">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Número Completo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Unidad
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Para
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Fecha
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Archivo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Asunto
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-[var(--kt-text-muted)] uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-[var(--kt-gray-200)]">
-                  {filteredHojas.map((hoja) => (
-                    <tr key={hoja.id} className="hover:bg-[var(--kt-gray-50)]">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-[var(--kt-text-dark)]">
-                          {hoja.numeroCompleto}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-[var(--kt-text-muted)]">
-                          {hoja.siglaUnidad}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-[var(--kt-text-dark)]">
-                          {hoja.para}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-[var(--kt-text-muted)]">
-                          {new Date(hoja.fecha).toLocaleDateString('es-PE')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {hoja.filePath ? (
-                          <a
-                            href={`/api/hojas-remision/file/${hoja.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center text-sm text-[var(--kt-primary)] hover:text-[var(--kt-primary-dark)]"
-                            title="Ver PDF"
+            <>
+              <div className="rounded-md border max-h-[65vh] overflow-auto">
+                <Table>
+                  <caption className="caption-bottom px-4 py-3 text-sm text-[var(--kt-text-muted)]">
+                    Lista de hojas de remision registradas ({filteredHojas.length} registros)
+                  </caption>
+                  <TableHeader>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead
+                            key={header.id}
+                            className={`px-6 py-3 text-xs uppercase tracking-wider text-[var(--kt-text-muted)] ${
+                              header.column.id === "numeroCompleto"
+                                ? "sticky left-0 top-0 z-30 w-[180px] bg-white shadow-[2px_0_0_0_var(--kt-gray-200)]"
+                                : header.column.id === "actions"
+                                ? "sticky right-0 top-0 z-30 bg-white text-right shadow-[-2px_0_0_0_var(--kt-gray-200)]"
+                                : "sticky top-0 z-20 bg-white"
+                            }`}
                           >
-                            <Icon name="file-text" size="sm" />
-                            <span className="ml-1">Ver PDF</span>
-                          </a>
-                        ) : (
-                          <span className="text-sm text-[var(--kt-text-muted)]">
-                            Sin archivo
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-sm text-[var(--kt-text-muted)]">
-                          {hoja.asunto.length > 50
-                            ? hoja.asunto.substring(0, 50) + "..."
-                            : hoja.asunto}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge className={getEstadoColor(hoja.estado)}>
-                          {normalizeHojaRemisionEstado(hoja.estado)}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/dashboard/hojas-remision/${hoja.id}/view`)}
-                            title="Ver detalles"
-                            className="gap-2"
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(header.column.columnDef.header, header.getContext())}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows.map((row) => (
+                      <TableRow key={row.id} className="group align-top transition-colors duration-200 hover:bg-[var(--kt-gray-50)]">
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={`px-6 py-4 ${
+                              cell.column.id === "numeroCompleto"
+                                ? "sticky left-0 z-10 bg-white font-medium shadow-[2px_0_0_0_var(--kt-gray-100)] group-hover:bg-[var(--kt-gray-50)]"
+                                : cell.column.id === "actions"
+                                ? "sticky right-0 z-10 bg-white text-right shadow-[-2px_0_0_0_var(--kt-gray-100)] group-hover:bg-[var(--kt-gray-50)]"
+                                : ""
+                            } ${cell.column.id === "estado" ? "whitespace-nowrap" : ""} ${
+                              cell.column.id === "actions" ? "text-right" : ""
+                            }`}
                           >
-                            <Icon name="eye" size="sm" />
-                            <span className="hidden lg:inline">Ver</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => router.push(`/dashboard/hojas-remision/edit/${hoja.id}`)}
-                            title="Subir PDF y editar"
-                            className="gap-2 text-[var(--kt-info)] hover:text-[var(--kt-info)]"
-                          >
-                            <Icon name="upload" size="sm" />
-                            <span className="hidden lg:inline">Editar</span>
-                          </Button>
-                          {canDelete && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(hoja)}
-                              title="Eliminar"
-                              className="gap-2 text-[var(--kt-danger)] hover:text-[var(--kt-danger)]"
-                            >
-                              <Icon name="trash" size="sm" />
-                              <span className="hidden lg:inline">Eliminar</span>
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <DataTablePagination
+                currentPage={table.getState().pagination.pageIndex + 1}
+                totalPages={table.getPageCount()}
+                totalItems={filteredHojas.length}
+                itemsPerPage={table.getState().pagination.pageSize}
+                onPageChange={(page) => table.setPageIndex(Math.max(0, page - 1))}
+                onItemsPerPageChange={(itemsPerPage) => table.setPageSize(itemsPerPage)}
+              />
+            </>
           )}
         </CardContent>
       </Card>
 
-      {/* Delete Confirmation Dialog */}
       {canDelete && (
         <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Eliminar Hoja de Remisión</AlertDialogTitle>
+              <AlertDialogTitle>Eliminar Hoja de Remision</AlertDialogTitle>
               <AlertDialogDescription>
-                ¿Estás seguro de que deseas eliminar la hoja de remisión <strong>{deleteConfirm?.numeroCompleto}</strong>?
-                Esta acción no se puede deshacer.
+                Estas por eliminar la hoja de remision <strong>{deleteConfirm?.numeroCompleto}</strong>. Esta accion no se puede deshacer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDelete}
-                className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]"
-              >
+              <AlertDialogAction onClick={confirmDelete} className="bg-[var(--kt-danger)] hover:bg-[var(--kt-danger-dark)]">
                 Eliminar
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
       )}
+
+      <AlertDialog open={!!editChoice} onOpenChange={() => setEditChoice(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Como quieres editar esta hoja?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Puedes abrir el formulario para corregir campos o subir un PDF nuevo para analizarlo antes de guardar
+              {editChoice ? ` en ${editChoice.numeroCompleto}` : ""}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!editChoice) return
+                router.push(`/dashboard/hojas-remision/edit/${editChoice.id}`)
+                setEditChoice(null)
+              }}
+            >
+              Editar campos
+            </Button>
+            <AlertDialogAction
+              onClick={() => {
+                if (!editChoice) return
+                router.push(`/dashboard/hojas-remision/edit/${editChoice.id}?intent=upload`)
+                setEditChoice(null)
+              }}
+            >
+              Subir archivo y analizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

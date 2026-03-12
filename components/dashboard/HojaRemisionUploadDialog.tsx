@@ -13,6 +13,7 @@ import DocumentUpload from "@/components/DocumentUpload"
 import HojaRemisionForm, {
   type HojaRemisionFormData,
 } from "@/components/dashboard/HojaRemisionForm"
+import { normalizeHojaRemisionEstado } from "@/lib/hoja-remision-status"
 import { toast } from "sonner"
 import { createHojaRemision } from "@/app/dashboard/hojas-remision/actions"
 import type { ParsedHojaRemisionData } from "@/lib/hojas-remision-parser"
@@ -73,7 +74,11 @@ export default function HojaRemisionUploadDialog({
     try {
       setState("saving")
 
-      const result = await createHojaRemision(formData)
+      const result = await createHojaRemision({
+        ...formData,
+        fecha: formData.fecha instanceof Date ? formData.fecha : new Date(formData.fecha),
+        estado: normalizeHojaRemisionEstado(formData.estado),
+      })
 
       if (!result.success) {
         throw new Error(result.error || "Error saving")

@@ -196,7 +196,7 @@ function HeroPanel({ metrics }: { metrics: DashboardMetrics }) {
           {[
             { href: "/dashboard/guias-valija", label: "Guías de valija", description: "Subir, confirmar y editar guias", icon: FolderOpen },
             { href: "/dashboard/guias-valija-items", label: "Items de valija", description: "Validar items y derivados", icon: ClipboardList },
-            { href: "/dashboard/hojas-remision", label: "Hojas de remision", description: "Revisar HR creadas o faltantes", icon: FileText },
+            { href: "/dashboard/hojas-remision", label: "Hojas de remision", description: "Crear HR nuevas o editar las existentes", icon: FileText },
             { href: "/dashboard/oficios", label: "Oficios", description: "Controlar oficios detectados", icon: ScrollText },
             { href: "/dashboard/documents?rStatus=pending", label: "Revisión pendiente", description: "Atacar la cola documental", icon: FileSearch },
           ].map((action) => (
