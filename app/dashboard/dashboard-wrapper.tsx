@@ -12,7 +12,7 @@ async function DashboardServer() {
     redirect("/auth/signin")
   }
 
-  return <DashboardClient userId={session.user.id} />
+  return <DashboardClient role={session.user.role} />
 }
 
 // Main page component

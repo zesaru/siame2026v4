@@ -116,6 +116,7 @@ export default function GuiaValijaItemsPage() {
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null)
   const [bulkDeleting, setBulkDeleting] = useState(false)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const canEdit = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
   const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
   const [filters, setFilters] = useState({
     fechaDesde: "",
@@ -686,14 +687,16 @@ export default function GuiaValijaItemsPage() {
                       <Icon name="eye" size="sm" className="mr-2" />
                       Ver guía
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/guias-valija-items/${item.id}/edit`)}
-                    >
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Editar item
-                    </Button>
+                    {canEdit && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/guias-valija-items/${item.id}/edit`)}
+                      >
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Editar item
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -811,16 +814,18 @@ export default function GuiaValijaItemsPage() {
                               <Icon name="eye" size="sm" />
                               <span className="hidden lg:inline">Ver</span>
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => router.push(`/dashboard/guias-valija-items/${item.id}/edit`)}
-                              title="Editar item"
-                              className="gap-2"
-                            >
-                              <Pencil className="h-4 w-4" />
-                              <span className="hidden lg:inline">Editar</span>
-                            </Button>
+                            {canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push(`/dashboard/guias-valija-items/${item.id}/edit`)}
+                                title="Editar item"
+                                className="gap-2"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                <span className="hidden lg:inline">Editar</span>
+                              </Button>
+                            )}
                             {canDelete && (
                               <Button
                                 variant="ghost"

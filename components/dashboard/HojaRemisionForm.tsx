@@ -46,7 +46,7 @@ export default function HojaRemisionForm({
   initialData,
   onSave,
   onCancel,
-  submitLabel = "Guardar Hoja de Remision",
+  submitLabel = "Guardar Hoja de Remisión",
 }: HojaRemisionFormProps) {
   const [formData, setFormData] = useState<HojaRemisionFormData>({
     numero: initialData?.numero || 0,
@@ -102,7 +102,7 @@ export default function HojaRemisionForm({
     const newErrors: Record<string, string> = {}
 
     if (!formData.numeroCompleto.trim()) {
-      newErrors.numeroCompleto = "Numero completo es requerido"
+      newErrors.numeroCompleto = "Número completo es requerido"
     }
     if (!formData.siglaUnidad.trim()) {
       newErrors.siglaUnidad = "Sigla de unidad es requerida"
@@ -195,13 +195,13 @@ export default function HojaRemisionForm({
       <Card className="overflow-hidden border-[var(--kt-gray-200)]">
         <CardHeader className="border-b border-[var(--kt-gray-200)] bg-[linear-gradient(180deg,#f8fafc,white)]">
           <CardTitle>Cabecera operativa</CardTitle>
-          <CardDescription>Numero HR, unidad, fecha y estado en una sola linea de trabajo.</CardDescription>
+          <CardDescription>Número HR, unidad, fecha y estado en una sola línea de trabajo.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 pt-6">
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,0.8fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]">
             <div>
               <Label htmlFor="numeroCompleto">
-                Numero Completo <span className="text-red-500">*</span>
+                Número Completo <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="numeroCompleto"
@@ -320,7 +320,7 @@ export default function HojaRemisionForm({
                 id="documento"
                 value={formData.documento || ""}
                 onChange={(e) => handleChange("documento", e.target.value)}
-                placeholder="Descripcion del documento (opcional)"
+                placeholder="Descripción del documento (opcional)"
                 rows={4}
                 className={errors.documento ? "border-red-500 focus-visible:ring-red-500" : ""}
               />
@@ -355,7 +355,7 @@ export default function HojaRemisionForm({
                 id="referencia"
                 value={formData.referencia || ""}
                 onChange={(e) => handleChange("referencia", e.target.value)}
-                placeholder="Numero de referencia"
+                placeholder="Número de referencia"
               />
             </div>
 
@@ -372,7 +372,7 @@ export default function HojaRemisionForm({
             </div>
 
             <div className="md:col-span-2">
-              <Label htmlFor="descripcionEmpaque">Descripcion Empaque</Label>
+              <Label htmlFor="descripcionEmpaque">Descripción empaque</Label>
               <Input
                 id="descripcionEmpaque"
                 value={formData.descripcionEmpaque || ""}

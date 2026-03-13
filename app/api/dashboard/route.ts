@@ -1,34 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getDashboardMetrics } from '@/lib/dashboard'
+import { NextResponse } from "next/server"
+import { getDashboardMetrics } from "@/lib/dashboard"
+import { auth } from "@/lib/auth-v4"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 300
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
+    const session = await auth()
 
-    if (!userId) {
+    if (!session) {
       return NextResponse.json(
-        { error: 'ID de usuario requerido' },
-        { status: 400 }
+        { error: "No autenticado" },
+        { status: 401 }
       )
     }
 
-    const metrics = await getDashboardMetrics(userId)
+    const metrics = await getDashboardMetrics({
+      userId: session.user.id,
+      role: session.user.role,
+    })
 
-    // Add cache headers for better performance
     return NextResponse.json(metrics, {
       headers: {
-        'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
-        'CDN-Cache-Control': 'public, s-maxage=300'
-      }
+        "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+        "CDN-Cache-Control": "public, s-maxage=300",
+      },
     })
   } catch (error) {
-    console.error('Error fetching dashboard metrics:', error)
+    console.error("Error fetching dashboard metrics:", error)
     return NextResponse.json(
-      { error: 'Error interno del servidor' },
+      { error: "Error interno del servidor" },
       { status: 500 }
     )
   }

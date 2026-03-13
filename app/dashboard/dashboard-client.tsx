@@ -10,13 +10,9 @@ import { ErrorComponent } from "@/components/ui/error-component"
 import {
   AlertTriangle,
   ArrowRight,
-  ClipboardList,
-  FileSearch,
   FileText,
   FolderOpen,
-  ScrollText,
   ShieldCheck,
-  Sparkles,
   Stamp,
   Workflow,
 } from "lucide-react"
@@ -44,12 +40,12 @@ interface DashboardMetrics {
 }
 
 interface DashboardClientProps {
-  userId: string
+  role: "SUPER_ADMIN" | "ADMIN" | "USER"
 }
 
 const STATUS_LABELS: Record<string, string> = {
   pendiente: "Pendiente",
-  en_transito: "En transito",
+  en_transito: "En tránsito",
   entregado: "Entregado",
   cancelado: "Cancelado",
   borrador: "Borrador",
@@ -82,7 +78,9 @@ function SectionHeader({
   )
 }
 
-function HeroPanel({ metrics }: { metrics: DashboardMetrics }) {
+function HeroPanel({ metrics, role }: { metrics: DashboardMetrics; role: DashboardClientProps["role"] }) {
+  const canViewGlobalMetrics = role === "ADMIN" || role === "SUPER_ADMIN"
+
   const derived = useMemo(() => {
     const pendingGuides = (metrics.guiasValija.byStatus.pendiente || 0) + (metrics.guiasValija.byStatus.en_transito || 0)
     const openRemissions = (metrics.hojasRemision.byStatus.borrador || 0) + (metrics.hojasRemision.byStatus.enviada || 0)
@@ -94,136 +92,92 @@ function HeroPanel({ metrics }: { metrics: DashboardMetrics }) {
       openRemissions,
       qualityRate,
       alerts: metrics.documents.processingFailed + pendingGuides,
+      documentsPending: metrics.documents.processingFailed,
     }
   }, [metrics])
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
-      <Card className="overflow-hidden border-[var(--kt-primary)]/15 bg-[radial-gradient(circle_at_top_left,rgba(54,153,255,0.18),transparent_36%),linear-gradient(135deg,#ffffff_0%,#f6faff_55%,#eef5ff_100%)] shadow-[0_24px_60px_-32px_rgba(54,153,255,0.45)]">
-        <CardContent className="p-6 md:p-7">
-          <div className="grid gap-6 md:grid-cols-[1.2fr_0.8fr]">
-            <div className="space-y-5">
-              <SectionHeader
-                eyebrow="Centro De Operaciones"
-                title="El panel debe decirte que revisar ahora, no solo cuantos registros existen."
-                description="Priorizamos cola de trabajo, salud del procesamiento y accesos directos al flujo documental diario."
-              />
+    <Card className="overflow-hidden border-[var(--kt-primary)]/15 bg-[radial-gradient(circle_at_top_left,rgba(54,153,255,0.18),transparent_36%),linear-gradient(135deg,#ffffff_0%,#f6faff_55%,#eef5ff_100%)] shadow-[0_24px_60px_-32px_rgba(54,153,255,0.45)]">
+      <CardContent className="p-6 md:p-7">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+          <div className="space-y-5">
+            <SectionHeader
+              eyebrow="Centro documentario"
+              title="Tablero operativo con cifras reales del sistema."
+              description={
+                canViewGlobalMetrics
+                  ? "Los contadores muestran documentos, guías y hojas de remisión registradas en todo el sistema."
+                  : "Los contadores muestran tu actividad reciente en documentos, guías y hojas de remisión."
+              }
+            />
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Pendientes</p>
-                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{derived.pendingGuides}</p>
-                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">guias activas por resolver</p>
-                </div>
-                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Remisiones</p>
-                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{derived.openRemissions}</p>
-                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">abiertas o en borrador</p>
-                </div>
-                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Calidad OCR</p>
-                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{derived.qualityRate}%</p>
-                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">procesamiento exitoso</p>
-                </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Documentos</p>
+                <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{metrics.documents.total}</p>
+                <p className="mt-1 text-xs text-[var(--kt-text-muted)]">registrados en total</p>
               </div>
-            </div>
-
-            <div className="flex flex-col justify-between rounded-[28px] border border-[var(--kt-primary)]/20 bg-[#0f172fcc] p-5 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <div className="flex items-center gap-2 text-sm font-medium text-white/70">
-                <Workflow className="h-4 w-4" />
-                Flujo del dia
+              <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Guías de valija</p>
+                <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{metrics.guiasValija.total}</p>
+                <p className="mt-1 text-xs text-[var(--kt-text-muted)]">guías registradas</p>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.18em] text-white/55">Documentos esta semana</p>
-                      <p className="mt-2 text-4xl font-semibold">{metrics.documents.thisWeek}</p>
-                    </div>
-                    <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white/75">
-                      {derived.alerts} focos de atencion
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <div className="mb-2 flex items-center justify-between text-xs text-white/70">
-                      <span>Procesados correctamente</span>
-                      <span>{metrics.documents.processingSuccess}</span>
-                    </div>
-                    <Progress value={derived.qualityRate} className="h-2 bg-white/10" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-2xl bg-white/8 p-3">
-                      <p className="text-white/60">Fallidos</p>
-                      <p className="mt-1 text-xl font-semibold">{metrics.documents.processingFailed}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/8 p-3">
-                      <p className="text-white/60">Este mes</p>
-                      <p className="mt-1 text-xl font-semibold">{metrics.documents.thisMonth}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-5 flex gap-2">
-                <Button asChild size="sm" className="bg-white text-slate-900 hover:bg-white/90">
-                  <Link href="/dashboard/documents">
-                    Revisar documentos
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button asChild size="sm" variant="outline" className="border-white/15 bg-white/5 text-white hover:bg-white/10">
-                  <Link href="/dashboard/guias-valija">Ir a guias</Link>
-                </Button>
+              <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Hojas de remisión</p>
+                <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{metrics.hojasRemision.total}</p>
+                <p className="mt-1 text-xs text-[var(--kt-text-muted)]">HR registradas</p>
               </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
 
-      <Card className="border-[var(--kt-gray-200)] bg-white shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Sparkles className="h-5 w-5 text-[var(--kt-primary)]" />
-            Acciones rapidas
-          </CardTitle>
-          <CardDescription>Entradas directas a las pantallas que mueven la operacion.</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          {[
-            { href: "/dashboard/guias-valija", label: "Guías de valija", description: "Subir, confirmar y editar guias", icon: FolderOpen },
-            { href: "/dashboard/guias-valija-items", label: "Items de valija", description: "Validar items y derivados", icon: ClipboardList },
-            { href: "/dashboard/hojas-remision", label: "Hojas de remision", description: "Crear HR nuevas o editar las existentes", icon: FileText },
-            { href: "/dashboard/oficios", label: "Oficios", description: "Controlar oficios detectados", icon: ScrollText },
-            { href: "/dashboard/documents?rStatus=pending", label: "Revisión pendiente", description: "Atacar la cola documental", icon: FileSearch },
-          ].map((action) => (
-            <Link
-              key={action.href}
-              href={action.href}
-              className="group rounded-2xl border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] px-4 py-4 transition-all hover:-translate-y-0.5 hover:border-[var(--kt-primary)]/35 hover:bg-white hover:shadow-sm"
-            >
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-[var(--kt-gray-200)]">
-                  <action.icon className="h-5 w-5 text-[var(--kt-primary)]" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-[var(--kt-text-dark)]">{action.label}</p>
-                  <p className="text-sm text-[var(--kt-text-muted)]">{action.description}</p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-[var(--kt-text-muted)] transition-transform group-hover:translate-x-0.5 group-hover:text-[var(--kt-primary)]" />
-              </div>
-            </Link>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-[28px] border border-[#d8e7ff] bg-white/92 p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Esta semana</p>
+              <p className="mt-2 text-4xl font-semibold text-[var(--kt-text-dark)]">{metrics.documents.thisWeek}</p>
+              <p className="mt-2 text-sm text-[var(--kt-text-muted)]">documentos ingresados</p>
+            </div>
+            <div className="rounded-[28px] border border-[#d8e7ff] bg-white/92 p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Este mes</p>
+              <p className="mt-2 text-4xl font-semibold text-[var(--kt-text-dark)]">{metrics.documents.thisMonth}</p>
+              <p className="mt-2 text-sm text-[var(--kt-text-muted)]">documentos ingresados</p>
+            </div>
+            <div className="rounded-[28px] border border-[#d8e7ff] bg-white/92 p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Guías activas</p>
+              <p className="mt-2 text-4xl font-semibold text-[var(--kt-text-dark)]">{derived.pendingGuides}</p>
+              <p className="mt-2 text-sm text-[var(--kt-text-muted)]">pendientes o en tránsito</p>
+            </div>
+            <div className="rounded-[28px] border border-[#d8e7ff] bg-white/92 p-5 shadow-sm">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Documentos fallidos</p>
+              <p className="mt-2 text-4xl font-semibold text-[var(--kt-text-dark)]">{derived.documentsPending}</p>
+              <p className="mt-2 text-sm text-[var(--kt-text-muted)]">requieren revisión</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[var(--kt-primary)]/15 bg-white/70 px-4 py-3 backdrop-blur">
+          <div className="flex items-center gap-2 text-sm text-[var(--kt-text-muted)]">
+            <Workflow className="h-4 w-4 text-[var(--kt-primary)]" />
+            {derived.alerts} focos de atención entre documentos fallidos y guías activas.
+          </div>
+          <div className="flex gap-2">
+            <Button asChild size="sm" className="bg-[var(--kt-primary)] text-white hover:bg-[var(--kt-primary)]/90">
+              <Link href="/dashboard/documents">
+                Revisar documentos
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/dashboard/guias-valija">Ver guías</Link>
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
-function WorkQueues({ metrics }: { metrics: DashboardMetrics }) {
+function WorkQueues({ metrics, role }: { metrics: DashboardMetrics; role: DashboardClientProps["role"] }) {
+  const canViewGlobalMetrics = role === "ADMIN" || role === "SUPER_ADMIN"
   const pendingGuides = (metrics.guiasValija.byStatus.pendiente || 0) + (metrics.guiasValija.byStatus.en_transito || 0)
   const pendingDocuments = metrics.documents.processingFailed
   const openRemissions = (metrics.hojasRemision.byStatus.borrador || 0) + (metrics.hojasRemision.byStatus.enviada || 0)
@@ -235,7 +189,7 @@ function WorkQueues({ metrics }: { metrics: DashboardMetrics }) {
       href: "/dashboard/guias-valija",
       accent: "border-l-[var(--kt-warning)]",
       icon: FolderOpen,
-      note: "Pendientes o en transito",
+      note: "Pendientes o en tránsito",
     },
     {
       title: "Revisión documental",
@@ -268,7 +222,9 @@ function WorkQueues({ metrics }: { metrics: DashboardMetrics }) {
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--kt-primary)]">Trabajo Pendiente</p>
-          <h2 className="text-xl font-semibold text-[var(--kt-text-dark)]">Colas que requieren intervención</h2>
+          <h2 className="text-xl font-semibold text-[var(--kt-text-dark)]">
+            {canViewGlobalMetrics ? "Colas globales que requieren intervención" : "Tu trabajo pendiente requiere intervención"}
+          </h2>
         </div>
       </div>
 
@@ -296,7 +252,8 @@ function WorkQueues({ metrics }: { metrics: DashboardMetrics }) {
   )
 }
 
-function PipelineOverview({ metrics }: { metrics: DashboardMetrics }) {
+function PipelineOverview({ metrics, role }: { metrics: DashboardMetrics; role: DashboardClientProps["role"] }) {
+  const canViewGlobalMetrics = role === "ADMIN" || role === "SUPER_ADMIN"
   const totalProcessed = metrics.documents.processingSuccess + metrics.documents.processingFailed
   const successRate = totalProcessed > 0 ? Math.round((metrics.documents.processingSuccess / totalProcessed) * 100) : 0
 
@@ -308,7 +265,11 @@ function PipelineOverview({ metrics }: { metrics: DashboardMetrics }) {
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle>Flujo de guías</CardTitle>
-          <CardDescription>Distribución actual de las guías de valija.</CardDescription>
+          <CardDescription>
+            {canViewGlobalMetrics
+              ? "Distribución actual de las guías de valija en todo el sistema."
+              : "Distribución actual de tus guías de valija."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {guideStatuses.length > 0 ? (
@@ -333,7 +294,11 @@ function PipelineOverview({ metrics }: { metrics: DashboardMetrics }) {
       <Card className="shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle>Flujo de remisiones</CardTitle>
-          <CardDescription>Estado operativo de las hojas de remisión.</CardDescription>
+          <CardDescription>
+            {canViewGlobalMetrics
+              ? "Estado operativo de las hojas de remisión en todo el sistema."
+              : "Estado operativo de tus hojas de remisión."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {remisionStatuses.length > 0 ? (
@@ -361,7 +326,11 @@ function PipelineOverview({ metrics }: { metrics: DashboardMetrics }) {
             <ShieldCheck className="h-5 w-5 text-[var(--kt-success)]" />
             Salud del sistema
           </CardTitle>
-          <CardDescription>Indicadores rápidos del pipeline documental.</CardDescription>
+          <CardDescription>
+            {canViewGlobalMetrics
+              ? "Indicadores rápidos del pipeline documental global."
+              : "Indicadores rápidos de tu pipeline documental."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-2xl border border-[var(--kt-gray-200)] bg-white p-4">
@@ -387,7 +356,8 @@ function PipelineOverview({ metrics }: { metrics: DashboardMetrics }) {
   )
 }
 
-function DerivedInsights({ metrics }: { metrics: DashboardMetrics }) {
+function DerivedInsights({ metrics, role }: { metrics: DashboardMetrics; role: DashboardClientProps["role"] }) {
+  const canViewGlobalMetrics = role === "ADMIN" || role === "SUPER_ADMIN"
   const entradaCount = metrics.guiasValija.byType.ENTRADA || 0
   const extraordinarySignals = metrics.guiasValija.byType.EXTRAORDINARIA || 0
   const remisionLoad = metrics.hojasRemision.total > 0 ? Math.round((metrics.hojasRemision.active / metrics.hojasRemision.total) * 100) : 0
@@ -396,17 +366,23 @@ function DerivedInsights({ metrics }: { metrics: DashboardMetrics }) {
     {
       title: "Predominio de ingreso",
       value: entradaCount,
-      description: "Guías de entrada registradas hasta ahora.",
+      description: canViewGlobalMetrics
+        ? "Guías de entrada registradas hasta ahora en todo el sistema."
+        : "Guías de entrada registradas hasta ahora en tu cuenta.",
     },
     {
       title: "Señal extraordinaria",
       value: extraordinarySignals,
-      description: "Guías extraordinarias detectadas en el sistema.",
+      description: canViewGlobalMetrics
+        ? "Guías extraordinarias detectadas en el sistema."
+        : "Guías extraordinarias detectadas en tu cuenta.",
     },
     {
       title: "Carga de remisiones",
       value: `${remisionLoad}%`,
-      description: "Porcentaje de remisiones todavía activas.",
+      description: canViewGlobalMetrics
+        ? "Porcentaje de remisiones todavía activas en todo el sistema."
+        : "Porcentaje de remisiones todavía activas en tu cuenta.",
     },
   ]
 
@@ -414,7 +390,11 @@ function DerivedInsights({ metrics }: { metrics: DashboardMetrics }) {
     <section className="space-y-4">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--kt-primary)]">Lectura Ejecutiva</p>
-        <h2 className="text-xl font-semibold text-[var(--kt-text-dark)]">Tres señales para revisar antes de seguir operando</h2>
+        <h2 className="text-xl font-semibold text-[var(--kt-text-dark)]">
+          {canViewGlobalMetrics
+            ? "Tres señales globales para revisar antes de seguir operando"
+            : "Tres señales de tu actividad antes de seguir operando"}
+        </h2>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -432,7 +412,7 @@ function DerivedInsights({ metrics }: { metrics: DashboardMetrics }) {
   )
 }
 
-export default function DashboardClient({ userId }: DashboardClientProps) {
+export default function DashboardClient({ role }: DashboardClientProps) {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -443,7 +423,7 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
 
     async function fetchMetrics() {
       try {
-        const response = await fetch(`/api/dashboard?userId=${userId}`, {
+        const response = await fetch("/api/dashboard", {
           cache: "no-store",
           signal: abortController.signal,
           headers: {
@@ -453,7 +433,7 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
         })
 
         if (!response.ok) {
-          throw new Error("No se pudieron cargar las metricas")
+          throw new Error("No se pudieron cargar las métricas")
         }
 
         const data = await response.json()
@@ -473,7 +453,7 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
       mounted = false
       abortController.abort()
     }
-  }, [userId])
+  }, [])
 
   if (loading) {
     return <div className="space-y-6"><div className="h-8 w-64 animate-pulse rounded bg-gray-200" /></div>
@@ -486,10 +466,10 @@ export default function DashboardClient({ userId }: DashboardClientProps) {
   return (
     <ErrorBoundary FallbackComponent={ErrorComponent}>
       <div className="space-y-8">
-        <HeroPanel metrics={metrics} />
-        <WorkQueues metrics={metrics} />
-        <PipelineOverview metrics={metrics} />
-        <DerivedInsights metrics={metrics} />
+        <HeroPanel metrics={metrics} role={role} />
+        <WorkQueues metrics={metrics} role={role} />
+        <PipelineOverview metrics={metrics} role={role} />
+        <DerivedInsights metrics={metrics} role={role} />
       </div>
     </ErrorBoundary>
   )

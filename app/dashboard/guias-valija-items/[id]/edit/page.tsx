@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useSession } from "next-auth/react"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -33,6 +34,7 @@ interface GuiaValijaItemDetail {
 }
 
 export default function EditGuiaValijaItemPage() {
+  const { data: session, status } = useSession()
   const params = useParams<{ id: string }>()
   const router = useRouter()
 
@@ -49,6 +51,17 @@ export default function EditGuiaValijaItemPage() {
   })
 
   useEffect(() => {
+    if (status === "loading") return
+    if (!session) {
+      router.push("/auth/signin")
+      return
+    }
+    if (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN") {
+      toast.error("No tienes permisos para editar items de guía de valija")
+      router.push("/dashboard/guias-valija-items")
+      return
+    }
+
     const id = params.id
     if (!id) return
 
@@ -93,7 +106,7 @@ export default function EditGuiaValijaItemPage() {
       mounted = false
       controller.abort()
     }
-  }, [params.id, router])
+  }, [params.id, router, session, status])
 
   const updateField = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }))

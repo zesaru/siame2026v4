@@ -124,6 +124,11 @@ export default function HojasRemisionClient({
     }
   }, [hojas])
 
+  const hojasWithoutPdf = useMemo(
+    () => hojas.filter((hoja) => !hoja.filePath).sort((a, b) => a.numeroCompleto.localeCompare(b.numeroCompleto)),
+    [hojas]
+  )
+
   const handleDelete = (hoja: HojaRemision) => {
     setDeleteConfirm(hoja)
   }
@@ -145,21 +150,21 @@ export default function HojasRemisionClient({
       })
 
       if (response.status === 404) {
-        toast.info("La hoja de remision ya no estaba disponible.")
+        toast.info("La hoja de remisión ya no estaba disponible.")
         setDeleteConfirm(null)
         setHojas((current) => current.filter((h) => h.id !== deleteConfirm.id))
         router.refresh()
         return
       }
 
-      if (!response.ok) throw new Error("Error al eliminar la hoja de remision")
+      if (!response.ok) throw new Error("Error al eliminar la hoja de remisión")
 
-      toast.success("Hoja de remision eliminada correctamente")
+      toast.success("Hoja de remisión eliminada correctamente")
       setDeleteConfirm(null)
       setHojas((current) => current.filter((h) => h.id !== deleteConfirm.id))
       router.refresh()
     } catch {
-      toast.error("Error al eliminar la hoja de remision")
+      toast.error("Error al eliminar la hoja de remisión")
     }
   }
 
@@ -323,59 +328,90 @@ export default function HojasRemisionClient({
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Hojas de Remision</BreadcrumbPage>
+            <BreadcrumbPage>Hojas de Remisión</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
       <Card className="overflow-hidden border-[var(--kt-gray-200)] bg-[radial-gradient(circle_at_top_left,rgba(54,153,255,0.16),transparent_28%),linear-gradient(135deg,#ffffff_0%,#f6faff_52%,#eef5ff_100%)] shadow-[0_20px_55px_-30px_rgba(54,153,255,0.4)]">
         <CardContent className="p-6">
-          <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-            <div className="space-y-4">
+          <div className="space-y-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--kt-primary)]">Mesa HR</p>
-                <h1 className="text-3xl font-semibold tracking-[-0.02em] text-[var(--kt-text-dark)]">Hojas de Remision</h1>
+                <h1 className="text-3xl font-semibold tracking-[-0.02em] text-[var(--kt-text-dark)]">Hojas de Remisión</h1>
                 <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--kt-text-muted)]">
-                  Desde aqui revisas hojas existentes y, cuando hace falta, reemplazas su soporte PDF desde el flujo de edicion.
+                  Desde aquí revisas hojas existentes y, cuando hace falta, reemplazas su soporte PDF desde el flujo de edición.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Total HR</p>
-                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.total}</p>
-                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">registros disponibles en la mesa</p>
+              <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Total HR</p>
+                    <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.total}</p>
+                    <p className="mt-1 text-xs text-[var(--kt-text-muted)]">registros disponibles en la mesa</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Con PDF</p>
+                    <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.withPdf}</p>
+                    <p className="mt-1 text-xs text-[var(--kt-text-muted)]">soportes documentales asociados</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
+                    <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Sin revisar</p>
+                    <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.pendingReview}</p>
+                    <p className="mt-1 text-xs text-[var(--kt-text-muted)]">pendientes de validación final</p>
+                  </div>
                 </div>
-                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Con PDF</p>
-                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.withPdf}</p>
-                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">soportes documentales asociados</p>
-                </div>
-                <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm backdrop-blur">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Sin revisar</p>
-                  <p className="mt-3 text-3xl font-semibold text-[var(--kt-text-dark)]">{stats.pendingReview}</p>
-                  <p className="mt-1 text-xs text-[var(--kt-text-muted)]">pendientes de validacion final</p>
-                </div>
-              </div>
-            </div>
 
-            <div className="xl:w-[320px]">
-              <div className="rounded-2xl border border-[var(--kt-gray-200)] bg-white/80 p-4">
-                <p className="text-xs uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Uso sugerido</p>
-                <p className="mt-2 text-sm font-medium text-[var(--kt-text-dark)]">Editar desde documentos</p>
-                <p className="mt-1 text-xs text-[var(--kt-text-muted)]">
-                  Las hojas se incorporan desde el flujo documental. En esta mesa puedes revisar registros existentes y corregirlos.
-                </p>
+                <div className="rounded-2xl border border-[var(--kt-warning)]/30 bg-[linear-gradient(180deg,var(--kt-warning-light),rgba(255,255,255,0.96))] p-4">
+                  {hojasWithoutPdf.length > 0 ? (
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-full bg-white/90 p-2 text-[var(--kt-warning)] shadow-sm">
+                        <Icon name="alert-triangle" size="sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-[var(--kt-text-dark)]">
+                          {hojasWithoutPdf.length} registro{hojasWithoutPdf.length === 1 ? "" : "s"} sin PDF
+                        </p>
+                        <div className="text-sm text-[var(--kt-text-muted)]">
+                          <span className="font-medium text-[var(--kt-text-dark)]">Hojas pendientes:</span>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {hojasWithoutPdf.map((hoja) => (
+                              <Badge
+                                key={hoja.id}
+                                variant="outline"
+                                className="border-[var(--kt-warning)]/30 bg-white/85 text-[var(--kt-text-dark)]"
+                              >
+                                {hoja.numeroCompleto}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div className="mt-0.5 rounded-full bg-white/90 p-2 text-[var(--kt-success)] shadow-sm">
+                        <Icon name="check-circle" size="sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-[var(--kt-text-dark)]">Todos los registros tienen PDF</p>
+                        <p className="text-sm text-[var(--kt-text-muted)]">
+                          No hay hojas de remisión pendientes de soporte documental.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card className="border-[var(--kt-gray-200)]">
         <CardHeader>
-          <CardTitle>Filtros de busqueda</CardTitle>
-          <CardDescription>Busca por numero, destinatario, remitente o asunto y reduce la mesa por anio.</CardDescription>
+          <CardTitle>Filtros de búsqueda</CardTitle>
+          <CardDescription>Busca por número, destinatario, remitente o asunto y reduce la mesa por año.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -384,23 +420,23 @@ export default function HojasRemisionClient({
               <Input
                 id="search"
                 type="text"
-                placeholder="Numero, para, remitente, asunto..."
+                placeholder="Número, para, remitente, asunto..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <p className="mt-1 text-xs text-[var(--kt-text-muted)]">
-                Encuentra rapido una HR para verla, corregirla o reemplazar su soporte.
+                Encuentra rápido una HR para verla, corregirla o reemplazar su soporte.
               </p>
             </div>
 
             <div>
-              <Label htmlFor="year">Anio</Label>
+              <Label htmlFor="year">Año</Label>
               <Select value={yearFilter} onValueChange={setYearFilter}>
                 <SelectTrigger id="year" suppressHydrationWarning>
-                  <SelectValue placeholder="Todos los anios" />
+                  <SelectValue placeholder="Todos los años" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Todos los anios</SelectItem>
+                  <SelectItem value="all">Todos los años</SelectItem>
                   {availableYears.map((year) => (
                     <SelectItem key={year} value={year.toString()}>
                       {year}
@@ -409,7 +445,7 @@ export default function HojasRemisionClient({
                 </SelectContent>
               </Select>
               <p className="mt-1 text-xs text-[var(--kt-text-muted)]">
-                {stats.currentYearCount} HR corresponden al anio actual.
+                {stats.currentYearCount} HR corresponden al año actual.
               </p>
             </div>
           </div>
@@ -437,24 +473,13 @@ export default function HojasRemisionClient({
       </Card>
 
       <Card className="border-[var(--kt-gray-200)]">
-        <CardHeader className="border-b border-[var(--kt-gray-200)] bg-[linear-gradient(180deg,#f8fafc,white)]">
-          <CardTitle>
-            Mesa operativa ({filteredHojas.length})
-            {filteredHojas.length !== hojas.length && (
-              <span className="ml-2 text-sm font-normal text-[var(--kt-text-muted)]">
-                filtrado sobre {hojas.length} registros
-              </span>
-            )}
-          </CardTitle>
-          <CardDescription>Las acciones se separan entre consulta, edicion de datos y eliminacion.</CardDescription>
-        </CardHeader>
         <CardContent>
           {filteredHojas.length === 0 ? (
             <EmptyState
               title={hojas.length === 0 ? "Sin hojas registradas" : "Sin resultados"}
               message={
                 hojas.length === 0
-                  ? "Todavia no hay hojas de remision registradas."
+                  ? "Todavía no hay hojas de remisión registradas."
                   : "No se encontraron hojas que coincidan con los filtros actuales."
               }
               action={
@@ -478,7 +503,7 @@ export default function HojasRemisionClient({
               <div className="rounded-md border max-h-[65vh] overflow-auto">
                 <Table>
                   <caption className="caption-bottom px-4 py-3 text-sm text-[var(--kt-text-muted)]">
-                    Lista de hojas de remision registradas ({filteredHojas.length} registros)
+                    Lista de hojas de remisión registradas ({filteredHojas.length} registros)
                   </caption>
                   <TableHeader>
                     {table.getHeaderGroups().map((headerGroup) => (
@@ -543,9 +568,9 @@ export default function HojasRemisionClient({
         <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Eliminar Hoja de Remision</AlertDialogTitle>
+              <AlertDialogTitle>Eliminar Hoja de Remisión</AlertDialogTitle>
               <AlertDialogDescription>
-                Estas por eliminar la hoja de remision <strong>{deleteConfirm?.numeroCompleto}</strong>. Esta accion no se puede deshacer.
+                Estás por eliminar la hoja de remisión <strong>{deleteConfirm?.numeroCompleto}</strong>. Esta acción no se puede deshacer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -561,7 +586,7 @@ export default function HojasRemisionClient({
       <AlertDialog open={!!editChoice} onOpenChange={() => setEditChoice(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Como quieres editar esta hoja?</AlertDialogTitle>
+            <AlertDialogTitle>¿Cómo quieres editar esta hoja?</AlertDialogTitle>
             <AlertDialogDescription>
               Puedes abrir el formulario para corregir campos o subir un PDF nuevo para analizarlo antes de guardar
               {editChoice ? ` en ${editChoice.numeroCompleto}` : ""}.

@@ -131,7 +131,7 @@ export function HojaRemisionConfirmacion({
               Confirmar datos extraidos
             </h1>
             <p className="mt-2 text-sm text-[var(--kt-text-muted)]">
-              Revisa la extraccion antes de enviarla al formulario maestro.
+              Revisa la extracción antes de enviarla al formulario maestro.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -244,7 +244,7 @@ export function HojaRemisionConfirmacion({
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <div className="rounded-lg border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] p-4">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold uppercase text-[var(--kt-text-muted)]">Numero Completo</span>
+                    <span className="text-sm font-semibold uppercase text-[var(--kt-text-muted)]">Número Completo</span>
                     <Badge variant="destructive" className="text-xs">Requerido</Badge>
                   </div>
                   <input
@@ -318,7 +318,7 @@ export function HojaRemisionConfirmacion({
 
                 <div className="rounded-lg border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] p-4 xl:col-span-3">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="text-sm font-semibold uppercase text-[var(--kt-text-muted)]">Descripcion empaque</span>
+                    <span className="text-sm font-semibold uppercase text-[var(--kt-text-muted)]">Descripción empaque</span>
                     <Badge variant="outline" className="text-xs">Logistica</Badge>
                   </div>
                   <input
@@ -406,10 +406,10 @@ export function HojaRemisionConfirmacion({
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <span className="text-2xl">{`{ }`}</span>
-                  Respuesta tecnica del analisis
+                  Respuesta técnica del análisis
                 </CardTitle>
                 <CardDescription>
-                  Respuesta cruda del motor de analisis documental
+                  Respuesta cruda del motor de análisis documental
                   {azureResult && (
                     <span className="ml-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
                       {azureResult.keyValuePairs?.length || 0} keyValuePairs

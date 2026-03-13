@@ -32,7 +32,7 @@ const PDFViewer = dynamic(() => import("@/components/dashboard/PDFViewer"), {
 const HojaRemisionConfirmacion = dynamic(
   () => import("@/components/dashboard/HojaRemisionConfirmacion").then((mod) => mod.HojaRemisionConfirmacion),
   {
-    loading: () => <LoadingSpinner message="Cargando confirmacion..." />,
+    loading: () => <LoadingSpinner message="Cargando confirmación..." />,
   }
 )
 
@@ -80,14 +80,14 @@ export default function HojaRemisionEditor({
   const prioritizePdfColumn = Boolean(file)
 
   const title = useMemo(() => {
-    if (wizardStep === "confirmation") return "Confirmar datos extraidos"
-    if (wizardStep === "edit" && file) return "Editar datos extraidos"
-    return mode === "edit" ? "Editar Hoja de Remision" : "Nueva Hoja de Remision"
+    if (wizardStep === "confirmation") return "Confirmar datos extraídos"
+    if (wizardStep === "edit" && file) return "Editar datos extraídos"
+    return mode === "edit" ? "Editar Hoja de Remisión" : "Nueva Hoja de Remisión"
   }, [mode, wizardStep, file])
 
   const subtitle = useMemo(() => {
-    if (wizardStep === "confirmation") return "Revisa la extraccion automatica antes de aplicarla al formulario."
-    if (wizardStep === "edit" && file) return "Ajusta los datos extraidos y guarda una version confiable del documento."
+    if (wizardStep === "confirmation") return "Revisa la extracción automática antes de aplicarla al formulario."
+    if (wizardStep === "edit" && file) return "Ajusta los datos extraídos y guarda una versión confiable del documento."
     if (mode === "edit") {
       return documentNumber
         ? `${documentNumber} · puedes reemplazar el PDF o editar los datos manualmente.`
@@ -101,15 +101,15 @@ export default function HojaRemisionEditor({
   const stepItems = [
     {
       key: "manual",
-      label: "Edicion manual",
+      label: "Edición manual",
       description: "Formulario listo para captura o ajuste.",
       active: stepIndex >= 1,
       icon: PencilLine,
     },
     {
       key: "analysis",
-      label: "Extraccion",
-      description: file ? "PDF analizado y pendiente de validacion." : "Sin PDF nuevo en revision.",
+      label: "Extracción",
+      description: file ? "PDF analizado y pendiente de validación." : "Sin PDF nuevo en revisión.",
       active: stepIndex >= 2 && Boolean(file),
       icon: ScanSearch,
     },
@@ -172,15 +172,15 @@ export default function HojaRemisionEditor({
       const result = await onSave(formData, file)
 
       if (!result.success) {
-        throw new Error(result.error || "No se pudo guardar la hoja de remision.")
+        throw new Error(result.error || "No se pudo guardar la hoja de remisión.")
       }
 
       toast.success(
         file
-          ? "Hoja de remision y PDF guardados correctamente."
+          ? "Hoja de remisión y PDF guardados correctamente."
           : mode === "edit"
-          ? "Hoja de remision actualizada."
-          : "Hoja de remision creada."
+          ? "Hoja de remisión actualizada."
+          : "Hoja de remisión creada."
       )
       router.push("/dashboard/hojas-remision")
     } catch (err) {
@@ -204,7 +204,7 @@ export default function HojaRemisionEditor({
 
   const handleConfirmData = () => {
     if (!extractedData?.numeroCompleto || !extractedData.fecha || !extractedData.remitente) {
-      toast.error("Faltan campos requeridos. Corrige la extraccion o edita manualmente.")
+      toast.error("Faltan campos requeridos. Corrige la extracción o edita manualmente.")
       return
     }
 
@@ -234,7 +234,7 @@ export default function HojaRemisionEditor({
 
   const handleRejectData = () => {
     resetUploadState()
-    toast.info("Extraccion descartada. Puedes subir otro PDF o seguir manualmente.")
+    toast.info("Extracción descartada. Puedes subir otro PDF o seguir manualmente.")
   }
 
   const handleRetryUpload = () => {
@@ -248,15 +248,15 @@ export default function HojaRemisionEditor({
   const editorModeLabel = mode === "edit" ? "Actualizacion controlada" : "Registro asistido"
   const extractionLabel =
     uploadState === "ready" && extractedData
-      ? "Extraccion disponible"
+      ? "Extracción disponible"
       : file
       ? "PDF cargado"
-      : "Sin extraccion activa"
+      : "Sin extracción activa"
   const saveLabel =
     uploadState === "saving"
       ? "Guardando cambios"
       : mode === "edit"
-      ? "Edicion en curso"
+      ? "Edición en curso"
       : "Nuevo registro"
   const shouldShowUploadLauncher = !file && uploadState === "idle"
   const showFocusedUploadFlow =
@@ -310,12 +310,12 @@ export default function HojaRemisionEditor({
                 </div>
                 <div>
                   <h1 className="text-3xl font-semibold tracking-[-0.03em] text-slate-900">
-                    {isAnalyzing ? "Analizando hoja de remision" : "Sube el archivo PDF"}
+                    {isAnalyzing ? "Analizando hoja de remisión" : "Sube el archivo PDF"}
                   </h1>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                     {isAnalyzing
-                      ? "Mantendremos esta vista hasta terminar el analisis para que no compita con otros paneles ni formularios."
-                      : "En este paso solo necesitas cargar el PDF o cancelar. El resto del editor aparece despues del analisis."}
+                      ? "Mantendremos esta vista hasta terminar el análisis para que no compita con otros paneles ni formularios."
+                      : "En este paso solo necesitas cargar el PDF o cancelar. El resto del editor aparece después del análisis."}
                   </p>
                 </div>
               </div>
@@ -332,7 +332,7 @@ export default function HojaRemisionEditor({
               {isAnalyzing ? (
                 <div className="flex min-h-[360px] flex-col justify-between rounded-[28px] border border-sky-200/80 bg-slate-950 px-6 py-6 text-sky-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
                   <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.28em] text-sky-200/80">
-                    <span>Analisis documental</span>
+                    <span>Análisis documental</span>
                     <span>{uploadState === "uploading" ? "Subiendo" : "Procesando"}</span>
                   </div>
 
@@ -353,7 +353,7 @@ export default function HojaRemisionEditor({
                         {uploadState === "uploading" ? "Subiendo PDF al analizador" : "Extrayendo campos y tablas del documento"}
                       </p>
                       <p className="mt-3 max-w-md text-sm leading-6 text-sky-100/80">
-                        {file?.name || "El archivo seleccionado"} permanece bloqueado en esta etapa mientras preparamos numero, unidad, fecha y remitente.
+                        {file?.name || "El archivo seleccionado"} permanece bloqueado en esta etapa mientras preparamos número, unidad, fecha y remitente.
                       </p>
                     </div>
                   </div>
@@ -365,7 +365,7 @@ export default function HojaRemisionEditor({
                     <div className="grid gap-3 text-sm text-sky-100/80 sm:grid-cols-3">
                       <div className="rounded-2xl border border-sky-400/15 bg-white/5 px-4 py-3">Validando PDF</div>
                       <div className="rounded-2xl border border-sky-400/15 bg-white/5 px-4 py-3">Leyendo contenido</div>
-                      <div className="rounded-2xl border border-sky-400/15 bg-white/5 px-4 py-3">Preparando confirmacion</div>
+                      <div className="rounded-2xl border border-sky-400/15 bg-white/5 px-4 py-3">Preparando confirmación</div>
                     </div>
                   </div>
                 </div>
@@ -389,7 +389,7 @@ export default function HojaRemisionEditor({
 
                   <div className="space-y-4">
                     <p className="max-w-xl text-sm leading-6 text-slate-600">
-                      Carga un archivo PDF para reanalizar la hoja de remision. No mostraremos el formulario ni otros bloques hasta completar esta etapa.
+                      Carga un archivo PDF para reanalizar la hoja de remisión. No mostraremos el formulario ni otros bloques hasta completar esta etapa.
                     </p>
                     <div className="inline-flex items-center gap-3 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-medium text-white">
                       <Upload className="h-4 w-4" />
@@ -407,7 +407,7 @@ export default function HojaRemisionEditor({
                   {[
                     "Subes un solo archivo PDF.",
                     "El sistema analiza contenido, fecha, remitente y estructura.",
-                    "Recien despues pasas a la pantalla de confirmacion.",
+                    "Recién después pasas a la pantalla de confirmación.",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white/80 px-4 py-4">
                       <span className="mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-100 text-xs font-semibold text-sky-800">
@@ -421,12 +421,12 @@ export default function HojaRemisionEditor({
 
               <div className="rounded-[24px] border border-amber-200 bg-[linear-gradient(180deg,rgba(255,251,235,0.92),rgba(255,255,255,0.96))] p-5">
                 <p className="text-sm font-semibold text-slate-900">
-                  {isAnalyzing ? "No cierres esta pantalla mientras termina el analisis." : "Si no quieres reemplazar el PDF, cancela y vuelve al editor."}
+                  {isAnalyzing ? "No cierres esta pantalla mientras termina el análisis." : "Si no quieres reemplazar el PDF, cancela y vuelve al editor."}
                 </p>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {isAnalyzing
-                    ? "Cuando termine, abriremos la confirmacion con los datos detectados."
-                    : "Cancelar te devuelve al punto anterior sin tocar la hoja de remision actual."}
+                    ? "Cuando termine, abriremos la confirmación con los datos detectados."
+                    : "Cancelar te devuelve al punto anterior sin tocar la hoja de remisión actual."}
                 </p>
               </div>
 
@@ -558,7 +558,7 @@ export default function HojaRemisionEditor({
             <p className="text-[11px] uppercase tracking-[0.22em] text-[var(--kt-text-muted)]">Documento fuente</p>
             <p className="mt-3 text-lg font-semibold text-[var(--kt-text-dark)]">{fileLabel}</p>
             <p className="mt-1 text-sm text-[var(--kt-text-muted)]">
-              {file ? "Trabajas sobre un PDF recien cargado." : existingPdfSrc ? "Se conserva el PDF registrado." : "Todavia no hay PDF asociado."}
+              {file ? "Trabajas sobre un PDF recién cargado." : existingPdfSrc ? "Se conserva el PDF registrado." : "Todavía no hay PDF asociado."}
             </p>
             {fileMeta && <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">{fileMeta}</p>}
           </div>
@@ -569,7 +569,7 @@ export default function HojaRemisionEditor({
               <div>
                 <p className="text-sm font-medium text-[var(--kt-text-dark)]">{extractionLabel}</p>
                 <p className="text-xs text-[var(--kt-text-muted)]">
-                  {file && extractedData ? "Puedes confirmar la extraccion o seguir corrigiendo el formulario." : "El editor sigue operativo incluso sin analisis automatizado."}
+                  {file && extractedData ? "Puedes confirmar la extracción o seguir corrigiendo el formulario." : "El editor sigue operativo incluso sin análisis automatizado."}
                 </p>
               </div>
               <div>
@@ -653,7 +653,7 @@ export default function HojaRemisionEditor({
                 <Card className="overflow-hidden border-[var(--kt-gray-200)]">
                   <div className="border-b border-[var(--kt-gray-200)] px-6 py-4">
                     <CardTitle className="text-lg">Panel tecnico</CardTitle>
-                    <CardDescription>Soporte de QA y validacion, fuera del flujo principal de captura.</CardDescription>
+                    <CardDescription>Soporte de QA y validación, fuera del flujo principal de captura.</CardDescription>
                   </div>
                 </Card>
               )}
@@ -707,8 +707,8 @@ export default function HojaRemisionEditor({
                     className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-[var(--kt-gray-50)]"
                   >
                     <div>
-                      <CardTitle className="text-lg">Respuesta tecnica</CardTitle>
-                      <CardDescription>Salida completa del analisis para depuracion y QA.</CardDescription>
+                      <CardTitle className="text-lg">Respuesta técnica</CardTitle>
+                      <CardDescription>Salida completa del análisis para depuración y QA.</CardDescription>
                     </div>
                     {showAzureJson && !showKeyValuePairs ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   </button>
@@ -733,10 +733,10 @@ export default function HojaRemisionEditor({
                     <div className="max-w-2xl space-y-2">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--kt-primary)]">Carga guiada</p>
                       <h2 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--kt-text-dark)]">
-                        Sube el archivo PDF para iniciar el analisis
+                        Sube el archivo PDF para iniciar el análisis
                       </h2>
                       <p className="text-sm leading-6 text-[var(--kt-text-muted)]">
-                        Este flujo revisa el documento y prepara los datos para confirmacion antes de llevarlos al formulario.
+                        Este flujo revisa el documento y prepara los datos para confirmación antes de llevarlos al formulario.
                       </p>
                     </div>
 
@@ -783,11 +783,11 @@ export default function HojaRemisionEditor({
                 <CardContent className="py-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Modo de captura</p>
                   <p className="mt-2 text-base font-semibold text-[var(--kt-text-dark)]">
-                    {file && extractedData ? "Edicion enriquecida con extraccion" : "Edicion manual guiada"}
+                    {file && extractedData ? "Edición enriquecida con extracción" : "Edición manual guiada"}
                   </p>
                   <p className="mt-1 text-sm text-[var(--kt-text-muted)]">
                     {file
-                      ? "El PDF puede reescribir el contexto de la HR despues de la confirmacion."
+                      ? "El PDF puede reescribir el contexto de la HR después de la confirmación."
                       : "Puedes editar el documento sin cargar un PDF nuevo."}
                   </p>
                 </CardContent>
@@ -797,7 +797,7 @@ export default function HojaRemisionEditor({
                 <CardContent className="py-4">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Decision operativa</p>
                   <p className="mt-2 text-base font-semibold text-[var(--kt-text-dark)]">
-                    {uploadState === "ready" && extractedData ? "Extraccion lista para revisar" : "Formulario disponible para captura inmediata"}
+                    {uploadState === "ready" && extractedData ? "Extracción lista para revisar" : "Formulario disponible para captura inmediata"}
                   </p>
                   <p className="mt-1 text-sm text-[var(--kt-text-muted)]">
                     {uploadState === "ready" && extractedData
@@ -815,8 +815,8 @@ export default function HojaRemisionEditor({
                     <CardTitle>{file && extractedData ? "Formulario de consolidacion" : "Formulario maestro"}</CardTitle>
                     <CardDescription>
                       {file && extractedData
-                        ? "Consolida la extraccion sobre los campos oficiales antes de guardar."
-                        : "Captura los datos oficiales de la hoja de remision desde una sola superficie."}
+                        ? "Consolida la extracción sobre los campos oficiales antes de guardar."
+                        : "Captura los datos oficiales de la hoja de remisión desde una sola superficie."}
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -826,7 +826,7 @@ export default function HojaRemisionEditor({
                     {file && extractedData && (
                       <Badge className="bg-[var(--kt-primary-light)] text-[var(--kt-primary)]">
                         <Sparkles className="mr-1 h-3.5 w-3.5" />
-                        Extraccion lista
+                        Extracción lista
                       </Badge>
                     )}
                   </div>
@@ -837,7 +837,7 @@ export default function HojaRemisionEditor({
                   initialData={panelFormData}
                   onSave={handleSave}
                   onCancel={() => router.push("/dashboard/hojas-remision")}
-                  submitLabel={mode === "edit" ? "Actualizar Hoja de Remision" : "Guardar Hoja de Remision"}
+                  submitLabel={mode === "edit" ? "Actualizar Hoja de Remisión" : "Guardar Hoja de Remisión"}
                 />
               </CardContent>
             </Card>
@@ -845,13 +845,13 @@ export default function HojaRemisionEditor({
             {uploadState === "ready" && extractedData && (
               <Card className="overflow-hidden border-[var(--kt-primary)]/20 bg-[linear-gradient(135deg,white,var(--kt-primary-light))]">
                 <CardHeader>
-                  <CardTitle>Extraccion disponible</CardTitle>
+                  <CardTitle>Extracción disponible</CardTitle>
                   <CardDescription>
-                    El PDF fue analizado. Puedes revisar la confirmacion o continuar directamente con la captura manual.
+                    El PDF fue analizado. Puedes revisar la confirmación o continuar directamente con la captura manual.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-3">
-                  <Button onClick={() => setWizardStep("confirmation")}>Revisar extraccion</Button>
+                  <Button onClick={() => setWizardStep("confirmation")}>Revisar extracción</Button>
                   <Button variant="outline" onClick={handleRetryUpload}>
                     Subir otro PDF
                   </Button>
@@ -928,7 +928,7 @@ export default function HojaRemisionEditor({
                 <Card className="overflow-hidden border-[var(--kt-gray-200)]">
                   <div className="border-b border-[var(--kt-gray-200)] px-6 py-4">
                     <CardTitle className="text-lg">Panel tecnico</CardTitle>
-                    <CardDescription>Soporte de QA y validacion, fuera del flujo principal de captura.</CardDescription>
+                    <CardDescription>Soporte de QA y validación, fuera del flujo principal de captura.</CardDescription>
                   </div>
                 </Card>
               )}
@@ -982,8 +982,8 @@ export default function HojaRemisionEditor({
                     className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-[var(--kt-gray-50)]"
                   >
                     <div>
-                      <CardTitle className="text-lg">Respuesta tecnica</CardTitle>
-                      <CardDescription>Salida completa del analisis para depuracion y QA.</CardDescription>
+                      <CardTitle className="text-lg">Respuesta técnica</CardTitle>
+                      <CardDescription>Salida completa del análisis para depuración y QA.</CardDescription>
                     </div>
                     {showAzureJson && !showKeyValuePairs ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
                   </button>
@@ -1003,7 +1003,7 @@ export default function HojaRemisionEditor({
       )}
 
       {wizardStep === "confirmation" && extractedData && file && (
-        <Suspense fallback={<LoadingSpinner message="Cargando confirmacion..." />}>
+        <Suspense fallback={<LoadingSpinner message="Cargando confirmación..." />}>
           <HojaRemisionConfirmacion
             extractedData={extractedData}
             azureResult={azureResult}

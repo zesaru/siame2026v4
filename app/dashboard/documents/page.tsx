@@ -10,6 +10,10 @@ export default async function DocumentsPage() {
     redirect("/auth/signin")
   }
 
+  if (session.user.role !== "SUPER_ADMIN" && session.user.role !== "ADMIN") {
+    redirect("/dashboard")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <DocumentsClient />

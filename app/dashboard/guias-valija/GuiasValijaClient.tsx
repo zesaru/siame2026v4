@@ -43,7 +43,7 @@ import { useTablePagination } from "@/lib/hooks/useTablePagination"
 import { exportToCSV, exportToExcel, getExportFilename } from "@/lib/utils/export"
 import type { DashboardGuiaValijaListItem } from "@/modules/guias-valija/application/dto"
 import { toast } from "sonner"
-import { Boxes, CheckCircle2, Gauge, Send } from "lucide-react"
+import { Boxes, Gauge } from "lucide-react"
 import type { Role } from "@prisma/client"
 
 // Estado mapping for better badge styling
@@ -64,6 +64,16 @@ const estadoLabels: Record<string, string> = {
 interface GuiasValijaClientProps {
   initialGuias: DashboardGuiaValijaListItem[]
   currentUserRole: Role
+}
+
+function parseNumeroGuiaParts(numeroGuia: string) {
+  const match = numeroGuia.trim().match(/^0*(\d+)(?:[A-Z]+)?\s*-\s*(\d{4})$/i)
+  if (!match) return null
+
+  return {
+    correlativo: Number(match[1]),
+    year: Number(match[2]),
+  }
 }
 
 export default function GuiasValijaClient({ initialGuias, currentUserRole }: GuiasValijaClientProps) {
@@ -116,10 +126,42 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
   const summary = useMemo(() => {
     const total = guias.length
     const extraordinarias = guias.filter((g) => g.isExtraordinaria).length
-    const entregadas = guias.filter((g) => g.estado === "entregado").length
-    const enTransito = guias.filter((g) => g.estado === "en_transito").length
-    const entregaPct = total > 0 ? Math.round((entregadas / total) * 100) : 0
-    return { total, extraordinarias, entregadas, enTransito, entregaPct }
+    return { total, extraordinarias }
+  }, [guias])
+
+  const missingCorrelativosSummary = useMemo(() => {
+    const grouped = new Map<number, Set<number>>()
+
+    for (const guia of guias) {
+      const parsed = parseNumeroGuiaParts(guia.numeroGuia)
+      if (!parsed) continue
+
+      if (!grouped.has(parsed.year)) {
+        grouped.set(parsed.year, new Set<number>())
+      }
+
+      grouped.get(parsed.year)?.add(parsed.correlativo)
+    }
+
+    const years = Array.from(grouped.keys()).sort((a, b) => b - a)
+    if (years.length === 0) return null
+
+    const selectedYear = years[0]
+    const correlativos = Array.from(grouped.get(selectedYear) || []).sort((a, b) => a - b)
+    const maxCorrelativo = correlativos[correlativos.length - 1] || 0
+    const missing: number[] = []
+
+    for (let i = 1; i <= maxCorrelativo; i += 1) {
+      if (!grouped.get(selectedYear)?.has(i)) {
+        missing.push(i)
+      }
+    }
+
+    return {
+      year: selectedYear,
+      missing,
+      maxCorrelativo,
+    }
   }, [guias])
 
   const hasActiveFilters = Boolean(searchTerm.trim()) || statusFilter !== "all"
@@ -178,7 +220,7 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
     setLoading(true)
     try {
       const response = await fetch("/api/dashboard/guias-valija")
-      if (!response.ok) throw new Error("Error fetching guias")
+      if (!response.ok) throw new Error("Error fetching guías")
       const data = await response.json()
       setGuias(data)
     } catch (error) {
@@ -306,8 +348,8 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
         columns,
         filename,
         {
-          title: "Reporte de Guias de Valija",
-          subtitle: "Exportacion operativa del modulo de guias de valija",
+          title: "Reporte de Guías de Valija",
+          subtitle: "Exportación operativa del módulo de guías de valija",
           sheetName: "GuiasValija",
         }
       )
@@ -426,18 +468,52 @@ export default function GuiasValijaClient({ initialGuias, currentUserRole }: Gui
             <CardTitle className="text-2xl">{summary.extraordinarias}</CardTitle>
           </CardHeader>
         </Card>
-        <Card className="border-[var(--kt-gray-200)] bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+        <Card className="border-[var(--kt-warning)]/25 bg-[linear-gradient(180deg,#fffdf6,white)] shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md xl:col-span-2">
           <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" />Rendimiento Entrega</CardDescription>
-            <CardTitle className="text-2xl">{summary.entregaPct}%</CardTitle>
-            <p className="text-xs text-muted-foreground">{summary.entregadas} de {summary.total} entregadas</p>
+            <CardDescription className="flex items-center gap-2">
+              <Icon name="hash" size="sm" className="text-[var(--kt-warning)]" />
+              Correlativos faltantes
+            </CardDescription>
+            <CardTitle className="text-2xl">
+              {missingCorrelativosSummary ? missingCorrelativosSummary.year : "Sin datos"}
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              {missingCorrelativosSummary
+                ? `Secuencia anual revisada hasta la guía ${String(missingCorrelativosSummary.maxCorrelativo).padStart(2, "0")}-${missingCorrelativosSummary.year}.`
+                : "Aún no hay suficientes guías con formato correlativo para analizar la secuencia."}
+            </p>
           </CardHeader>
-        </Card>
-        <Card className="border-[var(--kt-gray-200)] bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2"><Send className="h-4 w-4 text-blue-600" />En Tránsito</CardDescription>
-            <CardTitle className="text-2xl">{summary.enTransito}</CardTitle>
-          </CardHeader>
+          <CardContent className="pt-0">
+            {missingCorrelativosSummary ? (
+              missingCorrelativosSummary.missing.length > 0 ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-[var(--kt-text-muted)]">
+                    Faltan {missingCorrelativosSummary.missing.length} guía
+                    {missingCorrelativosSummary.missing.length === 1 ? "" : "s"} por correlativo en el año {missingCorrelativosSummary.year}.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {missingCorrelativosSummary.missing.map((correlativo) => (
+                      <Badge
+                        key={correlativo}
+                        variant="outline"
+                        className="border-[var(--kt-warning)]/30 bg-white text-[var(--kt-text-dark)]"
+                      >
+                        {String(correlativo).padStart(2, "0")}-{missingCorrelativosSummary.year}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-[var(--kt-text-muted)]">
+                  No faltan guías por correlativo en el año {missingCorrelativosSummary.year}.
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-[var(--kt-text-muted)]">
+                No se encontraron guías con numeración anual válida para mostrar esta métrica.
+              </p>
+            )}
+          </CardContent>
         </Card>
       </div>
 

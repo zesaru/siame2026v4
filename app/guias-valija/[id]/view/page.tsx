@@ -16,7 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Package, MapPin, User, Calendar, Weight, Truck, Save, X, Trash2 } from "lucide-react"
+import { ArrowLeft, Package, Save, X, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import GuiaValijaItems from "@/components/dashboard/GuiaValijaItems"
 import { withTrackView } from "@/lib/utils"
@@ -59,7 +59,7 @@ interface GuiaValijaDetails {
   createdAt: string
 }
 
-type TabKey = "resumen" | "items" | "personas" | "observaciones"
+type TabKey = "resumen" | "observaciones"
 
 export default function GuiaValijaViewPage() {
   const { data: session, status } = useSession()
@@ -75,6 +75,7 @@ export default function GuiaValijaViewPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("resumen")
   const [notFound, setNotFound] = useState(false)
   const validateRef = useRef<{ validate: () => boolean } | null>(null)
+  const canEdit = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
   const canDelete = session?.user?.role === "ADMIN" || session?.user?.role === "SUPER_ADMIN"
 
   useEffect(() => {
@@ -187,11 +188,13 @@ export default function GuiaValijaViewPage() {
     cancelado: "Cancelado",
   }
 
+  const hasObservaciones =
+    Boolean(guia?.observaciones?.trim()) ||
+    Boolean(guia?.descripcionContenido?.trim())
+
   const tabs: Array<{ key: TabKey; label: string }> = [
     { key: "resumen", label: "Resumen" },
-    { key: "items", label: "Items" },
-    { key: "personas", label: "Personas" },
-    { key: "observaciones", label: "Observaciones" },
+    ...(hasObservaciones ? [{ key: "observaciones" as TabKey, label: "Observaciones" }] : []),
   ]
 
   const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "—")
@@ -247,13 +250,13 @@ export default function GuiaValijaViewPage() {
           <div className="flex flex-wrap items-center gap-2">
             {!isEditing ? (
               <>
-                <Button variant="outline" onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}>
-                  Editar Guía
-                </Button>
-                <Button onClick={() => { setActiveTab("items"); setIsEditing(true) }}>
-                  <Package className="mr-2 h-4 w-4" />
-                  Editar Items
-                </Button>
+                {canEdit && (
+                  <>
+                    <Button variant="outline" onClick={() => router.push(`/dashboard/guias-valija/${guia.id}/edit`)}>
+                      Editar Guía
+                    </Button>
+                  </>
+                )}
                 {canDelete && (
                   <Button
                     variant="ghost"
@@ -309,8 +312,9 @@ export default function GuiaValijaViewPage() {
       )}
 
       {activeTab === "resumen" && (
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
-          <Card className="xl:col-span-2">
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+            <Card className="xl:col-span-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Package className="h-5 w-5" />
@@ -332,46 +336,24 @@ export default function GuiaValijaViewPage() {
               <p className="text-sm text-muted-foreground">Creado: {formatDate(guia.createdAt)}</p>
             </CardContent>
           </Card>
-        </div>
-      )}
+          </div>
 
-      {activeTab === "items" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
-              Items de la Guía ({guia.items.length})
-            </CardTitle>
-            <CardDescription>Lista completa de items contenidos en la guía.</CardDescription>
-          </CardHeader>
-          <CardContent className="max-h-[70vh] overflow-auto pr-1">
-            <GuiaValijaItems
-              title="Items de la Guía"
-              items={items}
-              onChange={setItems}
-              validateRef={validateRef}
-              editable={isEditing}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {activeTab === "personas" && (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Remitente</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p className="font-medium">{guia.remitenteNombre || "—"}</p>
-              <p className="text-sm text-muted-foreground">{guia.remitenteCargo || "—"}</p>
-              <p className="text-sm text-muted-foreground">{guia.remitenteEmail || "—"}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Destinatario</CardTitle></CardHeader>
-            <CardContent className="space-y-2">
-              <p className="font-medium">{guia.destinatarioNombre || "—"}</p>
-              <p className="text-sm text-muted-foreground">{guia.destinatarioCargo || "—"}</p>
-              <p className="text-sm text-muted-foreground">{guia.destinatarioEmail || "—"}</p>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Items de la Guía ({guia.items.length})
+              </CardTitle>
+              <CardDescription>Lista completa de items contenidos en la guía.</CardDescription>
+            </CardHeader>
+            <CardContent className="max-h-[70vh] overflow-auto pr-1">
+              <GuiaValijaItems
+                title="Items de la Guía"
+                items={items}
+                onChange={setItems}
+                validateRef={validateRef}
+                editable={false}
+              />
             </CardContent>
           </Card>
         </div>

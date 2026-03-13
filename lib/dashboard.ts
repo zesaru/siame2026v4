@@ -1,6 +1,7 @@
 import { prisma } from "./db"
 import { cache } from "react"
 import { logger } from "./logger"
+import type { Role } from "@prisma/client"
 
 export interface DashboardMetrics {
   documents: {
@@ -28,8 +29,15 @@ export interface DashboardMetrics {
  * Get dashboard metrics with React.cache() for deduplication
  * This prevents duplicate queries within the same request
  */
-export const getDashboardMetrics = cache(async (userId: string): Promise<DashboardMetrics> => {
+export const getDashboardMetrics = cache(async ({
+  userId,
+  role,
+}: {
+  userId: string
+  role: Role
+}): Promise<DashboardMetrics> => {
   const now = new Date()
+  const whereScope = {}
 
   // Fix: Correctly calculate start of week (Sunday at 00:00:00)
   const dayOfWeek = now.getDay()
@@ -49,29 +57,29 @@ export const getDashboardMetrics = cache(async (userId: string): Promise<Dashboa
       documentsFailed,
     ] = await Promise.all([
       prisma.document.count({
-        where: { userId },
+        where: whereScope,
       }),
       prisma.document.count({
         where: {
-          userId,
+          ...whereScope,
           createdAt: { gte: startOfWeek },
         },
       }),
       prisma.document.count({
         where: {
-          userId,
+          ...whereScope,
           createdAt: { gte: startOfMonth },
         },
       }),
       prisma.document.count({
         where: {
-          userId,
+          ...whereScope,
           processingStatus: "completed",
         },
       }),
       prisma.document.count({
         where: {
-          userId,
+          ...whereScope,
           processingStatus: "failed",
         },
       }),
@@ -84,16 +92,16 @@ export const getDashboardMetrics = cache(async (userId: string): Promise<Dashboa
       guiasByTypeRaw,
     ] = await Promise.all([
       prisma.guiaValija.count({
-        where: { userId },
+        where: whereScope,
       }),
       prisma.guiaValija.groupBy({
         by: ["estado"],
-        where: { userId },
+        where: whereScope,
         _count: true,
       }),
       prisma.guiaValija.groupBy({
         by: ["tipoValija"],
-        where: { userId },
+        where: whereScope,
         _count: true,
       }),
     ])
@@ -118,16 +126,16 @@ export const getDashboardMetrics = cache(async (userId: string): Promise<Dashboa
       hojasByTypeRaw,
     ] = await Promise.all([
       prisma.hojaRemision.count({
-        where: { userId },
+        where: whereScope,
       }),
       prisma.hojaRemision.groupBy({
         by: ["estado"],
-        where: { userId },
+        where: whereScope,
         _count: true,
       }),
       prisma.hojaRemision.groupBy({
         by: ["siglaUnidad"],
-        where: { userId },
+        where: whereScope,
         _count: true,
       }),
     ])

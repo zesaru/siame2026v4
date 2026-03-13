@@ -139,7 +139,7 @@ export default function HojaRemisionViewClient({
         const response = await fetch(withTrackView(`/api/hojas-remision/${hojaId}`, true), {
           signal: controller.signal,
         })
-        if (!response.ok) throw new Error("Error al cargar la hoja de remision.")
+        if (!response.ok) throw new Error("Error al cargar la hoja de remisión.")
         const data = await response.json()
 
         if (mounted) {
@@ -148,7 +148,7 @@ export default function HojaRemisionViewClient({
         }
       } catch (error) {
         if (error instanceof Error && error.name !== "AbortError") {
-          toast.error("Error al cargar la hoja de remision.")
+          toast.error("Error al cargar la hoja de remisión.")
         }
       } finally {
         if (mounted) setLoading(false)
@@ -170,7 +170,7 @@ export default function HojaRemisionViewClient({
       })
 
       if (response.status === 404) {
-        toast.info("La hoja de remision ya no estaba disponible.")
+        toast.info("La hoja de remisión ya no estaba disponible.")
         setDeleteConfirm(false)
         router.push("/dashboard/hojas-remision")
         router.refresh()
@@ -179,12 +179,12 @@ export default function HojaRemisionViewClient({
 
       if (!response.ok) throw new Error("Error al eliminar")
 
-      toast.success("Hoja de remision eliminada.")
+      toast.success("Hoja de remisión eliminada.")
       setDeleteConfirm(false)
       router.push("/dashboard/hojas-remision")
       router.refresh()
     } catch {
-      toast.error("No se pudo eliminar la hoja de remision.")
+      toast.error("No se pudo eliminar la hoja de remisión.")
     }
   }
 
@@ -196,7 +196,7 @@ export default function HojaRemisionViewClient({
   if (loading) {
     return (
       <div className="flex min-h-[16rem] items-center justify-center">
-        <LoadingSpinner message="Cargando hoja de remision..." />
+        <LoadingSpinner message="Cargando hoja de remisión..." />
       </div>
     )
   }
@@ -204,7 +204,7 @@ export default function HojaRemisionViewClient({
   if (!hoja) {
     return (
       <div className="py-12 text-center">
-        <h2 className="mb-2 text-xl font-semibold text-[var(--kt-text-dark)]">Hoja de remision no encontrada</h2>
+        <h2 className="mb-2 text-xl font-semibold text-[var(--kt-text-dark)]">Hoja de remisión no encontrada</h2>
         <p className="mb-4 text-[var(--kt-text-muted)]">No se pudo cargar la hoja solicitada.</p>
         <Button onClick={() => router.push("/dashboard/hojas-remision")}>Volver al listado</Button>
       </div>
@@ -220,7 +220,7 @@ export default function HojaRemisionViewClient({
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbLink href="/dashboard/hojas-remision">Hojas de Remision</BreadcrumbLink>
+            <BreadcrumbLink href="/dashboard/hojas-remision">Hojas de Remisión</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
@@ -244,7 +244,7 @@ export default function HojaRemisionViewClient({
             </div>
 
             <div>
-              <h1 className="text-3xl font-semibold text-[var(--kt-text-dark)]">Hoja de Remision</h1>
+              <h1 className="text-3xl font-semibold text-[var(--kt-text-dark)]">Hoja de Remisión</h1>
               <p className="text-sm text-[var(--kt-text-muted)]">
                 {hoja.numeroCompleto} · {hoja.siglaUnidad} · {new Date(hoja.fecha).toLocaleDateString("es-PE")}
               </p>
@@ -354,7 +354,7 @@ export default function HojaRemisionViewClient({
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-wide text-[var(--kt-text-muted)]">Tipo</p>
-                    <p className="text-sm font-semibold text-[var(--kt-text-dark)]">Hoja de Remision</p>
+                    <p className="text-sm font-semibold text-[var(--kt-text-dark)]">Hoja de Remisión</p>
                   </div>
                 </div>
               </CardContent>
@@ -414,7 +414,7 @@ export default function HojaRemisionViewClient({
           <Card>
             <CardHeader className="border-b border-[var(--kt-gray-200)] bg-[linear-gradient(180deg,var(--kt-gray-50),white)]">
               <CardTitle>Lectura documental</CardTitle>
-              <CardDescription>Informacion estructurada de la hoja de remision.</CardDescription>
+              <CardDescription>Información estructurada de la hoja de remisión.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -446,7 +446,7 @@ export default function HojaRemisionViewClient({
 
               {hoja.descripcionEmpaque && (
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Descripcion empaque</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--kt-text-muted)]">Descripción empaque</p>
                   <div className="rounded-xl border border-[var(--kt-gray-200)] bg-[var(--kt-gray-50)] px-4 py-3 text-sm text-[var(--kt-text-dark)]">
                     {hoja.descripcionEmpaque}
                   </div>
@@ -484,7 +484,7 @@ export default function HojaRemisionViewClient({
           <Card className="border-dashed">
             <CardContent className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
               <div className="text-sm text-[var(--kt-text-muted)]">
-                Ultima actualizacion:{" "}
+                Última actualización:{" "}
                 {new Date(hoja.updatedAt).toLocaleDateString("es-PE", {
                   day: "numeric",
                   month: "short",
@@ -508,9 +508,9 @@ export default function HojaRemisionViewClient({
         <AlertDialog open={deleteConfirm} onOpenChange={setDeleteConfirm}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Eliminar hoja de remision</AlertDialogTitle>
+              <AlertDialogTitle>Eliminar hoja de remisión</AlertDialogTitle>
               <AlertDialogDescription>
-                Estas a punto de eliminar <strong>{hoja.numeroCompleto}</strong>. Esta accion no se puede deshacer.
+                Estás a punto de eliminar <strong>{hoja.numeroCompleto}</strong>. Esta acción no se puede deshacer.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -526,7 +526,7 @@ export default function HojaRemisionViewClient({
       <AlertDialog open={editChoiceOpen} onOpenChange={setEditChoiceOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Como quieres editar esta hoja?</AlertDialogTitle>
+            <AlertDialogTitle>¿Cómo quieres editar esta hoja?</AlertDialogTitle>
             <AlertDialogDescription>
               Puedes corregir campos manualmente o subir un PDF nuevo para analizarlo antes de guardar
               {hoja ? ` en ${hoja.numeroCompleto}` : ""}.

@@ -24,6 +24,7 @@ const allNavigationItems = [
     title: "Documentos",
     href: "/dashboard/documents",
     icon: "document",
+    requiredRole: ["SUPER_ADMIN", "ADMIN"] as Role[],
   },
   {
     title: "Guías de Valija",
