@@ -9,7 +9,8 @@ const fs = require('fs')
 const path = require('path')
 const { spawn } = require('child_process')
 
-const PORT = 443
+const HTTPS_PORT = 443
+const HTTP_PORT = 80
 const NEXT_PORT = 3000
 
 const certPath = path.join(__dirname, 'certs')
@@ -134,45 +135,88 @@ function proxyRequest(req, res) {
   req.pipe(proxyReq)
 }
 
-// Create HTTPS proxy server
-const server = https.createServer(sslOptions, proxyRequest)
+// Proxy function for HTTP (adds x-forwarded-proto: http)
+function proxyRequestHttp(req, res) {
+  const options = {
+    hostname: 'localhost',
+    port: NEXT_PORT,
+    path: req.url,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      'x-forwarded-proto': 'http',
+      'x-forwarded-host': req.headers.host,
+      'host': req.headers.host
+    }
+  }
 
-server.on('error', (err) => {
-  failStartup(`No se pudo abrir el puerto HTTPS ${PORT}`, err)
+  const proxyReq = http.request(options, (proxyRes) => {
+    const hopByHop = ['connection', 'keep-alive', 'transfer-encoding', 'te', 'trailer', 'upgrade']
+    const headers = {}
+    for (const key in proxyRes.headers) {
+      if (!hopByHop.includes(key.toLowerCase())) {
+        headers[key] = proxyRes.headers[key]
+      }
+    }
+    res.writeHead(proxyRes.statusCode, headers)
+    proxyRes.pipe(res)
+  })
+
+  proxyReq.on('error', (err) => {
+    console.error('HTTP Proxy error:', err)
+    if (!res.headersSent) {
+      res.writeHead(500, { 'Content-Type': 'text/plain' })
+      res.end('Proxy Error')
+    }
+  })
+
+  req.pipe(proxyReq)
+}
+
+// Create HTTPS proxy server
+const httpsServer = https.createServer(sslOptions, proxyRequest)
+
+httpsServer.on('error', (err) => {
+  failStartup(`No se pudo abrir el puerto HTTPS ${HTTPS_PORT}`, err)
+})
+
+// Create HTTP proxy server
+const httpServer = http.createServer(proxyRequestHttp)
+
+httpServer.on('error', (err) => {
+  console.error(`[HTTP Server] Error: ${err.message}`)
 })
 
 waitForNextServer()
   .then(() => {
-    server.listen(PORT, '0.0.0.0', () => {
+    // Start HTTPS server
+    httpsServer.listen(HTTPS_PORT, '0.0.0.0', () => {
       serverStarted = true
+    })
+
+    // Start HTTP server
+    httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
       console.log(`
 ╔═══════════════════════════════════════════════════════════════════════╗
 ║                                                                   ║
-║   🚀 SIAME 2026 - HTTPS Server (Production)                       ║
+║   🚀 SIAME 2026 - HTTP + HTTPS Server (Production)                ║
 ║                                                                   ║
+║   ✓ HTTP habilitado en puerto 80                                  ║
 ║   ✓ HTTPS habilitado con certificado para siame2026.local        ║
 ║                                                                   ║
-║   URL oficial de acceso:                                           ║
+║   URLs de acceso:                                                  ║
 ║   ─────────────────────────────────────────────────────────────────  ║
+║   • http://172.18.28.84                                            ║
+║   • http://siame2026.local                                         ║
 ║   • https://siame2026.local                                        ║
-║                                                                   ║
-║   URLs alternativas (solo mantenimiento):                          ║
-║   ─────────────────────────────────────────────────────────────────  ║
-║   • https://localhost                                             ║
 ║   • https://172.18.28.84                                           ║
-║                                                                   ║
-║   Configuración de clientes:                                       ║
-║   ─────────────────────────────────────────────────────────────────  ║
-║   1. Instalar CA: C:\\inetpub\\siame2026\\certs\\siame2026-root-ca.cer   ║
-║   2. Editar hosts: C:\\Windows\\System32\\drivers\\etc\\hosts            ║
-║      Agregar: 172.18.28.84  siame2026.local                         ║
 ║                                                                   ║
 ╚═══════════════════════════════════════════════════════════════════════╝
   `)
     })
   })
   .catch((err) => {
-    failStartup('Next.js no quedó listo; el proxy HTTPS no se iniciará', err)
+    failStartup('Next.js no quedó listo; el proxy no se iniciará', err)
   })
 
 // Graceful shutdown
@@ -181,9 +225,11 @@ const shutdown = () => {
   if (nextProcess && !nextProcess.killed) {
     nextProcess.kill('SIGTERM')
   }
-  server.close(() => {
-    console.log('Server closed')
-    process.exit(0)
+  httpsServer.close(() => {
+    httpServer.close(() => {
+      console.log('Servers closed')
+      process.exit(0)
+    })
   })
 }
 
